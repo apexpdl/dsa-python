@@ -35,8 +35,8 @@
 
   {% if problem.status == 'coming-soon' %}
   <div class="callout">
-    <strong>Coming soon.</strong>
-    <p>{{ problem.understanding }}</p>
+    <strong>Long-form write-up in progress.</strong>
+    <div class="prose">{{ problem.understanding | md }}</div>
   </div>
   {% else %}
 
@@ -81,13 +81,99 @@
   </section>
   {% endif %}
 
+  {% if problem.confusion_notes %}
+  <section class="problem-section problem-confusion">
+    <h2>F. Beginner Confusion Notes</h2>
+    <p class="muted">
+      Questions beginners actually ask while reading the explanation
+      above. If any of these is what you were thinking, you are not
+      alone — read carefully.
+    </p>
+    <div class="confusion-list">
+      {% for note in problem.confusion_notes %}
+      <details class="confusion-item" {% if loop.index <= 2 %}open{% endif %}>
+        <summary>{{ note.question }}</summary>
+        <div class="prose">{{ note.answer | md }}</div>
+      </details>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   {% if problem.summary %}
   <section class="problem-section problem-summary">
-    <h2>F. Final Summary</h2>
+    <h2>G. Final Summary</h2>
     <div class="prose">{{ problem.summary | md }}</div>
   </section>
   {% endif %}
 
+  {% endif %}
+
+  <section class="problem-section interconnection">
+    <h2>H. What This Teaches &amp; Where It Leads</h2>
+    <div class="meta-grid">
+      {% if problem.what_this_teaches %}
+      <div>
+        <h4>What this problem teaches</h4>
+        <div class="prose">{{ problem.what_this_teaches | md }}</div>
+      </div>
+      {% endif %}
+      {% if problem.pattern %}
+      <div>
+        <h4>Pattern</h4>
+        <p>{{ problem.pattern }}</p>
+      </div>
+      {% endif %}
+      {% if problem.prerequisite_lessons or problem.prerequisite_problems %}
+      <div>
+        <h4>Prerequisites</h4>
+        <ul class="meta-list">
+          {% for lid in problem.prerequisite_lessons or [] %}
+          <li>
+            <span class="kind kind-lesson">lesson</span>
+            <a href="{{ url_for('learn_lesson', lesson_id=lid) }}">{{ lid.replace('-', ' ').title() }}</a>
+          </li>
+          {% endfor %}
+          {% for pid in problem.prerequisite_problems or [] %}
+          <li>
+            <span class="kind kind-problem">problem</span>
+            <a href="{{ url_for('practice_problem', problem_id=pid) }}">{{ pid.replace('-', ' ').title() }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if problem.next_problems %}
+      <div>
+        <h4>What to solve next</h4>
+        <ul class="meta-list">
+          {% for pid in problem.next_problems %}
+          <li>
+            <span class="kind kind-problem">problem</span>
+            <a href="{{ url_for('practice_problem', problem_id=pid) }}">{{ pid.replace('-', ' ').title() }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if problem.resources %}
+  <section class="problem-section resources-section">
+    <h2>I. Resources</h2>
+    <p class="muted">External material that pairs well with this write-up.</p>
+    <ul class="resource-list">
+      {% for r in problem.resources %}
+      <li>
+        <a href="{{ r.url }}" target="_blank" rel="noopener noreferrer">
+          <strong>{{ r.label }}</strong>
+          <span class="resource-url">{{ r.url }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
   {% endif %}
 
   <nav class="problem-nav">

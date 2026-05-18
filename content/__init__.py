@@ -55,7 +55,12 @@ def iter_all_problems() -> Iterator[dict]:
 
 
 def _stub_problem(problem_id: str, step: dict, lecture: dict) -> dict:
-    """Build a placeholder entry for a problem that has no write-up yet."""
+    """Build a placeholder entry for a problem that has no write-up yet.
+
+    Even stubs carry the new structural fields so the layout looks
+    intentional and the reader gets some orientation about what the
+    finished write-up will teach.
+    """
     pretty = problem_id.replace("-", " ").title()
     return {
         "id": problem_id,
@@ -67,22 +72,59 @@ def _stub_problem(problem_id: str, step: dict, lecture: dict) -> dict:
         "tags": [],
         "status": "coming-soon",
         "understanding": (
-            "A deep, step-by-step write-up for this problem is coming "
-            "soon. It will follow the same teaching template used "
-            "everywhere else on this site:\n\n"
-            "1. Problem Understanding — what the problem is really "
-            "asking, in plain language.\n"
-            "2. Brute Force Approach — the most natural first attempt, "
-            "with a worked example and Python code commented line by "
-            "line.\n"
-            "3. Thought Process Breakdown — how a real beginner moves "
-            "from the brute force to a better idea.\n"
-            "4. Optimized Approach — the better algorithm, with the "
-            "insight that unlocks it.\n"
-            "5. Deep Concept Explanation — why it actually works.\n"
-            "6. Final Summary — what pattern this teaches and how to "
-            "recognize it next time."
+            "A patient, line-by-line write-up of this problem is on the "
+            "way. While that lands, here is the orientation you can use "
+            "right now.\n\n"
+            "Every finished problem on this site follows the same six-"
+            "part teaching template, plus a final \"what this teaches "
+            "and where it leads\" section. The template is:\n\n"
+            "1. **Problem Understanding** — the problem, restated in "
+            "plain human language, with examples and what the problem "
+            "is really asking versus what it sounds like at first.\n"
+            "2. **Brute Force Approach** — the most natural, "
+            "least-clever first attempt, with line-by-line Python "
+            "comments and an honest complexity discussion.\n"
+            "3. **Thought Process Breakdown** — the inner monologue "
+            "that a real beginner would have, the false starts that "
+            "are productive, and the moment when the better idea "
+            "appears.\n"
+            "4. **Optimized Approach** — the better algorithm, with "
+            "the precise insight that unlocks it.\n"
+            "5. **Deep Concept Explanation** — why it actually works, "
+            "with real-life analogies and visual mental models.\n"
+            "6. **Final Summary** — what pattern it teaches and how "
+            "to recognize the same pattern when it is wearing a "
+            "different costume next time.\n\n"
+            "On top of that, every problem now has **Beginner "
+            "Confusion Notes** — long, patient answers to the "
+            "questions that beginners actually ask — plus a "
+            "**Resources** block with the original Striver "
+            "article/video, the LeetCode equivalent (when it exists), "
+            "and a brief **What this teaches / Pattern / "
+            "Prerequisites / Next problems** map so you always know "
+            "where you are in the journey.\n\n"
+            "Until the long-form lands, the lesson and earlier "
+            "problems linked in the **Prerequisites** below cover "
+            "everything you need to attempt this one yourself."
         ),
+        "what_this_teaches": (
+            "This problem belongs to the **{step}** track and "
+            "specifically the **{lecture}** lecture, so it is the "
+            "next step in the curriculum after the lecture's earlier "
+            "problems. The full write-up will name the exact pattern "
+            "and link to similar problems."
+        ).format(step=step["title"], lecture=lecture["title"]),
+        "pattern": "(to be named in the full write-up)",
+        "prerequisite_lessons": [],
+        "prerequisite_problems": [],
+        "next_problems": [],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course Sheet",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+        ],
+        "confusion_notes": [],
     }
 
 

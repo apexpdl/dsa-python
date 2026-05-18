@@ -13,26 +13,81 @@ PROBLEMS: list[dict] = [
         "step_id": 1,
         "lecture_id": 4,
         "difficulty": "easy",
-        "tags": ["math", "loops"],
+        "tags": ["math", "loops", "digits"],
+        "what_this_teaches": (
+            "How to **discover** information about a number that the "
+            "number does not carry explicitly. The pattern that emerges "
+            "— peel one digit, count, repeat — is the foundation for "
+            "every digit-manipulation problem in this lecture."
+        ),
+        "pattern": "Digit extraction loop: `% 10` peels, `// 10` shrinks.",
+        "prerequisite_lessons": ["arrays"],
+        "prerequisite_problems": [],
+        "next_problems": [
+            "reverse-number",
+            "check-palindrome-number",
+            "armstrong-number",
+            "count-frequencies",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Maths)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "GeeksforGeeks — Program to count digits in an integer",
+                "url": "https://www.geeksforgeeks.org/program-count-digits-integer-3-different-methods/",
+            },
+        ],
         "understanding": r'''
-We are given a positive integer like `7894`. We have to tell how many
-digits it has. For `7894` the answer is `4` (the digits are 7, 8, 9,
-and 4). For `5` the answer is `1`. For `100000` the answer is `6`.
+Let's slow down and really see this problem. We are handed a positive
+integer. Something like `7894`, or `5`, or `100000`. Our job is to
+report how many digits it has. For `7894` the answer is `4`. For
+`5` the answer is `1`. For `100000` the answer is `6`.
 
-It sounds trivial, but pause for a moment. The number is **a number**,
-not a string. Numbers do not have "digits" the way strings do — they
-are just a quantity. So the question is really: *"how many digits
-would I need to write this number down in base 10?"*. That tiny
-re-phrasing matters, because it points us at the math we will use.
+When you read this for the first time, it can feel embarrassingly
+simple. You look at the number, you count the digits with your eyes,
+done. *"Why are we even being asked this?"* That feeling is honest,
+and it deserves an honest answer.
 
-Two pieces of mathematical machinery solve this:
+The catch is that you are not looking at a *string* of digits. You
+are looking at **a number**. A number, deep down inside the computer,
+is a quantity. It is just *value*. The number 7894 does not store the
+character `7`, then the character `8`, then `9`, then `4`. It stores
+a single binary representation of the quantity seven thousand eight
+hundred and ninety-four. There is no list of digits sitting in
+memory waiting for us to count.
 
-1. **Integer division by 10** (`n // 10`) chops off the rightmost
-   digit of `n`. For `n = 7894`, `n // 10 = 789`. The 4 is gone.
-2. **Counting how many times we can chop** tells us how many digits
-   there were to begin with.
+So the real question hiding inside this innocent problem is: **given
+only the value, how do we recover its digits?** And answering that
+question is what teaches us a tiny but absolutely fundamental skill.
+That skill, "peel the last digit off a number using arithmetic," is
+the same skill we will use to reverse a number, check if a number
+is a palindrome, compute its digit sum, check whether it is an
+Armstrong number, and so on. So even though this looks like a
+toy problem, please treat it seriously. The muscle you build here
+gets reused for the next six problems in this lecture.
 
-Once we have that idea, the rest is just translating it into a loop.
+The two pieces of mathematical machinery we need are this pair:
+
+1. **Mod 10** (`n % 10`) asks the number: *"what is your rightmost
+   digit?"* For `n = 7894`, `n % 10` is `4`. That is because dividing
+   7894 by 10 leaves a remainder of 4. The remainder is, by the very
+   definition of base 10, the last digit.
+2. **Integer division by 10** (`n // 10`) asks the number to *"throw
+   away your rightmost digit, please."* For `n = 7894`, `n // 10` is
+   `789`. The 4 is gone. The remaining digits stay.
+
+Now combine those two operations into a loop. Peel the last digit
+off, throw it away, peel the next last digit off, throw it away, and
+keep going. Every time you peel, the number gets shorter by one
+digit. So if you count how many times you can peel before the
+number runs out, you have just counted the number's digits — *without
+ever needing to know what those digits actually were*.
+
+That last sentence is the **soul** of this problem. The question is
+about *how many*, not about *which*. We never even look at the
+digits themselves. We only count how many times we managed to peel.
 ''',
         "brute_force": {
             "explanation": r'''
@@ -76,27 +131,55 @@ honest "brute force" is to repeatedly chop and count.
             ),
         },
         "thought_process": r'''
-The interview-style thinking goes like this. *"I need to count digits.
-The number itself does not carry that information directly — I have
-to discover it. What is the simplest operation that reveals one digit
-at a time? `n % 10` gives me the rightmost digit. `n // 10` discards
-it. If I keep dividing by 10 until nothing is left, I will have
-walked through every digit. So the count of iterations is the count
-of digits."*
+Okay, let's slow down and really walk through what is happening inside
+the loop, the way you would explain it to yourself out loud while
+debugging.
 
-Notice that we never even **looked** at the individual digits in our
-final code. We just counted how many times we could safely divide.
-That is a small but important realization: the question is about
-**how many**, not about **which**. Counting how many divisions is
-enough.
+Imagine you are sitting at a desk with the number `7894` written on a
+slip of paper. Your job is to count how many digits are on the slip,
+but **you are only allowed to use two tools**: a tool that tells you
+the last digit of the number, and a tool that hands you back the
+number with its last digit removed. You may use those tools as many
+times as you like.
 
-A second instinct worth comparing is the `len(str(n))` approach. It
-is shorter and correct, but it hides the algorithm behind a Python
-built-in. Both are *O(log n)* and in real code I would happily use
-`len(str(n))`. The reason we even write the loop version is to build
-the mental muscle for digit problems that you cannot solve with a
-single built-in — like reversing a number, summing its digits, or
-checking Armstrong numbers.
+You look at `7894`. You hit the "remove last digit" tool. The paper
+now says `789`. You make a tally mark — *one*. You hit the tool
+again. The paper says `78`. Another tally mark — *two*. Again. The
+paper says `7`. *Three*. Again. The paper says `0`. *Four*. The
+number ran out. You stop. You look at your tallies: four. That is
+your answer.
+
+That tiny play-by-play *is* the loop. Each pass through the loop
+does the same thing your hand did: divide once, tally once. The loop
+keeps going as long as the paper still has digits on it — which, in
+arithmetic terms, means as long as `n > 0`. When `n` finally reaches
+zero, the paper is blank, the work is done, the tally is the answer.
+
+Now, the interview-friendly framing of this thinking. *"I need to
+count digits, but the number does not store its digits. It only
+stores a value. So I need an operation that lets me **discover** one
+digit at a time. `% 10` gives me the rightmost digit; `// 10`
+discards it. If I keep applying `// 10`, the number will shrink
+exactly one digit per step. The number of steps before the number
+becomes zero is the digit count. I do not even need to look at the
+digit each time — I just need to count how many times I shrank."*
+
+This little dance — "I do not need to look at the value, only count
+how many times I could act on it" — is a surprisingly powerful
+mental move. We will reuse it when checking primality (count how many
+divisors you find, not what they are), counting trailing zeros, and
+in many problems about *quantity of operations* rather than *content
+of operations*.
+
+There is a second, more "Pythonic" approach worth comparing:
+`len(str(n))`. It works perfectly and is one line. The reason we
+**still** write the arithmetic loop is that the arithmetic version
+generalizes. As soon as the next problem asks us to **reverse** the
+number, or to **sum its digits**, or to **check whether it is an
+Armstrong number**, the `len(str(n))` trick is useless — we need
+actual access to the digits one at a time. The arithmetic skeleton
+`while n: digit = n % 10; n //= 10` gives us that access. Burn it
+into your fingers now and it pays off for the next six problems.
 ''',
         "optimized": {
             "explanation": r'''
@@ -133,28 +216,260 @@ def count_digits_log(n: int) -> int:
             ),
         },
         "deep_concept": r'''
-The trick at the bottom of all of these solutions is the relationship
-between integers, base 10, and `// 10` and `% 10`. **Mod 10** asks
-"what is your last digit?" and **div 10** asks "throw your last digit
-away". That single pair of operations powers every digit-twiddling
-algorithm in Step 1.
+Let's zoom out from the loop and ask why this all works in the first
+place. The whole trick lives in one observation about **base 10**.
 
-If we changed the base, the operations change. To count binary
-digits, you would `// 2` and `% 2`. To count digits in hex, you would
-`// 16`. The algorithm is one and the same — the base just plugs in.
-That insight saves you when an interviewer asks for digit
-manipulation in a non-decimal base.
+Pick any positive integer, say `7894`. You can always write it as
+
+```
+7894 = 7 × 1000 + 8 × 100 + 9 × 10 + 4 × 1
+     = 7 × 10³ + 8 × 10² + 9 × 10¹ + 4 × 10⁰
+```
+
+Look at the last digit, `4`. Notice that every other term in the sum
+is a multiple of 10 — `7 × 1000`, `8 × 100`, `9 × 10` are all
+divisible by 10. So when you take `7894 % 10`, all those terms
+vanish and only the last term, `4 × 1 = 4`, survives. That is why
+**mod 10 gives you the last digit, exactly, every time**. It is not
+a coincidence and it is not magic; it falls directly out of the
+definition of base 10.
+
+Now look at `7894 // 10`. The integer division throws away the
+remainder. So you get `7 × 100 + 8 × 10 + 9 × 1 = 789`. The number
+has lost its `1`s place and slid the rest of the digits down by one
+position. That is the second half of the magic: integer division by
+the base **shifts** the number rightward by one digit.
+
+Together, `% 10` and `// 10` form a tiny but complete toolkit for
+walking a number's digits from right to left, *without ever
+converting it to a string*. Every digit-manipulation problem in this
+lecture — reverse a number, check palindrome, sum of digits,
+Armstrong, count of digits — uses exactly these two operations.
+
+The same idea generalizes to other bases. To peel a binary digit,
+use `% 2` and `// 2`. To peel a hex digit, use `% 16` and `// 16`.
+The algorithm is identical; only the base plugs in. That observation
+becomes especially valuable in bit-manipulation problems in Step 8,
+where `% 2` and `// 2` reappear under the names "bit at position 0"
+and "shift right by one".
+
+One last beautiful detail: the formula version, `int(math.log10(n))
++ 1`, comes from the same place. Because `n` has `d` digits exactly
+when `10^(d-1) ≤ n < 10^d`, you can take `log10` and read the
+exponent. It is the same fact, expressed in continuous-math
+language instead of arithmetic-loop language. Two perspectives, one
+underlying truth.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why do we use `//` (floor division) instead of `/` (regular division)?",
+                "answer": r'''
+Because `/` in Python gives you a *floating-point* result, and
+floats will quietly ruin this algorithm.
+
+Try it. `7894 / 10` is `789.4`. That is not what we want. We want
+the **integer** `789`, with the `.4` chopped off. We want to throw
+the last digit away cleanly, not turn it into a fraction.
+
+`//` is "floor division" — it divides and then rounds **down** to
+the nearest integer. So `7894 // 10` is `789`, exactly. No
+decimals, no floats, no fractions. It is the operation that
+genuinely models "throw the last digit away."
+
+There is a second reason to insist on `//`: floats lose precision
+on big numbers. If `n` is huge (say, 20 digits long), `n / 10`
+might not even be exact anymore — floats only have about 15–17
+significant digits. Your loop would silently produce the wrong
+count for large inputs. With `//` you stay in integer-land where
+everything is exact, no matter how large.
+
+So the rule is simple: whenever you want to throw away a digit (or
+any integer remainder), use `//`. Whenever you actually want a
+fractional result, use `/`. In digit problems, the answer is
+always `//`.
+''',
+            },
+            {
+                "question": "Why do we need a special case for `n == 0`?",
+                "answer": r'''
+Read the loop carefully. It says `while n > 0: ...`. That means
+**the loop body never runs if `n` starts at zero**. The counter
+stays at 0. The function returns 0.
+
+But that is wrong! The number `0`, written down, has *one* digit
+— the digit `0`. We would expect `count_digits(0)` to return 1,
+not 0.
+
+So we plant a tiny check at the top:
+
+```python
+if n == 0:
+    return 1
+```
+
+This is what programmers call "handling the edge case." The main
+loop assumes the number has at least one nonzero digit somewhere;
+zero is special because it has *no* nonzero digits at all, yet it
+still counts as a one-digit number.
+
+There is a deeper lesson hiding in this two-line fix. Almost every
+algorithm in DSA has at least one **edge case** — an input that
+the main logic does not handle correctly. Empty arrays. Strings of
+length one. Numbers that are zero or negative. The discipline of
+the experienced programmer is to **ask, at the start of every
+problem, "what are the weird inputs my loop will mishandle?"** and
+then guard against them explicitly.
+
+If you forget the check, the algorithm will appear to work for
+every positive number you test, and only fail when someone passes
+in zero. That is exactly the kind of bug that survives months of
+casual testing before suddenly biting in production. Pay the
+two-line tax up front.
+''',
+            },
+            {
+                "question": "How does the loop know when to stop?",
+                "answer": r'''
+The loop stops when `n` becomes zero. Look at the condition:
+`while n > 0:`. As long as `n` is strictly greater than zero, the
+body runs. The moment `n` hits zero, the condition fails and the
+loop exits.
+
+So the real question is: *will `n` always reach zero?* And the
+answer is yes, every time, because of how `//` shrinks the
+number.
+
+Take any positive integer, say 7894. After one round, `n` is 789.
+After two rounds, `n` is 78. Then 7. Then 0. Notice how each round
+makes `n` strictly smaller — it cannot ever grow or stay the same.
+Since `n` is an integer and it cannot go below zero (because
+`789 // 10` is 78, `7 // 10` is 0, `0 // 10` is 0), it has to
+reach zero in a finite number of steps.
+
+In computer-science vocabulary, this is called a **decreasing
+variant** — a quantity that strictly shrinks each iteration and is
+bounded below by zero. Whenever you can identify a decreasing
+variant for your loop, you have **proven** that it terminates.
+This is a habit worth picking up early. Every loop you write
+should have an answer to the question "what gets smaller, and what
+is the floor?" — otherwise you might be writing an infinite loop
+without realizing it.
+
+A common mistake: writing `while n != 0:` instead of `while n > 0:`
+when the input could be negative. If `n` is `-7`, `n // 10` in
+Python is `-1` (not `0`!), because Python's floor division rounds
+toward negative infinity. So your loop never terminates on
+negative input. The cure: either work on `abs(n)` at the top, or
+use `while n > 0:` and document that the function expects a
+non-negative input. Both are reasonable. Choose consciously.
+''',
+            },
+            {
+                "question": "Why does the code never actually look at the digits? Don't we need them?",
+                "answer": r'''
+Great instinct to spot this. You are right: the code never stores
+or uses the individual digits. The line `n = n // 10` discards
+the last digit; we never assign it to a variable. And that is on
+purpose.
+
+The question we are answering is *"how many digits are there?"*
+That is a question about **quantity**, not about **identity**. We
+care about *how many*, not *which*. So we count the number of
+times we successfully shrank `n`, and that count is our answer.
+
+It is a bit like asking how many pages a book has. To answer, you
+do not need to read any of the pages. You can flip from page 1 to
+page 2, then to page 3, and so on, and just count how many flips
+you did before the book ended. That is what our loop is doing —
+flipping pages without reading them.
+
+This separation between "process the structure" and "process the
+content" comes back in many problems. For example, finding the
+height of a binary tree does not require reading the values in
+the nodes — only walking the structure. Counting the number of
+items in a linked list does not require looking at the values.
+Whenever you find yourself about to store something inside a loop
+"just in case I need it later," ask whether the problem actually
+asks for that information. Often it does not.
+
+That said: the same loop skeleton, with one extra line, *does*
+give you the digits when you need them. For sum-of-digits:
+
+```python
+total = 0
+while n > 0:
+    total += n % 10        # use the digit here
+    n = n // 10
+```
+
+So when the problem changes from "how many digits" to "what is
+the sum of the digits," the only change is that you read
+`n % 10` and do something with it. The loop itself is the same.
+''',
+            },
+            {
+                "question": "What does `n = n // 10` actually do to `n` in memory?",
+                "answer": r'''
+Beautiful question, and the answer touches on something many
+beginners feel uneasy about: *"am I changing the original number,
+or making a new one?"*
+
+When you write `n = n // 10`, Python evaluates the right side
+first. It computes `n // 10`, which is a brand-new integer object
+in memory — say, 789. Then it reassigns the *name* `n` so that it
+points at this new integer. The old integer (7894) is no longer
+reachable from `n` and Python will garbage-collect it eventually.
+
+So `n` is not "mutated." Integers in Python are **immutable** —
+they cannot be changed in place. What changes is which integer
+the *variable name* `n` refers to. After the line runs, the name
+`n` points at a different integer than it did before. From your
+perspective inside the loop, that distinction does not matter —
+`n` got smaller — but it is a useful mental model for later
+problems where mutation versus rebinding actually does matter
+(like lists, dictionaries, and objects).
+
+If you wanted to keep the original number intact for use after
+the loop, you would copy it first:
+
+```python
+def count_digits(n):
+    original = n          # keep a copy
+    if n == 0:
+        return 1
+    count = 0
+    while n > 0:
+        n = n // 10
+        count += 1
+    # original still equals the input; n is now 0
+    return count
+```
+
+In this function we did not actually need `original`, but in
+problems like "reverse a number," we use both the original (to
+compare for palindrome) and the shrinking copy (to extract
+digits). Getting comfortable with "keep a copy when you might
+need it" is a small but real piece of programmer discipline.
+''',
+            },
+        ],
         "summary": r'''
-**Pattern**: digit extraction with `% 10` and `// 10`.
+**Pattern**: digit extraction with `% 10` (peel) and `// 10` (shrink).
 
-**Lesson**: every digit-extraction loop in DSA looks roughly like
-`while n: extract = n % 10; n //= 10`. Memorize that skeleton — it
-shows up over and over.
+**Lesson**: every digit-manipulation loop in DSA wears the same
+skeleton — `while n > 0: digit = n % 10; n //= 10`. Memorize the
+shape and you have ninety percent of Step 1's basic-maths lecture
+in your fingers.
 
-**Recognize next time**: any problem about digits of a number (sum
-of digits, reverse a number, palindrome number, Armstrong, happy
-number). They all share this same shape.
+**Recognize next time**: any problem about a number's digits — sum
+of digits, reverse a number, palindrome number, Armstrong number,
+happy number, count of even digits. They are all the same loop
+with a different one-line body in the middle.
+
+**Bigger picture**: when a problem asks "how many," count
+iterations. When it asks "which," store or test the value of
+`n % 10`. The skeleton is the same; only what happens inside the
+loop changes.
 ''',
     },
     {
@@ -826,18 +1141,81 @@ self-referential — Fibonacci, Catalan numbers, sums-of-sequences.
         "lecture_id": 5,
         "difficulty": "easy",
         "tags": ["recursion", "dp", "memoization"],
+        "what_this_teaches": (
+            "The first real efficiency lesson in DSA: a perfectly "
+            "correct recursive algorithm can be *catastrophically* "
+            "slow if it solves the same subproblem more than once. "
+            "Remembering each subproblem's answer (memoization) is "
+            "the single most important idea behind dynamic programming."
+        ),
+        "pattern": "Overlapping subproblems → memoize or tabulate.",
+        "prerequisite_lessons": ["recursion", "dp"],
+        "prerequisite_problems": [
+            "print-1-to-n",
+            "factorial-of-n",
+        ],
+        "next_problems": [
+            "climbing-stairs",
+            "frog-jump",
+            "house-robber-i",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Recursion)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 509 — Fibonacci Number",
+                "url": "https://leetcode.com/problems/fibonacci-number/",
+            },
+            {
+                "label": "Python docs — functools.lru_cache",
+                "url": "https://docs.python.org/3/library/functools.html#functools.lru_cache",
+            },
+        ],
         "understanding": r'''
-The Fibonacci sequence is defined like this:
+The Fibonacci sequence is a small mathematical pattern with an
+oversized reputation. Its definition is wonderfully self-referential:
 
-> `F(0) = 0`, `F(1) = 1`, `F(n) = F(n - 1) + F(n - 2)` for `n >= 2`.
+> `F(0) = 0`, `F(1) = 1`, and for every `n ≥ 2`, `F(n) = F(n - 1) + F(n - 2)`.
 
-So the sequence starts 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, ... Each
-number is the sum of the two before it.
+In plain English: start with two seed values, `0` and `1`. Every
+later number in the sequence is the **sum of the two numbers just
+before it**. So the sequence unfolds as `0, 1, 1, 2, 3, 5, 8, 13,
+21, 34, 55, 89, ...` — a slow walk where every step adds the
+previous two footprints together.
 
-We are asked: given `n`, compute `F(n)`. The recursive definition
-practically writes the function for us. The interesting part is what
-happens when you actually *run* that naive function. The lesson here
-is the **first big efficiency lesson in DSA**.
+The problem itself is simple. We are given an integer `n` and we
+have to return `F(n)`. For `n = 0` we return `0`. For `n = 5` we
+return `5`. For `n = 10` we return `55`. That is the entire
+problem statement.
+
+So why is this in the curriculum? Because Fibonacci is the
+*single best* teaching example for the most important efficiency
+idea in DSA. It is the place where every beginner first feels in
+their bones that **correct does not always mean fast**, and that
+the fix is not cleverness — it is *memory*.
+
+You will write the most natural recursive solution, you will run
+it for `n = 40` and watch it stall, and at that exact moment of
+frustration the next idea — "wait, am I doing the same work over
+and over?" — will arrive on its own. That moment is the doorway to
+**dynamic programming**.
+
+Treat this problem as a story in three acts:
+
+1. **Act I**: the recursive definition is so direct that writing
+   the code feels almost free.
+2. **Act II**: you run that code for any moderately large `n` and
+   watch it crawl. You realize the recursion tree is enormous
+   because the same subproblems are being recomputed many times.
+3. **Act III**: you add memory — a cache, an array, or two
+   variables — and the algorithm becomes linear. Same idea, same
+   recurrence, but now blindingly fast.
+
+By the end you should understand why memoization is not a trick
+but a *paradigm*, and you should never again write a naive
+recursive Fibonacci.
 ''',
         "brute_force": {
             "explanation": r'''
@@ -877,25 +1255,77 @@ This is the first time you really feel the cost of redundant work.
             ),
         },
         "thought_process": r'''
-The first time a beginner writes this and runs it on n=50, the
-penny drops: not all correct algorithms are fast. The key
-observation is: *we are solving the same subproblems over and over
-again*. If we only solved each once and remembered the result, we
-would walk through `n + 1` subproblems total — a complete shift from
-exponential to linear.
+Let's slow down and really see why the naive version is so slow,
+because the *feeling* of the slowness is half the lesson.
 
-This is **memoization**. It is the simplest, most direct entry into
-**dynamic programming**. And Fibonacci is the universal teaching
-example for it.
+Pick a small example, `n = 5`. Trace the recursion tree by hand:
 
-The shift in thinking: *"Don't redo. Remember."*
+```
+                fib(5)
+              /        \
+          fib(4)       fib(3)
+          /    \       /    \
+       fib(3) fib(2) fib(2) fib(1)
+       /   \   / \    /  \
+     fib(2)fib(1)...
+```
 
-Two ways to remember:
+Look at the tree carefully. `fib(3)` shows up **twice**. `fib(2)`
+shows up **three times**. `fib(1)` appears even more often. As `n`
+grows, the number of times each small `fib(k)` gets recomputed
+**explodes**. For `n = 30`, `fib(0)` and `fib(1)` are each
+recomputed *over a million times*. Every single one of those calls
+returns the same answer. We are burning the CPU on identical
+questions.
 
-1. **Top-down** — keep the recursion, add a cache.
-2. **Bottom-up** — compute F(0), F(1), F(2), ..., F(n) iteratively,
-   storing each value as you go (or just the last two, since that
-   is all you ever need).
+The mathematician's way of saying this: the number of leaves in
+the recursion tree is roughly `φ^n` where `φ ≈ 1.618` is the
+golden ratio. For `n = 50` that is about 12 billion leaves. Even at
+a billion operations per second, this is going to take seconds. For
+`n = 100` it would take many lifetimes.
+
+Now the *aha*. Every time we call `fib(3)`, we get back the same
+number: 2. There is no randomness, no input that changes. So the
+**second** call is pure waste — we already knew the answer from the
+first call. The fix is the most natural thing imaginable: **the
+first time we compute `fib(k)`, write it down. Every subsequent
+time, just read it.**
+
+This idea has a name: **memoization**. The word looks like
+"memorization" with a missing `r`, and that is exactly what it is —
+we are *memo*-izing the function, attaching a note to each input
+that says "this is the answer; please do not recompute me." With
+memoization, every distinct `fib(k)` is computed exactly once.
+There are only `n + 1` distinct values to compute (`fib(0)`,
+`fib(1)`, ..., `fib(n)`), so the total work drops from exponential
+to **linear**.
+
+That one realization — *"don't redo, remember"* — is the entire
+soul of dynamic programming. Every DP problem you will ever solve
+in Step 16 is, at its core, a recursion plus a sticky note. If you
+get this lesson here, in the friendly company of Fibonacci, you
+will have an enormous head start when DP arrives in earnest.
+
+There are two flavors of "remember." Both compute the same numbers
+and have the same complexity; they differ in style.
+
+1. **Top-down memoization** — keep the recursion exactly as written,
+   add a cache, and check the cache before recomputing. In Python
+   this is `@lru_cache` applied to the naive function. Read it as
+   "the same algorithm, but the function now remembers what it has
+   already been asked."
+
+2. **Bottom-up tabulation** — flip the recursion on its head. Start
+   from the base cases (`F(0)`, `F(1)`) and build forward, storing
+   each `F(k)` as you compute it. By the time you reach `F(n)`,
+   everything it needs has already been computed. No recursion, no
+   stack frames — just a single loop.
+
+Both are linear. The bottom-up version uses less memory (especially
+once you notice you only need the last two values, not the whole
+table) and avoids Python's recursion limit. The top-down version
+is closer to the recursive definition and easier to write when the
+recurrence is complicated. In real interview practice, learn both.
 ''',
         "optimized": {
             "explanation": r'''
@@ -935,35 +1365,333 @@ version, the one to ship):
             ),
         },
         "deep_concept": r'''
-Fibonacci is the smallest, friendliest example of the central DP
-insight: **when subproblems overlap, cache them**. Once you have
-felt the exponential pain of the naive solution and the relief of
-the linear solution, you understand what DP is for.
+Step back from the code and look at the real lesson. Fibonacci is
+not the point. The point is the **mental model**: a recursive
+algorithm is a tree of subproblems, and whenever that tree has
+*repeated* subproblems, the algorithm is silently doing exponential
+work where linear would do.
 
-Beyond the algorithm, there are gorgeous facts:
+Visually: imagine the recursion tree as a real, physical tree
+drawn on a wall. The naive Fibonacci tree is **enormous and
+bushy**, with the same small subtree (`fib(2)`, `fib(3)`, ...)
+appearing in many different places. Memoization is the act of
+**pruning** all those duplicate subtrees down to a single shared
+node. The bushy tree collapses into a thin chain of `n` distinct
+nodes, each computed once.
 
-- The ratio `F(n + 1) / F(n)` converges to the golden ratio
-  `φ ≈ 1.618`.
-- There is a closed-form formula (Binet's formula) that computes
-  `F(n)` from `n` using `φ`. It is *O(1)* arithmetic but uses
-  floating-point and is inexact for large `n`.
-- Fibonacci can be computed in *O(log n)* using matrix
-  exponentiation. That is overkill for interview problems but
-  beautiful.
+That collapse is the entire idea of dynamic programming. Every DP
+problem in Step 16 will turn out to be "a recursion whose tree has
+overlapping subproblems, with the duplicates pruned by a cache."
+The cache might be a dict, an array, a 2D table, a tuple of
+booleans — the shape varies. But the underlying move is always
+"remember what you have computed; never recompute."
 
-For the curriculum's purposes: write the linear iterative version,
-understand the recursion + memoization view, and you are in
-excellent shape for the entire DP lecture in Step 16.
+A second deep observation: the bottom-up version uses only two
+variables (`prev2` and `prev1`). Why? Because the recurrence
+`F(n) = F(n-1) + F(n-2)` looks at only the last two values. We
+never need `F(n-3)` again once we have computed `F(n-1)`. So even
+though the full table of `n + 1` numbers exists *conceptually*,
+the algorithm only ever needs a tiny window of it at any moment.
+
+This shrinking-the-table trick is called **space optimization**
+and it shows up everywhere in DP. Many beautiful DP solutions
+that look like they need a 2D table actually need only two rows,
+or even one row, once you notice which cells the recurrence
+touches.
+
+There are even more beautiful facts about Fibonacci that we will
+mostly skip — the golden ratio limit `F(n+1)/F(n) → φ ≈ 1.618`,
+Binet's closed-form formula, the *O(log n)* matrix-exponentiation
+algorithm — but for now the lesson worth carrying forward is:
+
+> *A recursion with overlapping subproblems plus a cache equals
+> dynamic programming.*
+
+If that sentence makes sense after Fibonacci, you have done the
+work this problem was supposed to teach.
 ''',
-        "summary": r'''
-**Pattern**: overlapping subproblems → memoize or tabulate.
+        "confusion_notes": [
+            {
+                "question": "Why does my naive recursion freeze on fib(50) when the math is so simple?",
+                "answer": r'''
+Because the recursion tree is exponential in `n`. Even though each
+**call** does almost no work, the **number of calls** explodes.
 
-**Lesson**: an exponential-time recursion can usually be turned into
-a linear-time algorithm just by remembering each subproblem's answer
-once. This is the entire idea of dynamic programming.
+Concretely, the number of leaves in the recursion tree of `fib(n)`
+is roughly `F(n + 1)`, which grows like `φ^n` where
+`φ ≈ 1.618` is the golden ratio. For `n = 50`, that is about 20
+billion. At a billion function calls per second (which is wildly
+optimistic for Python), that is *20 seconds of pure call overhead*
+— and Python is much slower than that. In practice `fib(40)`
+already takes several seconds, and every increase of `n` by 5
+multiplies the time by about 10.
+
+The shocking part is that *the math itself is trivial*. There are
+only `n + 1` distinct subproblems to compute (`fib(0)`, `fib(1)`,
+..., `fib(n)`). If we computed each once and reused the answer,
+the whole job would be 50 additions — done in microseconds. The
+naive recursion is slow not because Fibonacci is hard but because
+**we are computing the same easy answers billions of times**.
+
+This is the gut-punch moment that the problem is designed to
+deliver. Once you have felt the slowness, you will never write
+unmemoized exponential recursion again without at least asking
+"are subproblems overlapping?"
+''',
+            },
+            {
+                "question": "What does `@lru_cache` actually do? It feels like magic.",
+                "answer": r'''
+It is magic, but the magic is small and worth understanding.
+
+`@lru_cache` is a **decorator** from Python's standard
+`functools` module. When you put it above a function, Python
+wraps your function inside a tiny invisible helper. That helper
+keeps a hidden **dictionary** mapping inputs to outputs.
+
+Every time the wrapped function is called, the helper does this:
+
+1. Look at the arguments. Is this input already in the
+   dictionary?
+2. If yes, return the saved answer immediately — your function
+   body never runs.
+3. If no, run the original function body, save its return value
+   in the dictionary, and then return it.
+
+That is the whole mechanism. There is no AI, no parallelism, no
+clever rewriting of your code. It is literally a dictionary look-up
+sitting in front of your function.
+
+The "LRU" stands for "least-recently-used" — by default, if you
+configure a maximum size, the cache forgets the least-recently-used
+entries when it overflows. With `maxsize=None`, the cache grows
+without bound (which is what we want for Fibonacci, since there
+are only `n + 1` distinct keys).
+
+A quick mental model: think of `@lru_cache` as a personal
+assistant who stands beside your function. Every time someone
+calls the function, the assistant first checks their notepad. If
+the answer is on the notepad, they hand it over immediately and
+don't even disturb the function. If not, they let the function
+work, then write the new answer on the notepad.
+
+The constraints for `@lru_cache` to work: your function's
+arguments must be **hashable** (numbers, tuples, strings — yes;
+lists and dicts — no), and your function must be **pure** (same
+input always returns same output, no side effects). Fibonacci
+meets both of these trivially.
+
+You can absolutely write the same thing by hand if you want to
+demystify it:
+
+```python
+cache = {}
+def fib(n):
+    if n in cache:
+        return cache[n]
+    if n < 2:
+        result = n
+    else:
+        result = fib(n - 1) + fib(n - 2)
+    cache[n] = result
+    return result
+```
+
+That code does **exactly** what `@lru_cache` does, just with the
+plumbing exposed. Once you have written it once, the decorator
+stops feeling like magic and starts feeling like a convenience.
+''',
+            },
+            {
+                "question": "Why do we only need to keep the last two values? Don't we need the whole table?",
+                "answer": r'''
+Look at the recurrence carefully: `F(n) = F(n - 1) + F(n - 2)`.
+
+The right-hand side mentions only the *previous two* terms. It
+does not mention `F(n - 3)`, `F(n - 4)`, or `F(0)`. So once we
+have advanced past those values, we never need to read them again.
+
+It is a bit like climbing a staircase by always looking at only
+the two steps just behind you. The step you took three moves ago
+is no longer useful — you can forget about it without losing any
+information.
+
+In the bottom-up loop, this is exactly what we do:
+
+```python
+prev2, prev1 = 0, 1
+for _ in range(2, n + 1):
+    prev2, prev1 = prev1, prev1 + prev2
+```
+
+At every iteration, `prev2` holds what was `F(i - 2)` and `prev1`
+holds what was `F(i - 1)`. We compute `F(i) = prev1 + prev2`,
+then **shift the window**: the new `prev2` becomes the old
+`prev1`, and the new `prev1` becomes the value we just computed.
+The number two steps back drops off the bottom and is gone
+forever.
+
+This is the simplest example of **space optimization** in DP. The
+full conceptual table has `n + 1` cells, but at any moment we
+only need the most recent two. So the *O(n)* space requirement
+collapses to *O(1)*.
+
+The same trick reappears later in Step 16 — climbing stairs uses
+two variables, frog jump uses three, house robber uses two. Any
+time a recurrence depends on a fixed number of previous values,
+you can collapse the table to that many scalars.
+''',
+            },
+            {
+                "question": "How does `prev2, prev1 = prev1, prev1 + prev2` work? It looks like it should break.",
+                "answer": r'''
+This is one of Python's loveliest features, and it is worth
+understanding precisely because it surprises everyone the first
+time.
+
+The line is a **simultaneous (tuple) assignment**. Python
+evaluates the *entire right-hand side first*, then assigns the
+results to the variables on the left.
+
+So when Python sees `prev2, prev1 = prev1, prev1 + prev2`, it
+does this:
+
+1. **First**, compute the right side as if you were just
+   evaluating an expression. The right side is the pair
+   `(prev1, prev1 + prev2)`. Both pieces are read using the
+   *old* values of `prev1` and `prev2`.
+2. **Then**, assign that pair to the left side: the new `prev2`
+   gets the first element (the old `prev1`), and the new `prev1`
+   gets the second (the old `prev1 + prev2`).
+
+To make this concrete: suppose `prev2 = 0` and `prev1 = 1`. The
+right side evaluates to `(1, 0 + 1)`, which is `(1, 1)`. Then
+the assignment makes `prev2 = 1` and `prev1 = 1`. Next iteration,
+the right side is `(1, 1 + 1) = (1, 2)`, so `prev2 = 1` and
+`prev1 = 2`. And so on.
+
+If you tried to write this *without* the simultaneous assignment,
+you would need a temporary variable, because the line `prev2 =
+prev1` would clobber the old `prev2` before you could read it:
+
+```python
+# Without simultaneous assignment — need a temp.
+temp = prev1
+prev1 = prev1 + prev2
+prev2 = temp
+```
+
+The simultaneous version is shorter and harder to get wrong. It
+appears constantly in Python: swapping two variables (`a, b = b,
+a`), maintaining sliding windows, walking two pointers. Internalize
+the rule "right side first, then assign," and tuple assignment
+becomes a friend instead of a puzzle.
+''',
+            },
+            {
+                "question": "Is recursion always slower than iteration?",
+                "answer": r'''
+No, but there is a kernel of truth to the worry, and it is worth
+unpacking.
+
+A recursive function call has more overhead than a loop iteration
+in Python. Every call creates a new **stack frame** — a small
+package of memory that holds the local variables and the place to
+return to when the call finishes. Allocating and freeing that
+frame takes time. So function calls are not free.
+
+But that is a *constant-factor* difference, usually tiny. The
+**massive** difference between fast and slow Fibonacci is not
+"recursion versus iteration" — it is **with-memoization versus
+without**. The memoized recursive version is *O(n)*, basically as
+fast as the iterative version. The unmemoized recursive version
+is *O(φ^n)*, billions of times slower. Both look almost the same
+on the page; the cache is the difference.
+
+So the more accurate rule is: **redundant work is what makes you
+slow, not the syntax**. A recursion that does no redundant work
+is fine. An iteration that recomputes the same thing in every
+loop iteration is just as bad as exponential recursion.
+
+A second issue with deep recursion in Python is the **recursion
+limit**. Python defaults to a maximum recursion depth of around
+1000. If your problem has `n = 10000` and you recurse, you will
+crash with `RecursionError`. Iterative solutions avoid this
+ceiling. So for problems where `n` can be huge, prefer iteration
+or convert recursion to iteration with an explicit stack.
+
+Bottom line: write recursion when it matches the structure of
+the problem (trees, divide-and-conquer, "try every option"
+search). Write iteration when state evolves left-to-right or
+right-to-left along an array. Apply memoization whenever
+subproblems repeat. None of these is inherently faster or
+slower — they are different tools for different shapes.
+''',
+            },
+            {
+                "question": "Why does the base case use `if n < 2: return n`?",
+                "answer": r'''
+The base case has to cover **both** seed values of the sequence
+without falling into infinite recursion.
+
+By definition, `F(0) = 0` and `F(1) = 1`. So when the input is 0,
+we should return 0; when it is 1, we should return 1. Conveniently,
+both of those facts are summarized by `return n` (since `F(0) = 0`
+and `F(1) = 1` both happen to equal their index).
+
+If we wrote only `if n == 0: return 0`, then calling `fib(1)`
+would recurse into `fib(0) + fib(-1)`, and `fib(-1)` makes no
+sense and would recurse forever. So we need to cover index 1 as
+well, otherwise the recursion stumbles.
+
+`if n < 2: return n` is a compact way to write both base cases at
+once. You could equivalently write:
+
+```python
+if n == 0:
+    return 0
+if n == 1:
+    return 1
+```
+
+It is two lines instead of one, but it is just as correct and
+sometimes easier to read for beginners. Pick whichever feels
+clearer to you. The interview-favorite is the one-liner because
+it is shorter and signals that you understand both seeds.
+
+A small subtlety: this base case **assumes `n` is non-negative**.
+The function will behave strangely on negative inputs because
+`n < 2` is true for `n = -1`, and we will return `-1` — which is
+not a Fibonacci number. If your problem allows negative inputs,
+you should add a guard at the top:
+
+```python
+if n < 0:
+    raise ValueError("n must be non-negative")
+```
+
+Most curriculum problems assume non-negative `n`, so the guard is
+usually omitted. But know it is there as an option.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: overlapping subproblems → memoize (top-down) or
+tabulate (bottom-up).
+
+**Lesson**: a correct algorithm can be uselessly slow if it solves
+the same subproblem many times. The cure is to remember each
+subproblem's answer the first time you compute it.
 
 **Recognize next time**: any recursion where the same arguments
-appear in multiple branches. The cache transforms the runtime.
+appear in multiple branches of the recursion tree. The instant you
+spot the repetition, reach for a cache.
+
+**Bigger picture**: Fibonacci is the friendliest possible
+introduction to dynamic programming. Every DP problem in Step 16
+is, at its core, a recursion plus a sticky note. The sticky note
+might be a dict, an array, or a 2D table — but the idea is
+identical to what you just learned here.
 ''',
     },
     {

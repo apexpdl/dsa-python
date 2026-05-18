@@ -906,17 +906,72 @@ pattern handles them all.
         "lecture_id": 2,
         "difficulty": "easy",
         "tags": ["arrays", "hashing", "two-pointers"],
+        "what_this_teaches": (
+            "The most reused idea in all of array DSA: trade memory for "
+            "time by remembering what you have already seen. Two Sum is "
+            "the cleanest possible demonstration that a hash map can "
+            "collapse a nested loop into a single pass."
+        ),
+        "pattern": "Hash the past; query the complement for each new element.",
+        "prerequisite_lessons": ["arrays", "hashing"],
+        "prerequisite_problems": ["count-frequencies"],
+        "next_problems": [
+            "three-sum",
+            "four-sum",
+            "longest-subarray-with-sum-k",
+            "subarrays-with-sum-k",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Medium Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 1 — Two Sum",
+                "url": "https://leetcode.com/problems/two-sum/",
+            },
+            {
+                "label": "Python docs — dict",
+                "url": "https://docs.python.org/3/library/stdtypes.html#dict",
+            },
+        ],
         "understanding": r'''
-Given an array of integers and a target value, return the indices of
-two elements that sum to the target. We are guaranteed exactly one
-solution and we may not use the same index twice.
+Let's slow down and really see what is being asked.
 
-Example: `[2, 7, 11, 15]`, target `9` → `(0, 1)` because
-`2 + 7 == 9`.
+You are handed an array of integers and one target number. Your job
+is to find two elements in the array whose **sum** equals the
+target, and return their indices. The problem promises that exactly
+one such pair exists, and you are not allowed to use the same index
+twice — that is, you cannot pair an element with itself.
 
-This problem is famous because it is the textbook example of trading
-*O(n²)* for *O(n)* by adding a hash map. Once it clicks, you start
-seeing the same pattern everywhere.
+For example, with `nums = [2, 7, 11, 15]` and `target = 9`, the
+answer is `(0, 1)`, because `nums[0] + nums[1] = 2 + 7 = 9`. With
+`nums = [3, 2, 4]` and `target = 6`, the answer is `(1, 2)`,
+because `nums[1] + nums[2] = 2 + 4 = 6`. Notice that we report
+the **indices**, not the values themselves.
+
+Read the problem one more time with a beginner's eye and notice
+two subtleties that trip people up.
+
+First: the array is not sorted. We cannot binary search. We cannot
+walk inward from the ends. Whatever algorithm we use has to work on
+a jumbled list.
+
+Second: the problem asks for *any* valid pair (since exactly one
+exists), and it asks for *indices*, not values. That second detail
+is the reason we will reach for a dictionary that maps **value →
+index** rather than just a set of values. A set would tell us "yes,
+the partner exists somewhere," but we want to actually *return*
+where. A dict gives us both: presence *and* position.
+
+Two Sum is famous not because it is hard — once you see the trick
+it is almost embarrassingly simple — but because it is the
+**textbook moment** when a beginner first feels in their bones the
+power of using extra memory to shortcut time. After Two Sum, the
+sentence *"I could remember what I have already seen"* turns into a
+reflex. That reflex unlocks 3-Sum, 4-Sum, subarray sums, longest
+substring without repeating, and a long tail of medium / hard
+problems.
 ''',
         "brute_force": {
             "explanation": r'''
@@ -936,24 +991,56 @@ for `arr[i] + arr[j] == target`. Two nested loops, *O(n²)*.
             ),
         },
         "thought_process": r'''
-Watch yourself solve this problem on paper. For each new number,
-your brain asks: *"what would need to pair with this to hit the
-target?"*. The pair for `2` (target 9) is `7`. The pair for `7` is
-`2`. The pair for `11` is `-2`.
+Watch yourself solve this problem on paper for `nums = [2, 7, 11,
+15]`, `target = 9`. The very natural first move is to point at
+`2` and ask, *"what would I have to add to this to get 9?"* The
+answer is `7`. You scan forward, find `7`, done. Now point at `7`
+and ask the same question — the answer is `2`, and you remember
+you just walked past it.
 
-That instinct — for each element, **compute its partner**, then ask
-**have I seen the partner already?** — turns the problem into a
-single pass. We maintain a hash from "value we have seen" to "its
-index". On each new element, we check whether the partner is in the
-hash. If yes, return both indices. If no, store the current element.
+That little inner monologue is the **whole algorithm**. Every step
+boils down to:
 
-The single-pass version is striking because it does both jobs at
-once: it builds the hash and queries it in the same loop.
+1. Look at the current element `x`.
+2. Compute the **complement**: `target - x`. That is the partner
+   we would need.
+3. Ask: have I already seen the complement somewhere earlier in
+   the array? If yes, we have our pair. If not, file `x` away in
+   memory and move on.
 
-The key reason this works in one pass: we only ever pair an element
-with **a strictly earlier** element. So at the moment we consider
-`arr[i]`, the hash contains exactly the right candidates — values
-we already saw, at indices smaller than `i`.
+The brute force version does step 3 by re-scanning the array. That
+re-scan is what makes the brute force *O(n²)*: for each starting
+element, we look at every later element again, repeating work we
+could have done once.
+
+The optimization is to make step 3 *O(1)*. A dictionary (or hash
+map) does exactly that. We keep a dict that maps "every value we
+have already seen" → "the index where we saw it". When we look at
+a new element `x`, we compute its complement and ask the dict in
+constant time, "do you remember seeing this value?" If yes, the
+answer is the stored index plus the current one. If no, we add
+`x` to the dict and continue.
+
+This compresses two passes (build the dict, then query it) into a
+**single** pass, because at the moment we look at `nums[i]`, the
+dict already contains exactly the right set of candidates — every
+element strictly to the left of `i`. We never accidentally pair an
+element with itself, because we **check the dict before inserting
+the current element**. The order matters.
+
+A small mental model that helps: imagine you are walking through
+the array left to right, carrying a notebook. The notebook is your
+dict. Every time you see a new number, you do two things in this
+exact order — *first ask* "is my complement already in the
+notebook?", *then write down* my own number so future steps can
+ask about me. Check, then file. Check, then file. That is the
+loop, and that is why it works in one pass.
+
+One last beautiful detail: this trick generalizes. The instant you
+catch yourself writing "for each element, look at every other
+element," ask whether a hash of "what I have already seen" could
+turn the inner loop into a single dictionary lookup. The answer is
+*yes* embarrassingly often.
 ''',
         "optimized": {
             "explanation": r'''
@@ -979,39 +1066,273 @@ element, check whether `target - current` is in the dict.
             ),
         },
         "deep_concept": r'''
-Two Sum is the **archetype** of "use a hash to remember what you
-have seen". Almost every "find a pair / triple / quadruple" problem
-turns this trick into a building block.
+Step back from the code and look at the deeper move.
 
-- **3-Sum** uses Two Sum as an inner subroutine after sorting.
-- **4-Sum** wraps Two Sum twice.
-- **Pair sum in BST** uses an iterator + hash variant of the same
-  idea.
-- **Count of pairs with given sum** uses a Counter and walks the
-  array once.
+We started with a question that *sounds* relational — "find two
+things that interact" — and turned it into a question that is
+**personal**: at each element, given only the element and a
+notebook of the past, can I decide? The dictionary did the
+relational work for us by encoding "I have seen these values
+before" as a constant-time check.
 
-The general lesson: when the question is "do any two elements have
-property X?", reach for a hash. You only ever pair "current" with
-"already seen", so one pass is enough.
+That conversion — from "for every pair, ask a question" to "for
+every element, ask the past one question" — is the deeper move
+behind almost every "hash trick" in DSA. Once you can spot it, you
+can do it on your own:
 
-A variation that pops up: **two pointers** instead of hashing. If
-the array is **sorted**, you can use two pointers (left at 0, right
-at n - 1) and shrink based on whether their sum is too small or too
-big. *O(n)* time after the sort, *O(1)* space. The trade is: hashing
-needs *O(n)* extra space; two pointers needs *O(n log n)* to sort
-first. Often interviewers love the two-pointer variant for sorted
-inputs.
+- **Subarray sum equals K** — running prefix sum + hash of "which
+  prefix sums have I seen?". For each new prefix, ask "have I
+  seen `prefix - K` before?". Same shape as Two Sum.
+- **Longest substring without repeating characters** — hash of
+  "last index of each character." For each new character, ask
+  "is the last index of this character inside my window?".
+- **Group anagrams** — hash from canonical form to list of
+  members.
+- **Pair sum in a binary search tree** — same as Two Sum but
+  iterating the tree in order.
+
+The unifying principle: a hash gives you *O(1)* "have I seen this
+before?" lookups. Whenever a problem can be re-cast so that each
+new element needs to ask exactly one such question, the hash will
+collapse a nested loop into a single pass.
+
+Two Sum also has a beautiful **alternative** solution when the
+array is sorted (or you sort it first): the two-pointer sweep.
+Left at index 0, right at the end. If `nums[left] + nums[right]`
+is too small, move left right; if too big, move right left; if
+equal, you have your pair. *O(n)* time, *O(1)* space — better
+memory than hashing, at the cost of *O(n log n)* up-front sorting.
+This trade-off — "more memory vs. more comparisons" — is one you
+will see in many problems. Pick the right tool for the specific
+constraints.
 ''',
-        "summary": r'''
-**Pattern**: hash "seen values" while scanning, and query the
-complement for each new element.
+        "confusion_notes": [
+            {
+                "question": "Why do we check the dict *before* inserting the current value?",
+                "answer": r'''
+This is the most common bug when writing Two Sum, and the answer
+gets at a subtle correctness invariant.
 
-**Lesson**: pair-finding becomes a single pass once we let a hash
-remember the past. Two Sum is the canonical demonstration.
+The line order matters. Our algorithm goes:
+
+```python
+for i, x in enumerate(arr):
+    partner = target - x
+    if partner in seen:        # check first
+        return (seen[partner], i)
+    seen[x] = i                # then insert
+```
+
+If we flipped the order — insert first, then check — and an
+element happened to equal exactly half the target, we would
+"find" it pairing with itself. For example, `arr = [3, 4, 5]`,
+`target = 6`. The element `3` has complement `3`. If we inserted
+first, the dict would contain `{3: 0}`, then we would look up
+`3` in the dict, find ourselves, and return the pair `(0, 0)`.
+But the problem forbids using the same index twice. The pair `(0,
+0)` is wrong.
+
+By checking *before* inserting, the dict at the moment of the
+check contains **only elements strictly to the left** of the
+current index. So when we find a partner, it must live at an
+earlier index. The invariant is "the dict holds the past, not
+the present." That invariant is the entire correctness argument.
+
+A close cousin of this question is "what if the same value appears
+twice in the array?" Try `arr = [3, 3]`, `target = 6`. On `i = 0`,
+the dict is empty, so `partner = 3` is not there. We insert
+`{3: 0}` and move on. On `i = 1`, we compute `partner = 3` and
+find it in the dict with value `0`. We return `(0, 1)`. Correct.
+The check-then-insert order naturally handles duplicates because
+the previous occurrence is already in the dict by the time we get
+to the second one.
+''',
+            },
+            {
+                "question": "Why store the index instead of just `True` for each seen value?",
+                "answer": r'''
+Because the problem asks us to return **indices**, not just to
+confirm that a pair exists.
+
+If we used a set (just storing values), the algorithm would tell
+us "yes, a partner exists," but we would have no way to report
+*where* the partner lives. We would either have to do a second
+pass to find it, or restructure the loop.
+
+The dict lets us do both with one structure: the **key** is the
+value (so we can ask "have I seen this value?"), and the **value
+in the dict** is the index (so when we get a hit, we know where).
+Same lookup cost, more information per lookup.
+
+A subtle bonus: if the same value appears in the array multiple
+times, the dict stores the **most recent** index (or the
+**first**, depending on whether you overwrite). For Two Sum it
+does not matter — any valid pair works. But for related problems
+("longest substring without repeating characters," for example),
+you specifically want the last index, and that is what the dict
+naturally gives you when you assign on every iteration.
+
+Mental model: a set is a guest list (just names); a dict is a
+guest list with seating chart (names and table numbers). For Two
+Sum we need the table number, not just the name.
+''',
+            },
+            {
+                "question": "Why does this work in a single pass? Doesn't the partner need to come *after* the current element?",
+                "answer": r'''
+This is a beautiful subtlety. The answer is that **for every
+valid pair, one of the two elements comes before the other**. So
+if we look at the *later* one of the two, the *earlier* one is
+already in our dictionary.
+
+Concretely: suppose the valid pair is at indices `i` and `j` with
+`i < j`. When the loop reaches index `i`, we don't see the pair
+yet — `nums[j]` hasn't appeared. We just file `nums[i]` away.
+When the loop reaches index `j`, `nums[i]` is already in the
+dict. We compute `partner = target - nums[j]`, and that
+`partner` equals `nums[i]`, which is in the dict. Match.
+
+So one single pass catches every pair, as long as we process
+elements left to right and only ever pair "current" with "past."
+
+A useful image: the dict is a **growing memory** of everything
+we have seen. As we walk forward, the memory grows by one each
+step, and at each step we ask one question of the memory. The
+loop and the memory grow together, like two pointers moving in
+lockstep.
+
+If we tried to look for the pair by walking left from each `j`,
+we would do nested-loop work and lose our speed. The dict
+replaces the inner loop with a constant-time question.
+''',
+            },
+            {
+                "question": "What if the same number appears twice and is part of the pair? Like `nums = [3, 3]`, `target = 6`.",
+                "answer": r'''
+Walk through it slowly to make sure you really see what happens.
+
+Initial state: `seen = {}` (empty dict).
+
+**Iteration 0**: `i = 0`, `x = 3`.
+- `partner = 6 - 3 = 3`.
+- Is `3` in `seen`? `seen` is empty, so no.
+- We did *not* find a pair. Insert: `seen = {3: 0}`. Continue.
+
+**Iteration 1**: `i = 1`, `x = 3`.
+- `partner = 6 - 3 = 3`.
+- Is `3` in `seen`? Yes — `seen[3] == 0`.
+- Return `(0, 1)`. Done.
+
+So duplicates are handled naturally. The key is that we **insert
+after checking**, so the duplicate that appears later finds its
+predecessor in the dict without the predecessor accidentally
+"matching itself."
+
+What if `nums = [3]` and `target = 6`? On iteration 0, partner is
+3, the dict is empty, we insert. The loop ends with no match.
+Function returns `None`. Correct — there is no pair to find when
+there is only one element.
+
+What if `nums = [3, 3, 4]` and `target = 6`? We return `(0, 1)`
+on iteration 1. The 4 is never even examined. Also correct.
+
+The takeaway: as long as you check-then-insert, duplicates and
+single-element arrays behave the way you expect. No special
+cases.
+''',
+            },
+            {
+                "question": "When should I use the two-pointer version instead of the hash version?",
+                "answer": r'''
+Use the **two-pointer** version when the input is **already
+sorted**, or when the problem context says you should not use
+*O(n)* extra memory. Use the **hash** version when the array is
+**unsorted**, when memory is plentiful, or when you need to
+preserve the original indices.
+
+A side-by-side comparison:
+
+| Aspect | Hash (this solution) | Two pointers |
+|---|---|---|
+| Requires sort? | No | Yes (sort first if needed) |
+| Time | *O(n)* | *O(n)* after sort, *O(n log n)* total |
+| Extra space | *O(n)* for the dict | *O(1)* |
+| Preserves indices? | Yes | No (sort scrambles them) |
+| Handles duplicates? | Naturally | Naturally |
+
+If the LeetCode problem says "return the indices in the input
+array," the hash version is the cleaner answer because sorting
+would lose the original positions (you would have to track them
+separately).
+
+If the problem is a follow-up like "given a sorted array, find a
+pair summing to target," the two-pointer version is the cleaner
+answer. *O(1)* memory and no hash overhead.
+
+For the higher-order family (3-Sum, 4-Sum), the **two-pointer
+version is preferred**, because once you fix one or two elements,
+the remaining subproblem on the sorted suffix is exactly a
+two-pointer search. Step 3's "Hard" section will use this idea.
+
+Bottom line: both are good. They are not competing — they are
+**complementary tools** for different shapes of the same family
+of problems. Knowing both makes you flexible.
+''',
+            },
+            {
+                "question": "Why is the hash version *O(n)* space? Isn't that wasteful for a small array?",
+                "answer": r'''
+It is *O(n)* in the worst case because, if no pair exists or the
+pair is at the very end, we end up inserting every single element
+into the dict before finding (or failing to find) the answer.
+For an array of size `n`, the dict can grow to `n` entries.
+
+Is this wasteful? It depends on the scale. For an array of size
+100, the dict holds at most 100 entries — a few kilobytes of
+memory. Negligible. For an array of size one billion, the dict
+holds up to a billion entries, which could be tens of gigabytes.
+That matters.
+
+But here is the perspective shift: the algorithm runs in *O(n)*
+**time**, which beats the brute-force *O(n²)*. For `n = 10⁴`,
+that is `10⁴` operations versus `10⁸` — a ten-thousand-times
+speedup. The price you pay is *O(n)* memory instead of *O(1)*.
+For most real-world inputs, this is a great trade.
+
+If memory is genuinely tight, the two-pointer-after-sort approach
+gives you *O(1)* extra memory at the cost of *O(n log n)* time
+and losing original indices. Pick the trade that fits your
+constraints.
+
+A general lesson from this: **the cheapest speedups in DSA come
+from using extra memory to remember work you have already done**.
+Almost every "O(n²) → O(n)" improvement on this sheet uses
+exactly this trick. Sometimes it is a hash; sometimes a precomputed
+prefix array; sometimes a memo table. The mental motion is the
+same.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: hash "values seen so far" while scanning; for each
+new element, query the dict for its complement.
+
+**Lesson**: when a brute force "for every pair, check..." loop
+appears, the first question to ask is *"can a hash of what I have
+already seen reduce the inner question to one lookup?"*. For Two
+Sum the answer is yes, and the algorithm collapses from *O(n²)*
+to *O(n)*.
 
 **Recognize next time**: any "find two / three / four elements
-summing to target" problem. The k-sum family is all variations of
-this.
+satisfying property P" problem. K-Sum, subarray sums, anagram
+grouping, longest-substring problems — they all build on this
+exact instinct.
+
+**Bigger picture**: Two Sum is the **kindergarten classroom** of
+hash-based algorithm design. Master the check-then-insert order,
+internalize "the dict holds the past, not the present," and you
+have unlocked an entire family of medium / hard problems with
+almost no extra learning.
 ''',
     },
     {

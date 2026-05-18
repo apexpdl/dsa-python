@@ -15,6 +15,29 @@ PROBLEMS: list[dict] = [
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["sorting", "fundamentals"],
+        "what_this_teaches": (
+            "The simplest possible sorting recipe — find the minimum, "
+            "place it, repeat — and the *loop-invariant* mental tool "
+            "that proves it correct. Both ideas reappear constantly."
+        ),
+        "pattern": "Pick the minimum of the unsorted suffix, swap it to the front, repeat.",
+        "prerequisite_lessons": ["arrays", "sorting"],
+        "prerequisite_problems": ["largest-element"],
+        "next_problems": [
+            "bubble-sort",
+            "insertion-sort",
+            "second-largest-element",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 2 (Sorting I)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Wikipedia — Selection sort",
+                "url": "https://en.wikipedia.org/wiki/Selection_sort",
+            },
+        ],
         "understanding": r'''
 We have an array of numbers and we want to sort it in ascending
 order. *Selection sort* is one of the simplest possible recipes:
@@ -107,6 +130,145 @@ jump an equal element past another one. This rarely matters for
 plain integer sorting, but it does matter when you are sorting
 records by one field and want the other fields' order preserved.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does the outer loop run from `0` to `n - 1` and not all the way to `n`?",
+                "answer": r'''
+Because after we have placed the first `n - 1` elements
+correctly, the last element is *automatically* in the right
+spot — there is nothing else to compare it against.
+
+Think of it physically. We start with `n` unsorted slots.
+Iteration 0 places the smallest into slot 0. Iteration 1 places
+the next smallest into slot 1. After iteration `n - 2`, we have
+placed `n - 1` elements correctly in slots 0 through `n - 2`.
+What remains in slot `n - 1`? The only element we have not yet
+placed — which must be the largest. By process of elimination,
+it is already where it belongs. Running iteration `n - 1` would
+be a no-op.
+
+In code, `for i in range(n):` actually runs `n` iterations, not
+`n - 1`. The last iteration is harmless but redundant. You can
+write `for i in range(n - 1):` to save one iteration; it does
+not change correctness. Most beginners just write `range(n)`
+because the off-by-one is easier to keep straight.
+
+The deeper lesson: **the last element in any sort-by-elimination
+algorithm sorts itself**. The same observation makes bubble
+sort's outer loop one shorter, and it is the reason quicksort's
+recursion has the base case `lo >= hi` rather than `lo > hi`.
+''',
+            },
+            {
+                "question": "What is a *loop invariant* and why should I care?",
+                "answer": r'''
+A loop invariant is a statement that is **true at the start of
+every iteration** of a loop. It captures what the loop has
+accomplished so far and lets you reason about correctness
+without tracing every step.
+
+For selection sort, the invariant is: *"Before iteration `i`,
+`arr[0..i-1]` contains the smallest `i` elements of the array,
+sorted in non-decreasing order."*
+
+Read that carefully. At the start of iteration `i = 0`, the
+statement says "arr[0..-1]" — that is, an empty prefix —
+"contains the smallest 0 elements, sorted." Trivially true.
+
+At the start of iteration `i = 1`, after one pass, the
+invariant says `arr[0..0]` contains the smallest 1 element,
+sorted. That is the minimum of the whole array, which is exactly
+what we placed there. True.
+
+Each iteration **extends the invariant by one**: it grows the
+sorted prefix by one element while preserving the property. When
+the loop exits at `i = n`, the invariant says `arr[0..n-1]`
+contains all `n` elements, sorted. That is the goal. Done.
+
+Why care? Because loop invariants are how you **prove your loops
+correct** without running them. They convert "I am pretty sure
+this works" into "I can explain why this works." For hard
+problems with subtle off-by-ones (binary search, sliding window,
+two pointers), explicitly stating the invariant catches bugs
+before you write a single line of code.
+
+When you sit down to write any loop, ask yourself: *"what is true
+before iteration `i`, and how does iteration `i` extend it?"*.
+That single discipline elevates your code quality enormously.
+''',
+            },
+            {
+                "question": "Why is selection sort so slow even though the algorithm is simple?",
+                "answer": r'''
+Because **the work each pass does is the same regardless of
+what we found in earlier passes**. Selection sort has no way to
+exploit information from one pass to speed up the next.
+
+Concretely, every outer iteration triggers an inner scan over
+the entire remaining unsorted suffix. The first pass scans `n -
+1` elements. The second pass scans `n - 2`. Then `n - 3`, and so
+on. The total work is `(n - 1) + (n - 2) + ... + 1 = n(n - 1)/2`,
+which is *O(n²)*.
+
+Critically, this total is the **same** for every input. An
+already-sorted array? *O(n²)* scans, even though no swaps are
+needed. A nearly-sorted array? *O(n²)* scans. A reverse-sorted
+array? *O(n²)* scans. The algorithm cannot tell the difference;
+it always does the worst-case amount of comparison work.
+
+Contrast this with insertion sort, which exits its inner loop as
+soon as the next element falls into place. On already-sorted
+input, insertion sort does only `O(n)` comparisons — a thousand
+times faster than selection sort on the same input.
+
+The general principle: a good algorithm **exploits structure in
+the input**. Selection sort exploits nothing. It is the
+algorithmic equivalent of brute force — correct, simple, slow.
+Useful as a baseline for understanding, but rarely the right
+choice in real code.
+''',
+            },
+            {
+                "question": "Why is selection sort *unstable*? What does that even mean?",
+                "answer": r'''
+A sorting algorithm is **stable** if elements with equal keys
+keep their *original* relative order after sorting. **Unstable**
+means equal elements can swap positions.
+
+Consider `arr = [(2, 'a'), (1, 'x'), (2, 'b')]`, sorted by the
+first field. A stable sort returns
+`[(1, 'x'), (2, 'a'), (2, 'b')]` — the two `(2, ...)` elements
+keep `'a'` before `'b'` because `'a'` was originally first.
+
+Selection sort, on the other hand, can produce
+`[(1, 'x'), (2, 'b'), (2, 'a')]`. Here is why. On iteration 0,
+we scan for the minimum (which is the `(1, 'x')` at index 1).
+We swap it with the element at index 0, which was `(2, 'a')`.
+After the swap, `(2, 'a')` is at index 1 and `(2, 'b')` is at
+index 2. The first `(2, ...)` element's original position
+relative to the second has flipped — `'b'` now comes before
+`'a'`.
+
+When does stability matter? When you sort *records by one
+field* and care about the order of other fields. For example,
+sorting a list of employees by department: you want employees
+within the same department to keep their alphabetical-by-name
+order from a previous sort. Stable sorts preserve that; unstable
+ones scramble it.
+
+Python's built-in `sorted` (Timsort) is **stable**. C++'s
+`std::sort` is **unstable** by default; if you need stability,
+use `std::stable_sort`. Java's `Arrays.sort` is stable for
+objects (mergesort variant), unstable for primitives (Dual-Pivot
+QuickSort).
+
+For curriculum problems involving plain numbers, stability
+rarely matters. For interview problems involving records or
+tuples, always ask yourself "do I need stability?" before
+choosing a sort.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: pick the minimum, swap it forward, repeat.
 
@@ -125,6 +287,30 @@ invariant* mental tool, which you will reuse forever.
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["sorting", "fundamentals"],
+        "what_this_teaches": (
+            "How **adjacent swaps** turn into a sorting algorithm, "
+            "and the hidden connection between sort runtime and the "
+            "**inversion count** of the input — a deep idea you will "
+            "reuse in merge-sort-based inversion counting later."
+        ),
+        "pattern": "Adjacent comparison-and-swap, repeated until a pass does nothing.",
+        "prerequisite_lessons": ["sorting"],
+        "prerequisite_problems": ["selection-sort"],
+        "next_problems": [
+            "insertion-sort",
+            "recursive-bubble-sort",
+            "count-inversions",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 2 (Sorting I)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Wikipedia — Bubble sort",
+                "url": "https://en.wikipedia.org/wiki/Bubble_sort",
+            },
+        ],
         "understanding": r'''
 Bubble sort gets its name from the visual image: large elements
 "bubble" toward the right end on each pass, the way a bubble rises
@@ -212,6 +398,141 @@ property of the input (inversion count) is the kind of insight that
 distinguishes a serious programmer from a code-writer. Try to spot
 these structural relationships in every algorithm you study.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does the outer loop go *down* (`for end in range(n - 1, 0, -1):`)?",
+                "answer": r'''
+Because after each pass, the **last `end + 1` positions are
+already final**, so the next pass does not need to look at them.
+Walking the outer variable downward is one way to encode that
+"everything past `end` is done" boundary.
+
+The first pass bubbles the maximum element to position `n - 1`.
+The second pass bubbles the second-maximum to position `n - 2`.
+And so on. After `k` passes, the rightmost `k` positions are
+sorted and frozen. The inner loop never needs to touch them
+again.
+
+`range(n - 1, 0, -1)` produces the sequence `n - 1, n - 2, ...,
+1`. On iteration with `end = k`, the inner loop walks
+`j = 0, 1, ..., end - 1` and compares `arr[j]` with `arr[j +
+1]`. The largest valid `j + 1` is `end`, which is the rightmost
+position that still needs work. Anything beyond `end` is already
+sorted.
+
+You could also write the outer loop counting up:
+
+```python
+for i in range(n - 1):
+    for j in range(0, n - 1 - i):
+        ...
+```
+
+Both forms are correct; the down-counting version is just a
+common idiom you should be able to read at a glance.
+
+The shared idea: in any sort that "settles" elements at one end
+pass by pass, the active region shrinks. Encoding the shrinking
+boundary in the outer loop is one of the small disciplines that
+keeps inner loops fast.
+''',
+            },
+            {
+                "question": "What does the `swapped` flag actually buy us?",
+                "answer": r'''
+It buys us **early termination on sorted (or nearly-sorted)
+input**, dropping the best-case complexity from *O(n²)* to
+*O(n)*.
+
+Without the flag, the outer loop runs `n - 1` times no matter
+what. With the flag, we set it to `False` at the start of each
+pass and to `True` whenever a swap happens. If a full pass
+completes with `swapped` still `False`, we know the array is
+already sorted, and we can `return` immediately.
+
+For an already-sorted input, the very first pass does zero
+swaps. The flag stays `False`. We exit after exactly `n - 1`
+comparisons. *O(n)*.
+
+For a nearly-sorted input (only a few inversions), the algorithm
+exits after a few passes instead of `n - 1`. Still much better
+than worst case.
+
+This early-exit pattern shows up in many adaptive algorithms.
+The general lesson: **let the algorithm sense when it is done
+and stop**. A boolean flag that costs one bit of memory and one
+comparison per pass can save quadratic time on real-world
+inputs, which are often "almost sorted" because they came from
+some prior process.
+''',
+            },
+            {
+                "question": "Why does \"swap equals one inversion removed\" matter? Is that just trivia?",
+                "answer": r'''
+It is not trivia — it is a clean **proof** that bubble sort is
+optimal among adjacent-swap algorithms, and it points the way to
+an *O(n log n)* algorithm for counting inversions.
+
+The proof. An adjacent swap takes two neighbours `arr[j]` and
+`arr[j+1]` and reorders them. If they were out of order before
+the swap (i.e., `arr[j] > arr[j+1]`), the swap removes exactly
+one inversion — the pair `(j, j+1)`. The swap cannot remove any
+other inversion, because no other pair changed positions.
+
+So the total number of adjacent swaps any sorting algorithm
+performs is **at least equal to the inversion count**. Bubble
+sort performs exactly that many. Therefore bubble sort uses the
+**minimum possible number of adjacent swaps**.
+
+The deeper application: counting inversions is itself a classic
+problem (in this curriculum's Step 3 hard section). The brute
+force is *O(n²)* — for each pair, check whether it is an
+inversion. But by modifying merge sort to count inversions
+during the merge step, we get *O(n log n)*. That algorithm
+exists because we understand the connection between sorting and
+inversions, which bubble sort makes explicit.
+
+The thing-worth-stealing from this problem: **algorithms have
+hidden invariants that connect their runtime to combinatorial
+properties of the input**. Find that invariant and you understand
+the algorithm at a much deeper level.
+''',
+            },
+            {
+                "question": "Why do real systems never use bubble sort?",
+                "answer": r'''
+Because almost every other sort beats it on every realistic
+metric: comparisons, swaps, cache behavior, and branch
+prediction.
+
+Selection sort: same big-O but fewer swaps (one per outer
+iteration). Insertion sort: same big-O but exits early on
+nearly-sorted input (so does bubble, but insertion's inner
+arithmetic is faster). Merge sort and quick sort: *O(n log n)*,
+massively faster on any non-trivial input. Timsort (Python's
+built-in): hybrid of merge and insertion that destroys bubble
+on real workloads.
+
+Bubble sort also has terrible **memory access patterns** —
+adjacent swaps thrash the CPU cache because each pass touches
+every element. Quick sort and merge sort cluster their work and
+benefit from caching.
+
+In production code, you should reach for the standard library's
+`sorted` (or `arr.sort()` in place). It is *O(n log n)*, stable,
+and highly optimized. Roll your own only when you have a
+specific reason — interview practice, a specialized constraint
+like "minimum swaps," or a teaching context.
+
+So why teach bubble sort at all? Because the **mental model** of
+adjacent swaps removing inversions is useful far beyond bubble
+sort itself, and writing bubble sort once or twice is a great
+way to internalize loop invariants.
+
+In short: learn bubble sort, then never use it.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: adjacent comparisons and swaps, repeated until clean.
 
@@ -231,6 +552,31 @@ inversion counting in Step 3.
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["sorting", "fundamentals"],
+        "what_this_teaches": (
+            "How a sort can **exploit existing order** — insertion "
+            "sort's `O(n²)` worst case becomes nearly `O(n)` on "
+            "almost-sorted input. That sensitivity to structure is "
+            "why production sorts (Timsort) wrap insertion sort "
+            "inside themselves as the small-array base case."
+        ),
+        "pattern": "Maintain a sorted prefix; slide the next element leftward into place.",
+        "prerequisite_lessons": ["sorting"],
+        "prerequisite_problems": ["bubble-sort"],
+        "next_problems": [
+            "merge-sort",
+            "quick-sort",
+            "recursive-insertion-sort",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 2 (Sorting I)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Wikipedia — Insertion sort",
+                "url": "https://en.wikipedia.org/wiki/Insertion_sort",
+            },
+        ],
         "understanding": r'''
 Insertion sort imitates how most people sort a hand of playing cards.
 You hold the cards face-up in your left hand, sorted. You pick a
@@ -322,6 +668,148 @@ The "do not redo work" principle suggests that on truly random
 input, *O(n²)* sorts cannot be beaten without divide-and-conquer.
 That's what merge sort delivers next.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does insertion sort use shifts instead of swaps?",
+                "answer": r'''
+Because a **shift** is half the work of a **swap**.
+
+A swap moves two values: each ends up in the other's slot. That
+is two writes. An insertion sort shift moves one value rightward
+to make room: one write. When you have to slide many elements
+to insert a new one, doing it with shifts saves half the
+operations compared to a sequence of swaps.
+
+Concretely, the shift version of insertion sort looks like this:
+
+```python
+current = arr[i]            # save the value we want to insert
+j = i - 1
+while j >= 0 and arr[j] > current:
+    arr[j + 1] = arr[j]     # slide a larger neighbour rightward
+    j -= 1
+arr[j + 1] = current        # drop current into the open slot
+```
+
+Notice that the inner loop only ever does one write per
+iteration (`arr[j + 1] = arr[j]`). At the very end, one extra
+write (`arr[j + 1] = current`) places the saved value. Total
+writes for inserting one element into a sorted prefix of length
+`k` is at most `k + 1`.
+
+A swap-based version would write `2k` times in the worst case,
+because each swap is two writes. So shifts are roughly 2× faster
+in terms of memory writes. On modern hardware where writes are
+the slowest part of memory access, this matters.
+
+The general lesson: **when you can save a value and shift many
+others by one, do not swap pairwise — shift and place**. The same
+trick speeds up many in-place array compaction routines.
+''',
+            },
+            {
+                "question": "Why is insertion sort *O(n)* on already-sorted input?",
+                "answer": r'''
+Because the inner `while` loop **exits immediately** when the
+new element is already in place.
+
+Look at the loop:
+
+```python
+while j >= 0 and arr[j] > current:
+    arr[j + 1] = arr[j]
+    j -= 1
+```
+
+If `arr[j]` is already `<= current`, the condition
+`arr[j] > current` is `False` and the loop body never runs. We
+skip directly to the final assignment, which (because `current`
+already equals `arr[i]`) is a no-op.
+
+For an already-sorted array, every iteration of the outer loop
+encounters `arr[i]` already in the right place, and the inner
+loop does zero work. The outer loop runs `n - 1` times, each
+with constant work. Total: *O(n)*.
+
+This **adaptivity** to existing order is what makes insertion
+sort so valuable in practice. Real-world data is often "mostly
+sorted" — sensor readings drift gradually, logs are nearly
+chronological, sorted data has only a few recent insertions.
+Insertion sort handles all of these in near-linear time.
+
+The next sort up, merge sort, does *O(n log n)* work on every
+input regardless of structure. It is asymptotically faster on
+random data but **slower** than insertion sort on highly-sorted
+data. This is why production hybrid sorts (Timsort, introsort)
+detect sorted runs and switch to insertion sort for them.
+''',
+            },
+            {
+                "question": "Why save `current` before sliding? Couldn't I just compare in place?",
+                "answer": r'''
+Because the first slide *overwrites* `arr[i]`, the value we are
+trying to insert.
+
+Walk through it carefully. Suppose `arr = [3, 5, 7, 4, 8]` and
+we are inserting `arr[3] = 4` into the sorted prefix
+`[3, 5, 7]`. The inner loop will execute `arr[j + 1] = arr[j]`
+with `j = 2`, which assigns `arr[3] = arr[2] = 7`. Now the
+array is `[3, 5, 7, 7, 8]` — the `4` is gone, overwritten by
+`7`.
+
+If we had not saved `current = 4` at the top, the value would
+be lost forever. We would have nothing to insert at the end.
+
+So `current = arr[i]` at the very top of the iteration is
+**mandatory**. It is the same "save a copy before mutating"
+discipline you saw in `count-digits` (saving `original` before
+the loop destroys `n`).
+
+The general pattern: whenever a loop's first action would
+destroy information the loop needs later, stash that information
+in a local variable. This pattern reappears in linked-list
+operations (save `next_node` before flipping `curr.next`), in
+swaps inside arrays, and in many in-place algorithms.
+''',
+            },
+            {
+                "question": "Why is insertion sort the fastest of the `O(n²)` sorts in practice?",
+                "answer": r'''
+Three reasons combine to make it the fastest.
+
+First, **adaptivity**. On already-sorted or nearly-sorted input,
+insertion sort runs in *O(n)*. Selection sort always does
+*O(n²)* comparisons regardless of input. Bubble sort can also
+adapt with the `swapped` flag, but its inner loop does more work
+per comparison.
+
+Second, **cache friendliness**. Insertion sort accesses memory
+in a tight contiguous pattern — it reads `arr[i]`, then
+neighbours just to the left. Modern CPUs cache memory in chunks,
+so consecutive accesses to nearby addresses are essentially
+free. Selection sort and merge sort touch memory more
+scattered-ly and suffer more cache misses on small inputs.
+
+Third, **simple inner loop**. The body of the inner `while` is
+two lines (a comparison and a shift). No conditional branches
+beyond the loop condition, no function calls. Modern branch
+predictors love this kind of code and run it at close to peak
+hardware speed.
+
+The combined effect: for arrays of, say, 32 elements or fewer,
+insertion sort often **beats** *O(n log n)* sorts like merge
+sort and quick sort, even though it is asymptotically worse.
+This is why every serious production sort routine (CPython's
+Timsort, Java's `Arrays.sort`, GCC's `std::sort`) switches to
+insertion sort once the recursive subarray drops below ~16-32
+elements.
+
+The lesson: **asymptotic analysis is a guide, not a law**.
+Constants matter, and on small inputs the constants can flip
+the comparison.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: maintain a sorted prefix; insert the next element by
 sliding it leftward.
@@ -342,6 +830,32 @@ base-case sub-sort.
         "lecture_id": 2,
         "difficulty": "medium",
         "tags": ["sorting", "divide-and-conquer", "recursion"],
+        "what_this_teaches": (
+            "Divide-and-conquer in its purest form — split a problem "
+            "into two halves, solve each recursively, combine the "
+            "results. The two-pointer **merge** routine is the only "
+            "real work; it shows up again in merging K sorted lists, "
+            "counting inversions, and external sorting."
+        ),
+        "pattern": "Divide in half, recursively sort each side, merge two sorted halves.",
+        "prerequisite_lessons": ["recursion", "sorting"],
+        "prerequisite_problems": ["insertion-sort"],
+        "next_problems": [
+            "quick-sort",
+            "count-inversions",
+            "reverse-pairs",
+            "merge-k-sorted-lists",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 2 (Sorting II)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Wikipedia — Merge sort",
+                "url": "https://en.wikipedia.org/wiki/Merge_sort",
+            },
+        ],
         "understanding": r'''
 Merge sort is the first **divide-and-conquer** algorithm we meet,
 and it is the cleanest possible introduction to the idea. The
@@ -464,6 +978,143 @@ nearly free. Whenever you face a problem on a single unsorted
 array, ask: "what if I split into pieces I can sort cheaply, then
 combine?". Many algorithmic insights begin here.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why is merge sort `O(n log n)`? Where do the two factors come from?",
+                "answer": r'''
+The two factors come from two separate observations.
+
+**Where the `log n` comes from**: each recursive call splits the
+array in half. Starting with size `n`, the children are size
+`n/2`, then `n/4`, then `n/8`, and so on. The recursion tree has
+`log₂(n)` levels before the subarrays shrink to size 1.
+
+**Where the `n` comes from**: at every level of the recursion
+tree, **the total work across all subarrays is exactly `O(n)`**.
+At the top level, one merge of two halves takes *O(n)* time. At
+the second level, two merges of pairs of quarters take *O(n/2 +
+n/2) = O(n)*. At the third level, four merges of eighth-sized
+pieces take *O(n)*. Every level does *O(n)* total merging work.
+
+Multiply: `log n` levels × `O(n)` work per level = `O(n log n)`
+total.
+
+This argument generalizes to many divide-and-conquer
+algorithms. Whenever the recurrence is `T(n) = 2 T(n/2) + O(n)`
+or `T(n) = a T(n/b) + f(n)` with `f(n) = O(n^(log_b(a)))`, the
+**Master Theorem** gives you the answer immediately. Merge sort
+is the canonical example.
+
+A useful visual: draw the recursion tree as a triangle. Its
+height is `log n`, its width (work per level) is `n`. The total
+area is `n log n`. Some divide-and-conquer algorithms have
+different shapes (binary search is `n = 1` work per level for
+`log n` levels, giving `O(log n)`); merge sort's rectangle is
+the prototype.
+''',
+            },
+            {
+                "question": "Why does the merge step use `<=` instead of `<`? Does it matter?",
+                "answer": r'''
+It matters when you care about **stability**.
+
+Stability means: if two elements compare equal, the one that
+came first in the original array stays first in the sorted
+output. Some algorithms preserve stability automatically; others
+do not. Merge sort can be either, depending on this one
+comparison.
+
+In the merge step, when the front element of the left list ties
+with the front element of the right list, we have to decide
+which to take first. The convention `if a[i] <= b[j]: take a` —
+i.e., prefer the **left** list on ties — produces a **stable**
+merge sort. The convention `if a[i] < b[j]: take a` (strict
+less-than) would still produce a correct sort but it would prefer
+the **right** list on ties, which can scramble the relative
+order of equal elements that originated in different halves.
+
+Why does the left-preference preserve stability? Because the
+left list contains the elements that were earlier in the
+*original* array (we split with `arr[:mid]` and `arr[mid:]`, so
+left = earlier indices). Taking from the left first on ties
+means earlier-original-position wins. Repeat this recursively
+all the way up the tree, and the algorithm globally preserves
+"earlier originated first."
+
+In practice, stability matters when you sort records by one
+field and want a previous secondary sort to be preserved.
+Python's `sorted` is stable. Use `<=` in your merge if you want
+to match that contract.
+''',
+            },
+            {
+                "question": "Why does merge sort need `O(n)` extra memory? Can't we do it in place?",
+                "answer": r'''
+The merge step needs an auxiliary buffer to hold the combined
+result while it reads from both input halves. You cannot
+correctly merge two sorted halves of the *same* array in place
+without a complex algorithm — the writes would overwrite reads.
+
+To see why, imagine merging `[2, 5]` and `[1, 3]` in place
+inside `[2, 5, 1, 3]`. We compare `2` and `1`, decide `1` is
+smaller, and want to write `1` to position 0. But position 0
+holds `2`, which we have not consumed yet. Writing `1` there
+loses `2`. We need somewhere to stash `2` first.
+
+The simplest fix is the one we use: allocate a new list of size
+`n`, walk both halves with two pointers, write the merged result
+into the new list, and (optionally) copy it back. This uses
+*O(n)* extra memory.
+
+There are *in-place merge sort* algorithms, but they are either
+much slower (the "block merge" variants can hit *O(n log² n)*)
+or much more complex (Trabb Pardo's algorithm uses *O(1)* extra
+memory but is rarely worth the code complexity).
+
+In practice, the *O(n)* memory cost is usually fine. The
+exceptions: sorting truly enormous datasets that do not fit in
+RAM (where you use **external merge sort**, which streams data
+from disk in chunks), and sorting linked lists (where merging
+two sorted lists genuinely is *O(1)* extra memory because
+pointers can be rewired without copying values).
+
+So the rule of thumb: merge sort on arrays uses *O(n)* extra
+memory; merge sort on linked lists uses *O(1)* extra memory and
+*O(log n)* stack.
+''',
+            },
+            {
+                "question": "Why does the merge `extend` the leftovers at the end?",
+                "answer": r'''
+Because one of the two halves usually finishes first, and the
+other half still has sorted elements waiting.
+
+Picture merging `[1, 4, 6]` and `[2, 3]`. The pointers walk like
+this: we take `1` from left, `2` from right, `3` from right, and
+then the right list is empty. The left list still has `[4, 6]`
+waiting. Those are already sorted (because each half was
+recursively sorted), and they are all bigger than everything we
+have placed (because anything smaller would have already moved).
+So we can dump them all into the output as-is.
+
+`merged.extend(a[i:])` does exactly that: append the rest of
+`a` starting from where `i` left off. If `a` is the list that
+finished first, `a[i:]` is empty and the extend is a no-op. So
+both `extend` calls are safe to run unconditionally.
+
+This is a small but important detail. Forgetting the leftover
+extends produces a half-merged result that loses the tail of
+whichever list ran longer. It is a classic merge bug — make
+sure your merge function always drains both inputs.
+
+In some merge implementations, you write the loop as `while i <
+len(a) or j < len(b):` and check inside which pointer is still
+valid before reading. That works too, but it has more branches
+in the hot loop. The "main loop while both alive, then drain
+the survivor" structure is usually faster and easier to read.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: divide and conquer — split, recurse, merge.
 
@@ -484,6 +1135,32 @@ the rest of divide-and-conquer.
         "lecture_id": 2,
         "difficulty": "medium",
         "tags": ["sorting", "divide-and-conquer", "recursion", "partition"],
+        "what_this_teaches": (
+            "**Partitioning** as a fundamental primitive — pick a "
+            "pivot, place everything smaller on one side and "
+            "everything larger on the other. The same partition step "
+            "powers Quickselect (k-th smallest in *O(n)* average) and "
+            "the Dutch National Flag algorithm."
+        ),
+        "pattern": "Partition around a pivot, recursively sort each side.",
+        "prerequisite_lessons": ["sorting", "recursion"],
+        "prerequisite_problems": ["merge-sort"],
+        "next_problems": [
+            "sort-0s-1s-2s",
+            "kth-largest",
+            "kth-smallest",
+            "kth-element-two-sorted",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 2 (Sorting II)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Wikipedia — Quicksort",
+                "url": "https://en.wikipedia.org/wiki/Quicksort",
+            },
+        ],
         "understanding": r'''
 Quick sort is the second divide-and-conquer sort, and it is the
 default choice of most production sort libraries on dense numeric
@@ -603,6 +1280,163 @@ memory footprint of quick sort makes it the winner. In adversarial
 contexts (a malicious user choosing inputs), random pivots or
 introsort restore the worst-case guarantee.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does quick sort have a worst case of `O(n²)` if it's `O(n log n)` on average?",
+                "answer": r'''
+The worst case happens when the **pivot is the smallest or
+largest element of the subarray every single time**. When that
+happens, the partition step splits the subarray into a zero-sized
+half and an `n - 1` sized half, and the recursion tree degenerates
+into a chain of length `n` instead of a balanced tree of depth
+`log n`.
+
+Concretely: suppose your pivot is always the last element, and
+your input is already sorted ascending. The pivot is the largest
+element of every subarray, so partition puts all `n - 1` other
+elements on the "smaller" side. Then you recurse on a subarray of
+size `n - 1`, which again has the largest element at the end. And
+so on. The total work is `n + (n - 1) + (n - 2) + ... + 1 =
+O(n²)`.
+
+That same bad case applies to reverse-sorted input with a
+first-element pivot, or any "adversarial" input that the pivot
+choice cannot escape from.
+
+The fix is to **randomize the pivot** or use **median-of-three**.
+With a random pivot, the expected depth is `O(log n)` even on
+adversarial input, because no input can consistently fool a
+random choice. Most production quick sorts (introsort, in
+particular) use median-of-three and also fall back to heap sort
+if recursion gets too deep, guaranteeing `O(n log n)` worst case.
+
+The bottom line: textbook quick sort with a last-element pivot is
+*O(n²)* on sorted input. Real quick sort uses randomization or
+median-of-three, which makes the *O(n²)* case essentially never
+happen.
+''',
+            },
+            {
+                "question": "What exactly does the partition function do, step by step?",
+                "answer": r'''
+The partition function rearranges the subarray `arr[lo..hi]` so
+that the pivot (taken here as `arr[hi]`) ends up in its **final
+sorted position**, with all smaller elements to its left and all
+larger elements to its right.
+
+Walk through it on `arr = [5, 3, 8, 4, 7, 6]` with `lo = 0`, `hi
+= 5`, so the pivot is `arr[5] = 6`.
+
+Initialize `store = lo = 0`. The variable `store` is "where the
+next element less than the pivot should land."
+
+Now scan `i` from `lo` to `hi - 1`:
+
+- `i = 0`: `arr[i] = 5 < 6 = pivot`. Swap `arr[0]` with
+  `arr[store=0]` (a no-op), then bump store to 1. Array
+  unchanged.
+- `i = 1`: `arr[i] = 3 < 6`. Swap `arr[1]` with `arr[store=1]`
+  (no-op), bump store to 2.
+- `i = 2`: `arr[i] = 8 >= 6`. Skip; do not bump store.
+- `i = 3`: `arr[i] = 4 < 6`. Swap `arr[3]` with `arr[store=2]`.
+  Array becomes `[5, 3, 4, 8, 7, 6]`. Bump store to 3.
+- `i = 4`: `arr[i] = 7 >= 6`. Skip.
+
+End of scan. Now swap `arr[store=3]` with the pivot `arr[hi=5]`.
+Array becomes `[5, 3, 4, 6, 7, 8]`. Return `store = 3`.
+
+After partition, `arr[3] = 6` is in its final sorted position.
+Everything to the left (`[5, 3, 4]`) is less than 6 (but not yet
+sorted internally), and everything to the right (`[7, 8]`) is
+greater (also not yet sorted). We recurse on the two sides.
+
+The invariant being maintained inside the loop is:
+`arr[lo..store - 1]` contains elements less than pivot,
+`arr[store..i - 1]` contains elements greater or equal, and
+`arr[i..hi - 1]` is the unscanned region. When the loop ends,
+the entire pre-pivot region is partitioned. The final swap drops
+the pivot into the boundary slot.
+''',
+            },
+            {
+                "question": "Why is quick sort not stable?",
+                "answer": r'''
+The partition step performs swaps that can jump an equal element
+**past another equal element**, breaking the "preserve original
+order on ties" property.
+
+Consider `arr = [(2, 'a'), (1, 'x'), (2, 'b'), (3, 'y')]` sorted
+by the first field, with pivot `(3, 'y')`. The partition scan
+swaps `(2, 'b')` and `(1, 'x')` to bring elements `< 3` to the
+front. After partition the array is something like
+`[(2, 'a'), (1, 'x'), (2, 'b'), (3, 'y')]` — but in general the
+relative order of the two `(2, ...)` elements can flip,
+depending on which pivot choice and partition scheme you use.
+
+Compare with merge sort: the merge step preserves stability
+because when two elements tie, the convention `<=` keeps the
+left-list element first, and "left" always means "earlier in the
+original array."
+
+When does stability matter? When sorting records by one field
+and you want a prior order on another field preserved. For
+example, sorting employees by department while keeping
+alphabetical order within each department.
+
+If you need a fast in-place sort that is also stable, you have
+to pick one: merge sort (stable, `O(n)` extra memory) or
+Timsort (Python's built-in `sorted`, which is stable). C++'s
+`std::stable_sort` is the stable variant for C++.
+
+For curriculum problems on plain numbers, stability rarely
+matters. But always ask "does this problem need stable order?"
+before reaching for `quick sort`.
+''',
+            },
+            {
+                "question": "How is Quickselect related to Quick Sort?",
+                "answer": r'''
+**Quickselect** uses the same partition primitive as Quick Sort,
+but it solves a different problem in `O(n)` average time
+instead of `O(n log n)`.
+
+The problem Quickselect solves: *"find the k-th smallest
+element of an array."* The trick: after one partition, you know
+exactly where the pivot lands — say, at index `p`. If `p == k`,
+the pivot IS the k-th smallest. If `p > k`, the answer is in
+the left subarray, so recurse there. If `p < k`, the answer is
+in the right subarray, recurse there.
+
+```python
+def quickselect(arr, lo, hi, k):
+    if lo >= hi:
+        return arr[lo]
+    p = partition(arr, lo, hi)
+    if p == k:
+        return arr[p]
+    elif p > k:
+        return quickselect(arr, lo, p - 1, k)
+    else:
+        return quickselect(arr, p + 1, hi, k)
+```
+
+The key insight: unlike quick sort, Quickselect only recurses
+**into one side**. So instead of doubling work at each level,
+we cut it roughly in half. The expected total work is
+`n + n/2 + n/4 + ... = 2n = O(n)`.
+
+The worst case is still `O(n²)` (same bad-pivot scenario as
+quick sort), but with random pivots the expected time is `O(n)`.
+This is how libraries find the median, the top K, or any order
+statistic without sorting the whole array.
+
+The same partition primitive thus does double duty: drive a
+full sort (Quick Sort), or pluck out a single order statistic
+(Quickselect). It is one of the most reused subroutines in
+practical algorithm design.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: partition around a pivot, then recurse on the two
 sides.

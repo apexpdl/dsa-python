@@ -479,16 +479,58 @@ loop changes.
         "lecture_id": 4,
         "difficulty": "easy",
         "tags": ["math", "loops", "digits"],
+        "what_this_teaches": (
+            "The dual of digit extraction: how to **build** a number "
+            "from its rightmost digit using `new = new * 10 + digit`. "
+            "This pairs perfectly with the extraction loop and is the "
+            "core move behind atoi-style parsing too."
+        ),
+        "pattern": "Shift-and-add: extract a digit, append it to a growing reversed number.",
+        "prerequisite_lessons": ["arrays"],
+        "prerequisite_problems": ["count-digits"],
+        "next_problems": [
+            "check-palindrome-number",
+            "armstrong-number",
+            "atoi",
+            "atoi-recursive",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Maths)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 7 — Reverse Integer",
+                "url": "https://leetcode.com/problems/reverse-integer/",
+            },
+        ],
         "understanding": r'''
-We get a number like `7894` and we want to produce the number whose
-digits are in reverse order: `4987`. For `1200` the reverse is `21`
-(the leading zeros that appear after reversal silently disappear
-because we are working with integers, not strings).
+Let's read the problem carefully and feel what is really being
+asked.
 
-The catch is that the input is a **number**, not a string. So we
-cannot just "flip the characters". We need to actually build up the
-reversed number using arithmetic. That makes this a perfect drill
-for the digit-extraction pattern we built in the previous problem.
+You are handed a positive integer like `7894`. You have to produce
+a brand-new integer whose digits appear in the **reverse order**:
+`4987`. For `1200` the reverse is `21` — the zero that was at the
+end of `1200` would have become a leading zero on the front of
+`0021`, but integers do not store leading zeros, so it silently
+becomes the two-digit number `21`. For `5` (a one-digit input), the
+reverse is also `5`, because flipping a one-digit number does
+nothing.
+
+The catch — and this is the whole point of the problem — is that
+the input is a **number**, not a string. Inside the computer,
+`7894` is one quantity stored in a few bytes; it is not the
+sequence of characters `'7', '8', '9', '4'`. So we cannot just
+"reverse the characters" the way we would reverse a Python string
+with `s[::-1]`. We have to actually build up the reversed number
+using arithmetic.
+
+That makes this problem a perfect partner for the previous one.
+*Count Digits* taught us how to **peel** digits off a number using
+`% 10` and `// 10`. Now we will learn the mirror skill: how to
+**build** a number by tacking digits onto a growing total. Once
+you have both moves in your hands, you can do nearly anything with
+the digits of a number.
 ''',
         "brute_force": {
             "explanation": r'''
@@ -565,6 +607,178 @@ Build something up by multiplying the running total by the base and
 adding the next character's value. If you have ever written your own
 `atoi`, you have written this loop.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does `reversed_value * 10 + last_digit` actually shift things left?",
+                "answer": r'''
+Multiplying any integer by 10 moves every one of its digits one
+position to the left in base 10, and writes a fresh `0` in the
+new rightmost position. That `0` is the slot we are about to fill
+with our new digit.
+
+Walk through it slowly. Suppose `reversed_value` is `49`. Now do
+`49 * 10`. The result is `490`. Notice what happened: the `4` slid
+from the tens column into the hundreds column, the `9` slid from
+the ones column into the tens column, and a fresh `0` appeared in
+the ones column. That zero is the empty parking spot.
+
+Now add `last_digit`, say `8`. `490 + 8 = 498`. The `8` slipped
+into the empty ones slot. No digits were disturbed; we simply
+filled a hole.
+
+This is exactly how humans build numbers from left to right when
+writing them out — you write the most significant digit first, and
+each new digit you add gets a fresh place value of `× 10⁰`. The
+formula `new = new * 10 + digit` is the mechanical version of that
+intuition.
+
+You can change the base if you ever need to. In binary, "shift
+left by one bit" is `* 2`, and you add a new bit using `* 2 + bit`.
+In hex, it is `* 16 + hex_digit`. The structure is the same, only
+the base plugs in.
+''',
+            },
+            {
+                "question": "Why do we need a separate `sign` variable?",
+                "answer": r'''
+Because Python's floor division and modulo behave **unintuitively**
+on negative numbers, and we want a clean loop.
+
+Try `(-7) % 10` in Python and you might be surprised: the result
+is `3`, not `-7` or `-3`. That is because Python defines `%` so
+the result has the same sign as the **divisor** (which is `+10`
+here). And `(-7) // 10` is `-1`, not `0`.
+
+If we let our loop run on a negative number, those quirks make the
+digit-extraction logic ugly. The cleanest workaround is the one
+you see in the code: pull off the sign at the top, work on the
+absolute value, then re-apply the sign at the end.
+
+```python
+sign = -1 if n < 0 else 1
+n = abs(n)
+# ... loop on the non-negative n ...
+return sign * reversed_value
+```
+
+This pattern — "remember the sign, work on the absolute value,
+re-apply at the end" — comes up again in any digit-manipulation
+problem that has to support negatives: atoi, sum of digits,
+Armstrong on signed input, and so on. Worth memorizing as a small
+boilerplate.
+
+(If your input is guaranteed non-negative, like in most of the
+beginner problems, you can skip the sign machinery entirely.)
+''',
+            },
+            {
+                "question": "What happens with trailing zeros like `1200`?",
+                "answer": r'''
+They silently disappear, and that is the correct behavior for
+integer reversal.
+
+Walk through `n = 1200`:
+
+- Iteration 1: `last_digit = 0`, `reversed_value = 0 * 10 + 0 = 0`,
+  `n = 120`.
+- Iteration 2: `last_digit = 0`, `reversed_value = 0 * 10 + 0 = 0`,
+  `n = 12`.
+- Iteration 3: `last_digit = 2`, `reversed_value = 0 * 10 + 2 = 2`,
+  `n = 1`.
+- Iteration 4: `last_digit = 1`, `reversed_value = 2 * 10 + 1 = 21`,
+  `n = 0`.
+
+Loop ends, return `21`.
+
+The two leading zeros never appear in the output because integers
+do not store leading zeros. `0021` and `21` are the same integer;
+the way you wrote it on paper is just a notational choice. Our
+function returns the *integer* `21`, which is mathematically
+correct.
+
+If a problem specifically asks for "the reversed digits as a
+string of exactly the same length as the input," you should
+convert to a string and reverse the characters instead. That
+preserves the leading zeros because they are characters, not
+quantities. The two operations are different — choose based on
+what the problem actually wants.
+''',
+            },
+            {
+                "question": "What about integer overflow in 32-bit languages?",
+                "answer": r'''
+In Python, this is a non-issue because Python integers are
+**arbitrary precision** — they can grow to any size that fits in
+memory. So reversing a huge integer like `9876543210123456789`
+just works.
+
+But many interview platforms (and the original LeetCode problem)
+require you to **return 0 if the reversed value overflows a
+32-bit signed integer**. The 32-bit range is `[-2³¹, 2³¹ - 1] =
+[-2147483648, 2147483647]`. Reversing `1534236469` gives
+`9646324351`, which is bigger than `2147483647`. So you must
+return 0 instead.
+
+The check is one line at the end:
+
+```python
+INT_MIN, INT_MAX = -(2**31), 2**31 - 1
+if not (INT_MIN <= reversed_value * sign <= INT_MAX):
+    return 0
+return reversed_value * sign
+```
+
+In C++ / Java you have to check **inside** the loop, *before*
+each `* 10 + digit`, because the multiplication itself can
+overflow. The Python version dodges that pain because the
+arithmetic never fails — only the final range check matters.
+
+The general lesson: when porting a Python solution to a typed
+language, every `* 10 + digit` step is a potential overflow site.
+Add a defensive check.
+''',
+            },
+            {
+                "question": "Could I just do `int(str(n)[::-1])` instead?",
+                "answer": r'''
+Yes! And in production code, that is often the cleanest answer.
+
+```python
+def reverse_number(n: int) -> int:
+    sign = -1 if n < 0 else 1
+    return sign * int(str(abs(n))[::-1])
+```
+
+`str(abs(n))` turns `1200` into the string `"1200"`. The slice
+`[::-1]` reverses the string to `"0021"`. `int(...)` parses it
+back into the integer `21`, which automatically drops the leading
+zeros. Then we re-apply the sign.
+
+It is short, correct, and trivially fast.
+
+So why do we even write the arithmetic version? Two reasons.
+
+First, **it is the version interviewers want to see**. The point
+of the question is usually to verify that you can manipulate
+digits with arithmetic, not to verify that you know Python's
+slice syntax. The string version dodges the algorithm and shows
+the interviewer the convenience method instead of the underlying
+idea.
+
+Second, **the arithmetic version is the foundation of harder
+problems**. Once you know how to do `new = new * 10 + digit`, you
+can solve "atoi" (parse a string of digits into an integer),
+"palindrome number without converting to string," "Armstrong
+number," and many others. The string trick is a one-shot answer
+to one specific question. The arithmetic loop is a tool.
+
+So in real code: use the string version if you do not care about
+the journey. In learning code: write the arithmetic version, then
+treat the string version as the "Pythonic shortcut" you reach for
+once you have proven you understand the underlying machinery.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: build a number digit by digit from right to left using
 `new = new * 10 + digit`.
@@ -585,19 +799,63 @@ pattern.
         "lecture_id": 4,
         "difficulty": "easy",
         "tags": ["math", "digits", "palindrome"],
+        "what_this_teaches": (
+            "How a previously-solved sub-problem becomes a building "
+            "block for the next one. *Reverse the number* is the verb; "
+            "*compare against the original* is the question. Once you "
+            "have the verb, the question is one line."
+        ),
+        "pattern": "Reverse and compare; reuse the previous routine as a subroutine.",
+        "prerequisite_lessons": [],
+        "prerequisite_problems": ["count-digits", "reverse-number"],
+        "next_problems": [
+            "armstrong-number",
+            "ll-palindrome",
+            "longest-palindromic-substring",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Maths)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 9 — Palindrome Number",
+                "url": "https://leetcode.com/problems/palindrome-number/",
+            },
+        ],
         "understanding": r'''
-A palindrome reads the same forwards and backwards. `121` is a
-palindrome. `1221` is. `123` is not. We are asked: given an integer
-`n`, is it a palindrome?
+Let's slow down and think about what *palindrome* means before we
+write any code.
 
-There is a subtle convention question. Most versions of this problem
-declare that **negative numbers are not palindromes** (because the
-minus sign would mismatch on reversal). We'll follow that rule.
+A palindrome is anything that reads the same in both directions —
+the word `level`, the sentence "Madam, I'm Adam," or the number
+`121`. For numbers, palindrome means: if you read the digits left
+to right and then right to left, you see the same sequence. So
+`121` is a palindrome (reading both ways gives `1, 2, 1`). `1221`
+is a palindrome (`1, 2, 2, 1`). `123` is not (`1, 2, 3` versus
+`3, 2, 1`).
 
-The trick is to recognize that "is this a palindrome?" is the same
-question as "if I reverse this, do I get the same number?". And we
-already know how to reverse a number. So the algorithm is just:
-reverse, compare.
+Most versions of this problem declare that **negative numbers are
+not palindromes**, by convention. The reasoning: the minus sign is
+part of the number in some sense, but it does not have a partner
+on the other end. So `-121` reads as `-, 1, 2, 1` forwards and
+`1, 2, 1, -` backwards — and the minus would have to magically
+appear on the right, which we do not allow. Different problems
+disagree on this rule, but for this problem we follow the
+standard LeetCode convention: negatives return `False`.
+
+Now the beautiful part. The question *"is this number a
+palindrome?"* is mathematically identical to *"is this number
+equal to its own reverse?"*. And we already solved the
+sub-problem of reversing a number in the previous problem! So we
+can write the palindrome check as a tiny, one-line composition on
+top of the reversal routine.
+
+This is one of the smallest but most important moves in algorithm
+design: **reuse what you already built**. Whenever you face a new
+problem, ask if part of it is something you have already solved.
+Often you can write the new function as one line of glue on top
+of the old one.
 ''',
         "brute_force": {
             "explanation": r'''
@@ -666,6 +924,148 @@ check. And to linked lists, where palindrome detection becomes
 problem changes shape; the strategy ("compare the original to a
 reversed copy") stays the same.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why do we stash `original = n` before the loop?",
+                "answer": r'''
+Because the loop **destroys `n`**. Each iteration does
+`n = n // 10`, which makes `n` smaller and smaller until it
+reaches zero. By the time the loop finishes, `n` is `0` and the
+original value is gone.
+
+But the whole point of the algorithm is to compare the reversed
+value with the *original* number. If we forget to save the
+original first, we end up comparing the reversed value to `0`,
+which gives the wrong answer for almost every input.
+
+So we plant `original = n` at the top:
+
+```python
+original = n
+reversed_value = 0
+while n > 0:
+    reversed_value = reversed_value * 10 + n % 10
+    n = n // 10
+return reversed_value == original
+```
+
+Now `original` is frozen — Python integers are immutable, so once
+we assign `original = n`, the variable `original` will never
+change just because we reassign `n` later. We can do whatever we
+want to `n` inside the loop, and `original` stays put.
+
+This is a very common pattern: **two variables for two roles**.
+One is the *constant* (`original`, never mutated), the other is
+the *scratchpad* (`n`, shrinks each iteration). Whenever you
+catch yourself wanting to compare the final state against the
+initial state, plant a copy of the initial state at the top.
+''',
+            },
+            {
+                "question": "Why are negative numbers automatically not palindromes?",
+                "answer": r'''
+By convention. The standard LeetCode rule is that any negative
+number — like `-121` — returns `False`. The reasoning is intuitive
+if a little arbitrary: a palindrome should read the same forward
+and backward, and the minus sign appears only at the front, never
+at the back. `-121` reads as `-, 1, 2, 1` forward and `1, 2, 1, -`
+backward. The minus would have to teleport to the right side for
+the reading to match, which feels wrong.
+
+You could imagine a different convention where you simply ignore
+the sign and check `abs(n)`. Then `-121` would be a palindrome
+because `121` is. But that is not the standard rule, and most
+interviewers expect you to return `False` for negatives.
+
+Our code handles this with one line at the top:
+
+```python
+if n < 0:
+    return False
+```
+
+Beginners sometimes forget this guard and the loop still
+"works" — but the answer is incorrect for negatives because the
+arithmetic gets weird (Python's `%` on negative numbers can
+produce unexpected positive results, as discussed in the
+*Reverse a Number* confusion notes).
+
+The general lesson: read the problem statement for sign
+conventions before you start coding. A two-line guard can save
+you a wrong-answer submission.
+''',
+            },
+            {
+                "question": "Why not just do `str(n) == str(n)[::-1]`?",
+                "answer": r'''
+You absolutely can! It is correct, fast, and one of the most
+Pythonic one-liners possible:
+
+```python
+def is_palindrome(n: int) -> bool:
+    if n < 0:
+        return False
+    s = str(n)
+    return s == s[::-1]
+```
+
+The arithmetic version exists because, in interview settings, the
+question is often phrased as *"check if a number is a palindrome
+**without converting it to a string**"*. The restriction is
+artificial, but it forces you to demonstrate that you understand
+digit manipulation with `% 10` and `// 10`. If you reach for
+`str(n)` you skip the lesson the problem is trying to teach.
+
+There is also a tiny memory argument: converting to a string
+allocates a new string object of length `log₁₀(n)`. The
+arithmetic version uses only a couple of integer variables.
+*O(1)* extra memory versus *O(d)*. For most inputs the
+difference is negligible, but in tightly constrained contexts
+(embedded systems, very large numbers) it can matter.
+
+In day-to-day code, prefer the string version for readability.
+In interview practice, write the arithmetic version to prove you
+understand the math.
+''',
+            },
+            {
+                "question": "Is there a way to check without reversing the *whole* number?",
+                "answer": r'''
+Yes — there is a beautiful "half-reverse" trick. The idea: build
+up the reversed value only until it equals or exceeds the
+remaining unreversed part. Then compare the two halves.
+
+```python
+def is_palindrome_half(n: int) -> bool:
+    if n < 0 or (n != 0 and n % 10 == 0):
+        return False
+    reversed_half = 0
+    while n > reversed_half:
+        reversed_half = reversed_half * 10 + n % 10
+        n = n // 10
+    # For odd-length numbers, the middle digit lands in
+    # reversed_half; drop it with another // 10.
+    return n == reversed_half or n == reversed_half // 10
+```
+
+For `n = 12321`, the loop reverses the right half `321` while the
+remaining `n` becomes `12`. The middle digit `3` ends up in
+`reversed_half`. We then compare `n == reversed_half // 10` to
+strip it.
+
+Why bother? In languages with 32-bit integers, the full reversal
+of `n` could overflow even though `n` itself fits. The
+half-reverse avoids that risk because `reversed_half` never
+exceeds the input size. In Python, where integers do not
+overflow, this is mostly an academic curiosity.
+
+Interview tip: the full reversal is what most candidates write
+and is perfectly acceptable. The half-reversal is what
+interviewers love to see *after* you have first explained the
+full version. Build up to it.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: reverse and compare.
 
@@ -685,6 +1085,30 @@ the reversed version, and can I afford it?"*.
         "lecture_id": 4,
         "difficulty": "easy",
         "tags": ["math", "gcd", "euclidean"],
+        "what_this_teaches": (
+            "The Euclidean trick — keep replacing a problem with a "
+            "strictly smaller version of itself while preserving the "
+            "answer. This single pattern collapses an *O(min(a,b))* "
+            "brute force into *O(log(min(a,b)))*."
+        ),
+        "pattern": "Euclidean reduction: gcd(a, b) = gcd(b, a % b).",
+        "prerequisite_lessons": [],
+        "prerequisite_problems": ["count-digits"],
+        "next_problems": [
+            "gcd-euclidean",
+            "prime-factors",
+            "sieve-of-eratosthenes",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Maths)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Python docs — math.gcd / math.lcm",
+                "url": "https://docs.python.org/3/library/math.html#math.gcd",
+            },
+        ],
         "understanding": r'''
 The **greatest common divisor (GCD)** of two positive integers `a`
 and `b` is the largest integer that divides both of them without a
@@ -814,6 +1238,134 @@ g = math.gcd(48, 36)            # 12
 l = math.lcm(4, 6, 10)          # 60 (lcm accepts many arguments)
 ```
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does the algorithm terminate? It looks like it could loop forever.",
+                "answer": r'''
+Look at the loop carefully:
+
+```python
+while b != 0:
+    a, b = b, a % b
+```
+
+Each iteration, `b` is replaced by `a % b`. The remainder
+`a % b` is *strictly less than `b`*, always. (That is the
+definition of remainder: it is the part left over after dividing,
+so it must be smaller than the divisor.) Since `b` is a
+non-negative integer and shrinks every step, it eventually
+reaches `0` and the loop exits.
+
+This is exactly the kind of **decreasing variant** we talked
+about in `count-digits`: a quantity that strictly shrinks each
+iteration and is bounded below by zero. Whenever you have one,
+you have a proof that the loop terminates.
+
+Actually, the convergence is much faster than it looks. There is
+a classical theorem (Lamé's theorem) that the number of
+Euclidean steps for inputs of size `n` is at most about
+`5 * log₁₀(n)`. So even for `n` in the trillions, you finish in
+about 60 steps. That is the *O(log n)* time complexity in
+action.
+''',
+            },
+            {
+                "question": "Why does `gcd(a, b) = gcd(b, a % b)` actually preserve the GCD?",
+                "answer": r'''
+This is the heart of the algorithm, and it deserves a careful
+walk-through.
+
+Suppose `d` divides both `a` and `b`. We want to show that `d`
+also divides `a % b`, and vice versa.
+
+By the division algorithm, `a = q * b + r`, where `q` is the
+quotient and `r` is the remainder (which is exactly `a % b`).
+Rearranging: `r = a - q * b`.
+
+Now, if `d` divides both `a` and `b`, then `d` divides `a` and
+`d` divides `q * b` (since `q * b` is just `b` multiplied by an
+integer). The difference of two multiples of `d` is also a
+multiple of `d`. So `d` divides `a - q * b = r`. Therefore `d`
+divides both `b` and `r`.
+
+The reverse direction: if `d` divides both `b` and `r`, then `d`
+divides `q * b + r = a`. So `d` divides `a` and `b`.
+
+Conclusion: the set of common divisors of `(a, b)` is exactly
+the set of common divisors of `(b, a % b)`. Since both sets are
+the same, their largest element (the GCD) is the same. The
+replacement preserves the answer.
+
+This is a small but glorious example of the **invariant
+argument** in mathematics: every transformation preserves the
+quantity you care about, and the transformations also drive the
+problem toward something trivial (here, `gcd(x, 0) = x`). The
+algorithm is correct because of the invariant; it is fast
+because of the shrinking.
+''',
+            },
+            {
+                "question": "Why divide before multiplying in the LCM formula?",
+                "answer": r'''
+The mathematical identity is `lcm(a, b) = (a * b) / gcd(a, b)`.
+In Python you can write this either as
+
+```python
+return (a * b) // gcd(a, b)
+```
+
+or as
+
+```python
+return a // gcd(a, b) * b
+```
+
+Both are mathematically equivalent, but the second one avoids
+computing the (potentially huge) product `a * b`. In Python it
+does not matter because integers are arbitrary precision. But in
+C++/Java/Go with fixed-width integers, `a * b` can overflow even
+if the final `lcm` fits comfortably.
+
+The habit `a // gcd(a, b) * b` says: first divide `a` by the GCD
+(which definitely fits, since it is at most `a` itself), then
+multiply by `b`. This keeps the intermediate value small.
+
+It is a small habit but a worthwhile one. If you ever port your
+Python solution to a typed language, this rewrite is the
+difference between "works on the test cases" and "overflows on
+edge cases."
+''',
+            },
+            {
+                "question": "What is `gcd(0, 0)`? And `gcd(0, n)`?",
+                "answer": r'''
+By convention:
+
+- `gcd(0, n) = n` for any positive `n`. Because every positive
+  integer divides `0` (`0 = 0 * n` for any `n`), so the set of
+  common divisors of `0` and `n` is just the divisors of `n`,
+  and the largest is `n` itself.
+- `gcd(0, 0) = 0`. There is no greatest common divisor here in
+  a strict sense — every integer divides zero — but `0` is the
+  standard convention because it makes the algebra work out.
+
+Our loop handles both correctly. If you call `gcd(0, 5)`:
+
+- Iteration: `a, b = 5, 0 % 5 = 0`. Loop exits because `b == 0`.
+- Return `a = 5`. Correct.
+
+If you call `gcd(0, 0)`:
+
+- Loop condition `b != 0` is false immediately.
+- Return `a = 0`. Correct.
+
+For LCM, the convention is `lcm(0, n) = 0` (because zero is a
+multiple of everything). Our code returns `0` explicitly when
+either argument is zero, dodging the divide-by-zero that
+`lcm = (a*b) // gcd(a, b)` would produce when `gcd` is zero.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: replace `(a, b)` with `(b, a % b)` until `b == 0`.
 
@@ -832,6 +1384,31 @@ trick is usually inside.
         "lecture_id": 4,
         "difficulty": "easy",
         "tags": ["math", "primes"],
+        "what_this_teaches": (
+            "The divisor-pairing fact — divisors come in pairs that "
+            "multiply to `n`, mirrored around `sqrt(n)` — which lets us "
+            "test primality in `O(sqrt(n))` instead of `O(n)`. This is "
+            "the seed for every divisor-enumeration optimization."
+        ),
+        "pattern": "Trial division up to `sqrt(n)`, using the pair `(i, n // i)`.",
+        "prerequisite_lessons": [],
+        "prerequisite_problems": ["count-digits"],
+        "next_problems": [
+            "print-all-divisors",
+            "prime-factors",
+            "sieve-of-eratosthenes",
+            "segmented-sieve",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Maths)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "GeeksforGeeks — Primality Test (Basic and School Methods)",
+                "url": "https://www.geeksforgeeks.org/primality-test-set-1-introduction-and-school-method/",
+            },
+        ],
         "understanding": r'''
 A **prime number** is a positive integer greater than 1 with exactly
 two divisors: 1 and itself. So 2, 3, 5, 7, 11, 13 are prime. 4 is
@@ -929,6 +1506,123 @@ There are also probabilistic primality tests (Miller-Rabin) for
 truly enormous numbers. For interview purposes, `O(sqrt(n))` is the
 gold standard and the one to know cold.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why is it enough to check divisors up to `sqrt(n)`? Don't we miss the big ones?",
+                "answer": r'''
+We do not miss them, because **divisors come in pairs**. Every
+divisor `d` of `n` has a partner `n // d`, and their product is
+exactly `n`.
+
+Picture the divisors of 36: they are 1, 2, 3, 4, 6, 9, 12, 18,
+36. Look at the pairs that multiply to 36:
+
+```
+1 × 36 = 36
+2 × 18 = 36
+3 × 12 = 36
+4 ×  9 = 36
+6 ×  6 = 36
+```
+
+Every pair has one member at or below `sqrt(36) = 6` and one
+member at or above `sqrt(36) = 6`. They are mirror images of
+each other around the square root.
+
+So if we scan divisors `i` from 1 up to `sqrt(n)`, and we find
+even one divisor in that range (other than 1), we have implicitly
+also found its partner `n // i` on the other side. We do not
+need to scan past `sqrt(n)` because anything we would find there
+is the partner of something we already found.
+
+For prime checking: if no divisor exists in `[2, sqrt(n)]`, then
+no divisor exists in `(sqrt(n), n)` either, because any such
+divisor would have its partner in `[2, sqrt(n)]` — which we just
+checked. So `n` is prime.
+
+The fence-post version: divisors of `n` are *symmetric around
+`sqrt(n)`*. You only need to look on one side.
+''',
+            },
+            {
+                "question": "Why `i * i <= n` instead of `i <= math.sqrt(n)`?",
+                "answer": r'''
+Two reasons. One is correctness, one is style.
+
+**Correctness**: `math.sqrt(n)` returns a floating-point number,
+and floats are not exact. For huge `n` near a perfect square,
+`math.sqrt(n)` can return a value that is just slightly off,
+causing the loop to stop one iteration too soon (and miss a
+divisor) or one too late. `i * i <= n` is pure integer
+arithmetic, exact every time.
+
+**Style / speed**: `i * i` avoids a call to `math.sqrt`. Function
+calls in Python are slow compared to integer multiplication. For
+a tight inner loop, this matters.
+
+The two forms are mathematically equivalent (`i <= sqrt(n)`
+exactly when `i * i <= n` for non-negative `i`), but the
+integer-only version is universally preferred in DSA code. Burn
+it into your fingers — it shows up in many problems.
+''',
+            },
+            {
+                "question": "Why do we handle 2 separately and then only test odd numbers?",
+                "answer": r'''
+Because once you have ruled out 2 as a factor, **no even number
+can ever be a factor** of `n` either. Every even number is
+divisible by 2; if 2 does not divide `n`, then 4, 6, 8, ...
+cannot divide `n` either.
+
+So testing every even number above 2 is wasted work. We test 2
+explicitly, eliminate it (or accept it), then jump to 3 and
+increment by 2 from there.
+
+This roughly halves the number of trial divisions. The
+asymptotic complexity stays *O(sqrt(n))*, but the **constant
+factor** improves by 2×. Worth it for one extra line of code.
+
+You can take this even further with a "wheel" — eliminate
+multiples of 2, 3, 5, etc. — but each step has diminishing
+returns. The 2-only optimization is the sweet spot for hand-written
+primality tests.
+''',
+            },
+            {
+                "question": "What about 0, 1, and negatives? Are they prime?",
+                "answer": r'''
+**Negative numbers**: not prime, by definition. Primes are
+positive integers.
+
+**Zero**: not prime. Zero is divisible by every nonzero integer,
+so it has infinitely many divisors — far more than the two that
+primes are allowed.
+
+**One**: not prime, despite many beginners thinking it is. The
+definition of prime requires *exactly two* distinct positive
+divisors: 1 and itself. The number 1 has only one positive
+divisor — itself, which equals 1. So 1 fails the "exactly two"
+clause.
+
+The exclusion of 1 is not arbitrary mathematical pedantry. If
+you allowed 1 to be prime, every integer would have infinitely
+many "prime factorizations" (`12 = 2 × 2 × 3 = 1 × 2 × 2 × 3 = 1
+× 1 × 2 × 2 × 3 = ...`), and the **fundamental theorem of
+arithmetic** would lose its uniqueness statement. So we exclude
+1 from primes to keep factorizations unique.
+
+Our code handles all three cases with the same guard:
+
+```python
+if n < 2:
+    return False
+```
+
+`n < 2` catches `n = 0`, `n = 1`, and every negative integer.
+One line, all three edge cases. Clean.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: trial division up to `sqrt(n)`.
 
@@ -947,6 +1641,27 @@ friend.
         "lecture_id": 5,
         "difficulty": "easy",
         "tags": ["recursion", "fundamentals"],
+        "what_this_teaches": (
+            "The two flavours of basic recursion — *delegate then act* "
+            "versus *act then delegate* — and how the relative order "
+            "of the recursive call and the work decides whether the "
+            "output comes out forward or backward."
+        ),
+        "pattern": "Recursive delegation: trust the smaller call, add one action around it.",
+        "prerequisite_lessons": ["recursion"],
+        "prerequisite_problems": [],
+        "next_problems": [
+            "print-n-to-1",
+            "sum-first-n",
+            "factorial-of-n",
+            "fibonacci-number",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Recursion)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+        ],
         "understanding": r'''
 Print the numbers 1, 2, 3, ..., N — but without using a loop. We
 have to use recursion. This is one of those problems where the
@@ -1036,6 +1751,155 @@ tree. It controls "build forward" vs "build backward" in DP. It is
 the *same* idea wearing different costumes. Internalize the swap and
 you have a tool that re-appears everywhere.
 ''',
+        "confusion_notes": [
+            {
+                "question": "How can the recursive call print 1, 2, 3, ..., N-1 *before* I have written the code to do that?",
+                "answer": r'''
+This is the single biggest mental hurdle in recursion, and the
+answer is what experienced programmers call the **leap of
+faith**.
+
+Here is the trick: when you are writing a recursive function,
+**you are allowed to assume that the function works correctly
+for any smaller input, even before you finish writing it.** This
+sounds like cheating. It is not. It is the deal that recursion
+asks you to make.
+
+Concretely: when you write `print_1_to_n(n - 1)` inside the body
+of `print_1_to_n`, you are saying: *"I trust that, by the time
+this call returns, it will have printed 1, 2, 3, ..., n - 1
+correctly."* You do not look inside the call. You do not trace
+through it. You just trust it.
+
+The reason this trust is justified is **induction**. We prove
+correctness for the smallest case (the base case) by hand. We
+then assume correctness for `n - 1` and show that the body
+correctly extends it to `n`. By the principle of mathematical
+induction, the function is correct for all `n`.
+
+In day-to-day coding, you do not write proofs. You just take the
+leap. The mental motion is: *"Imagine someone hands me the
+answer for `n - 1`. What do I do with it to get the answer for
+`n`?"* That one extra step is what you write.
+
+If this feels strange, that is normal. It feels strange to
+everyone the first ten times. After the eleventh, it stops
+feeling strange and starts feeling like the most natural way to
+think about certain problems.
+''',
+            },
+            {
+                "question": "Why does the base case `if n <= 0: return` not break everything?",
+                "answer": r'''
+The base case is the floor. Without it, the recursion would
+never stop — we would call `print_1_to_n(0)`, then
+`print_1_to_n(-1)`, then `print_1_to_n(-2)`, forever. Python
+would eventually crash with `RecursionError: maximum recursion
+depth exceeded`.
+
+The base case says: *"For inputs at or below this threshold,
+the answer is trivial — just return without doing anything."*
+For `n = 0`, the request "print numbers 1 to 0" is asking us to
+print an empty sequence, which means do nothing. So returning
+immediately is correct.
+
+Notice that the base case is **not** about correctness of the
+algorithm; it is about **termination**. The algorithm itself
+would be correct in spirit even without a base case, but it
+would loop forever. Every recursion needs a base case for the
+same reason every loop needs a stopping condition.
+
+A subtle issue: the base case must be reached *eventually*. The
+recursive call `print_1_to_n(n - 1)` makes `n` strictly smaller
+each step, and the base case fires when `n` drops to 0 or below.
+So termination is guaranteed for any starting `n`. If you ever
+write recursion where the argument might not shrink, or might
+shrink in the wrong direction, you have a bug.
+''',
+            },
+            {
+                "question": "Why is the call stack `O(N)`? Doesn't recursion use no memory?",
+                "answer": r'''
+Each recursive call creates a new **stack frame** — a small
+chunk of memory that holds the local variables of that call,
+plus a return address pointing to where execution should resume
+when the call finishes.
+
+For `print_1_to_n(5)`, Python pushes a stack frame for `n = 5`.
+That frame then calls `print_1_to_n(4)`, which pushes another
+frame. And so on, until `print_1_to_n(0)` returns. At the moment
+the base case fires, there are five frames stacked up. Only
+then do they start unwinding, one by one.
+
+So even though the algorithm "feels" linear and we are not
+explicitly allocating any data structure, there is still *O(n)*
+hidden memory cost in the call stack.
+
+This matters for two practical reasons. First, Python has a
+default recursion limit of around 1000. If `n` is 10,000, your
+recursive function crashes with `RecursionError` before it gets
+near the base case. Second, on memory-constrained devices, deep
+recursion eats stack memory and can cause a stack overflow
+crash.
+
+Most curriculum problems use small `n` so this is fine. But
+remember: recursion is not magically free. It pays in stack
+depth what an iterative solution would have paid in extra
+variables.
+''',
+            },
+            {
+                "question": "Why do `recurse-then-print` and `print-then-recurse` give different orders?",
+                "answer": r'''
+This is the most beautiful subtlety in basic recursion, and it
+unlocks understanding of preorder vs postorder traversals later.
+
+Look at `recurse-then-print` for `n = 3`:
+
+```
+print_1_to_n(3):
+  print_1_to_n(2):
+    print_1_to_n(1):
+      print_1_to_n(0):    # base case, does nothing
+      print(1)
+    print(2)
+  print(3)
+```
+
+The print statements happen as the recursion **unwinds** — that
+is, as the calls return from deepest to shallowest. The deepest
+call (`n = 1`) prints first because it returns first. Output:
+`1, 2, 3`.
+
+Now flip the order to `print-then-recurse`:
+
+```
+print_n_to_1(3):
+  print(3)
+  print_n_to_1(2):
+    print(2)
+    print_n_to_1(1):
+      print(1)
+      print_n_to_1(0):    # base case, does nothing
+```
+
+The prints happen as the recursion **dives down**, before the
+recursive call. The shallowest call (`n = 3`) prints first.
+Output: `3, 2, 1`.
+
+The deep pattern hiding here: a recursive function has two
+*moments* — the moment before the recursive call (the "way down")
+and the moment after (the "way up"). Anything you put before the
+call happens top-down; anything you put after happens bottom-up.
+
+Trees have the same dichotomy under different names:
+**preorder** is "do the work before recursing"; **postorder** is
+"do the work after recursing." Same idea, same recursion
+mechanism, different name. Once you see it here, you see it
+everywhere.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: recursion as "delegate to a smaller version, then
 combine".
@@ -1054,6 +1918,30 @@ base case" problem. The recursion shape is identical to this one.
         "lecture_id": 5,
         "difficulty": "easy",
         "tags": ["recursion", "math"],
+        "what_this_teaches": (
+            "How a recursive *mathematical definition* translates one "
+            "line at a time into a recursive function. Factorial is "
+            "the prototype: the math says `n! = n * (n-1)!`, and the "
+            "code says `return n * factorial(n - 1)`."
+        ),
+        "pattern": "Translate a self-referential math definition into a recursive call.",
+        "prerequisite_lessons": ["recursion"],
+        "prerequisite_problems": ["print-1-to-n"],
+        "next_problems": [
+            "fibonacci-number",
+            "pow-x-n",
+            "count-good-numbers",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Recursion)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Python docs — sys.setrecursionlimit",
+                "url": "https://docs.python.org/3/library/sys.html#sys.setrecursionlimit",
+            },
+        ],
         "understanding": r'''
 The factorial of N, written `N!`, is defined as
 
@@ -1123,6 +2011,142 @@ and, more importantly, to understand why deep recursion in Python is
 not free. Trees, graphs, and DP problems with linear depth all share
 this gotcha.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why is `0! = 1`? Shouldn't it be 0 or undefined?",
+                "answer": r'''
+By convention, `0!` is defined to be `1`. The convention exists
+because it makes a huge number of formulas work out cleanly. The
+two best ways to understand it are:
+
+**Combinatorial reason**: `n!` counts the number of ways to
+arrange `n` distinct items in a row. How many ways are there to
+arrange zero items? Exactly one — the empty arrangement. There
+is one (and only one) way to "do nothing." So `0! = 1`.
+
+**Recursive reason**: the recurrence `n! = n * (n - 1)!` works
+for `n = 1` only if `0! = 1`, because `1! = 1 * 0! = 1 * 1 = 1`,
+which matches the expected `1! = 1`. If we tried `0! = 0`, we
+would get `1! = 0`, which contradicts the standard definition.
+So `0! = 1` is what makes the recurrence consistent.
+
+The same convention extends to combinatorics: `C(n, 0) = n! /
+(0! * n!) = 1`, which says "there is exactly one way to choose
+zero items," again matching intuition.
+
+In code we usually combine the bases:
+
+```python
+if n <= 1:
+    return 1
+```
+
+This handles both `0! = 1` and `1! = 1` in one line.
+''',
+            },
+            {
+                "question": "Why does Python crash on `factorial(2000)` even though the math is straightforward?",
+                "answer": r'''
+Because Python imposes a **recursion depth limit** to protect
+itself from runaway recursion.
+
+Every recursive call consumes one slot in Python's call stack.
+By default, the stack can hold about 1000 frames. When
+`factorial(2000)` makes the 1001st call, Python aborts with
+`RecursionError: maximum recursion depth exceeded`.
+
+This is a Python design choice, not a mathematical limitation.
+The math for `factorial(2000)` works perfectly — it produces a
+gigantic integer with thousands of digits. The problem is
+mechanical: too many nested function calls.
+
+Three ways to fix it:
+
+1. **Raise the limit** with `sys.setrecursionlimit(10000)`. Works
+   but risky — if you set it too high, you can crash the entire
+   Python interpreter with a real stack overflow at the OS level.
+2. **Switch to iteration**:
+   ```python
+   result = 1
+   for k in range(2, n + 1):
+       result *= k
+   ```
+   No call stack, no limit. This is what production code does.
+3. **Convert recursion to a loop with an explicit stack**. Useful
+   for tree / graph problems where the recursion structure is
+   complex.
+
+The general lesson: recursion is wonderful for *expressing*
+algorithms, but if the depth might be huge, prefer iteration.
+The same lesson applies to deep tree traversal, long linked
+lists, and DP problems with large state spaces.
+''',
+            },
+            {
+                "question": "Why does the base case use `n <= 1` instead of `n == 0`?",
+                "answer": r'''
+Both work, but `n <= 1` is the more careful choice for two
+reasons.
+
+First, it handles `0! = 1` and `1! = 1` together. Mathematically,
+`1! = 1 * 0! = 1 * 1 = 1`, so the recursion *would* terminate
+correctly at `n == 0` anyway. But explicitly returning at `n =
+1` saves one function call per invocation, which is a tiny
+optimization.
+
+Second and more importantly, it guards against accidentally
+passing a negative input. If you write `if n == 0: return 1` and
+someone calls `factorial(-3)`, the recursion will infinitely
+loop downward (`factorial(-3)` → `factorial(-4)` → ...) and
+crash with `RecursionError`. The condition `n <= 1` catches all
+negatives too, returning `1` immediately. Whether `1` is the
+"right" answer for negative input is debatable (it really should
+raise an error), but at least the function does not crash.
+
+If you want to be strict about input validation, add an explicit
+guard:
+
+```python
+if n < 0:
+    raise ValueError("factorial undefined for negative input")
+if n <= 1:
+    return 1
+return n * factorial(n - 1)
+```
+
+For curriculum problems, the simpler `n <= 1` is usually
+sufficient.
+''',
+            },
+            {
+                "question": "Could `n!` actually overflow in Python like in C++?",
+                "answer": r'''
+No — Python integers are **arbitrary precision**, so they can
+grow to any size that fits in available memory. `factorial(100)`
+in Python returns the exact 158-digit number with no problem.
+
+In C++ or Java, factorial overflows quickly. A 32-bit signed
+integer can hold values up to about `2.1 * 10^9`. `12!` is
+about `4.8 * 10^8` (fits), `13!` is about `6.2 * 10^9` (does
+not fit, overflows silently). So C++ programmers learn to be
+paranoid about factorials early.
+
+In Python you can compute `factorial(1000)` and get an exact
+answer. The math just works. But beware: those huge numbers
+consume real memory, and arithmetic on them is slower than on
+machine-word integers. For numerical algorithms involving
+factorials of large `n`, you often want to work in modular
+arithmetic (`n! mod p`), use Stirling's approximation, or use
+the `math.lgamma` log-gamma function — none of which suffer the
+size explosion.
+
+For interview problems, Python's arbitrary precision is a real
+luxury. Use it without worry, but know that the C++/Java answer
+to "compute factorial mod p" requires an explicit `% p` after
+every multiplication.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: a recursive math definition translates directly into
 code.
@@ -1701,6 +2725,30 @@ identical to what you just learned here.
         "lecture_id": 6,
         "difficulty": "easy",
         "tags": ["hashing", "dict", "counter"],
+        "what_this_teaches": (
+            "The one-pass frequency-map idiom. Once you reach for "
+            "`Counter` instead of nested loops, an enormous family of "
+            "problems collapses from *O(n²)* to *O(n)*."
+        ),
+        "pattern": "Walk once + dictionary = frequency map.",
+        "prerequisite_lessons": ["arrays", "hashing"],
+        "prerequisite_problems": [],
+        "next_problems": [
+            "highest-lowest-frequency",
+            "two-sum",
+            "majority-element",
+            "top-k-frequent",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 1 (Basic Hashing)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Python docs — collections.Counter",
+                "url": "https://docs.python.org/3/library/collections.html#collections.Counter",
+            },
+        ],
         "understanding": r'''
 Given an array of numbers (or any hashable values), we want to know
 how many times each distinct value appears. For
@@ -1830,6 +2878,177 @@ small integers (say 0 ≤ value < 26 for lowercase letters, or
 value. List lookups are slightly faster than dict lookups and use
 less memory. Anagram-style problems use exactly this trick.
 ''',
+        "confusion_notes": [
+            {
+                "question": "What is `counts.get(x, 0) + 1` actually doing?",
+                "answer": r'''
+It is the single most useful idiom in beginner Python dict work,
+and worth dissecting carefully.
+
+`counts.get(x, 0)` says: *"give me `counts[x]` if `x` is in the
+dict; otherwise give me `0`."* Notice that, unlike `counts[x]`,
+this does **not** raise an error when `x` is missing. It returns
+the default value (here, `0`) instead.
+
+So `counts.get(x, 0) + 1` reads in English as: *"the previous
+count for `x`, treating absent as zero, plus one."*
+
+When we then assign `counts[x] = counts.get(x, 0) + 1`, we are
+saying: *"set `counts[x]` to its previous value plus one, with
+the convention that absent counts as zero."*
+
+This idiom is what lets us write the frequency loop without a
+manual "if `x` in counts" guard:
+
+```python
+counts = {}
+for x in arr:
+    counts[x] = counts.get(x, 0) + 1
+```
+
+Without `.get`, you would need an awkward conditional:
+
+```python
+counts = {}
+for x in arr:
+    if x in counts:
+        counts[x] += 1
+    else:
+        counts[x] = 1
+```
+
+Both are correct, but the `.get` version is shorter and more
+idiomatic. Internalize it; you will write this pattern hundreds
+of times.
+
+An even cleaner alternative is `collections.defaultdict(int)`,
+which gives you a dict where every missing key defaults to `0`
+automatically. Or just use `Counter`, which is purpose-built for
+counting and does the whole loop in one line.
+''',
+            },
+            {
+                "question": "Why is `Counter` better than writing the loop by hand?",
+                "answer": r'''
+Three reasons. First, it is **shorter** — one line instead of
+three. Second, it is **faster** — `Counter` is implemented in
+optimized C inside the standard library, so the underlying loop
+runs faster than a hand-written Python loop. Third, it carries
+**extra useful methods** that the dict version does not.
+
+The headline extras:
+
+- `most_common(k)` — returns the top `k` most frequent items as
+  a list of `(value, count)` pairs, sorted descending. This
+  solves "top K frequent" in one method call.
+- Arithmetic: `Counter(a) - Counter(b)` gives a Counter with the
+  difference in counts. Useful for "are these two arrays
+  anagrams?" or "what is the difference between two multisets?".
+- `Counter.update(...)` adds counts from another iterable
+  without losing existing counts.
+- `Counter(...)` accepts any iterable, including generators,
+  strings, and other Counters.
+
+A concrete comparison. Frequency of characters in a string:
+
+```python
+# Hand-rolled.
+counts = {}
+for ch in s:
+    counts[ch] = counts.get(ch, 0) + 1
+
+# With Counter.
+from collections import Counter
+counts = Counter(s)
+```
+
+Both produce the same result. The Counter version reads like
+prose.
+
+When to NOT use Counter: when you need to support a custom
+counting rule that is not just "add one per occurrence." For
+example, if each element contributes a *weight* rather than 1,
+you want the hand-rolled loop. But for plain frequency, always
+reach for Counter.
+''',
+            },
+            {
+                "question": "What is the difference between a set and a Counter?",
+                "answer": r'''
+A **set** stores distinct values but discards counts. A
+**Counter** stores distinct values *and* how many times each one
+appeared. They answer different questions.
+
+- Set: "did this value appear at all?" — yes / no.
+- Counter: "how many times did this value appear?" — a number.
+
+Concretely:
+
+```python
+arr = [1, 1, 2, 2, 2, 3]
+
+s = set(arr)             # {1, 2, 3}
+c = Counter(arr)         # Counter({2: 3, 1: 2, 3: 1})
+
+print(2 in s)            # True
+print(c[2])              # 3
+print(c[99])             # 0  (Counter returns 0 for missing keys, unlike dict)
+```
+
+Use a **set** when the question is binary — "is this value
+present?", "are these two collections equal as sets?", "remove
+duplicates from this list." Use a **Counter** (or a `dict`)
+when the question involves the *number* of occurrences.
+
+For example, "do these two strings have the same letters,
+ignoring order?" is asking whether the **multisets** match, which
+means comparing **counts**. So `Counter(s1) == Counter(s2)`. A
+set comparison would incorrectly say "aabb" and "abbb" are equal
+(both have characters `{a, b}`), but their counters differ —
+`Counter("aabb") = {a:2, b:2}` vs `Counter("abbb") = {a:1, b:3}`.
+
+The general rule: pick the data structure whose question matches
+yours. Sets for presence, Counters for frequency.
+''',
+            },
+            {
+                "question": "When should I use a list-indexed-by-value instead of a Counter?",
+                "answer": r'''
+When the values are bounded small integers, a list (or fixed-size
+array) is faster and uses less memory than a dict.
+
+The canonical case: counting lowercase English letters. The
+values `'a'`–`'z'` map to indices 0–25 via `ord(ch) - ord('a')`.
+A length-26 list of integers is a perfectly tight counting
+structure:
+
+```python
+counts = [0] * 26
+for ch in s:
+    counts[ord(ch) - ord('a')] += 1
+```
+
+This is faster than a `Counter` for two reasons. First, list
+indexing is a single pointer-arithmetic step, while dict access
+requires hashing the key and probing the table. Second, the list
+has no hash overhead and no dynamic resizing.
+
+When does this matter? Mostly for **anagram problems** with
+millions of comparisons, or for tight inner loops in
+performance-sensitive code. For ordinary problems, the speedup
+is negligible and the Counter version is clearer.
+
+When values are NOT bounded small integers — arbitrary strings,
+floats, large random integers — a list is impractical. A dict
+or Counter is the right answer.
+
+The general principle: if you know the value space is small and
+dense, you can use the value itself as an array index. This is
+the same trick that powers **counting sort**, **radix sort**,
+and the **bucket** data structures used in advanced algorithms.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: walk once + a dictionary = frequency map.
 

@@ -14,6 +14,31 @@ PROBLEMS: list[dict] = [
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["arrays", "linear-scan"],
+        "what_this_teaches": (
+            "The single most reused move in array DSA: walk once, "
+            "carry a 'best so far' scalar, return it. Master this and "
+            "you have ninety percent of easy array problems already "
+            "in your fingers."
+        ),
+        "pattern": "Single-pass linear scan with a running scalar.",
+        "prerequisite_lessons": ["arrays"],
+        "prerequisite_problems": [],
+        "next_problems": [
+            "second-largest-element",
+            "check-array-sorted",
+            "max-consecutive-ones",
+            "kadane-algorithm",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Easy Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "Python docs — built-in max()",
+                "url": "https://docs.python.org/3/library/functions.html#max",
+            },
+        ],
         "understanding": r'''
 We have an array of numbers like `[3, 8, 1, 9, 2, 4]`. We want to
 return the largest one — in this example, `9`. That is the entire
@@ -123,6 +148,119 @@ answer is obvious: the largest value seen. For Kadane, the answer
 takes some thought. For longest-consecutive-sequence, the answer
 involves a hash. But the shape is the same.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why initialize `best = arr[0]` instead of `0` or `float('-inf')`?",
+                "answer": r'''
+Because the array might contain only **negative** numbers, in
+which case starting at `0` would give the wrong answer.
+
+If `arr = [-3, -7, -2, -9]`, the true largest is `-2`. If we
+initialize `best = 0`, the comparison `arr[i] > best` is false
+for every element (since every element is less than 0), and we
+return `0` — a value that does not even appear in the array.
+Wrong.
+
+Initializing `best = arr[0]` sidesteps this entirely. By the
+**first** iteration, `best` is already a real element of the
+array, so we cannot return a phantom value. From there, every
+update only moves `best` toward a larger real element.
+
+The other safe initialization is `float('-inf')`, which is
+guaranteed to be smaller than any real number. Both styles work.
+The `arr[0]` style is preferred when you can assume the array
+has at least one element (which you can, in this problem). It
+also tells the reader of your code "I know the array is
+non-empty, and I am starting from a real element of it."
+
+Lesson: the initial value of a running scalar matters, especially
+when the input has signs you might not have considered. Always
+ask: *"could the input be all-negative, all-zero, or empty? Does
+my initialization handle those?"*
+''',
+            },
+            {
+                "question": "Could I just use Python's built-in `max(arr)`?",
+                "answer": r'''
+Yes, and in production code, that is the right answer. `max(arr)`
+is exactly equivalent to our single-pass loop, but implemented in
+optimized C, so it runs faster than the hand-written Python loop.
+
+The reason we write the explicit loop in DSA practice is to
+**make the algorithm visible**. The point of the exercise is to
+internalize the pattern "walk once, carry the best so far, update
+on improvement." Once that pattern is in your fingers, you can
+recognize it in much harder problems (Kadane, max consecutive
+ones, stock buy-sell), where there is no built-in shortcut.
+
+Treat `max(arr)` as the cheat code for this specific problem —
+fast, correct, idiomatic. Treat the loop version as the **tool**
+you carry to every harder problem in the lecture.
+
+In interviews, write the loop unless the interviewer explicitly
+allows the built-in. The point of the question is rarely "do you
+know about `max`" — it is "can you express this scan yourself?"
+''',
+            },
+            {
+                "question": "Why does the loop start at index 1?",
+                "answer": r'''
+Because we already used `arr[0]` to initialize `best`, so there
+is no need to compare it against itself. Starting the loop at
+index 1 saves one iteration and makes the intent clearer:
+*"`arr[0]` is the initial champion; compare it against every
+later element."*
+
+If we started at index 0, the very first iteration would compare
+`arr[0]` with `best` (which equals `arr[0]`). The condition
+`arr[0] > best` is false, so nothing happens. Correct but wasted
+work.
+
+`range(1, len(arr))` produces indices `1, 2, ..., len(arr) - 1`.
+The `1` is the inclusive start, the `len(arr)` is the exclusive
+stop. Together they cover every index that has not been
+"consumed" by the initialization.
+
+This pattern — "use index 0 as initialization, loop from index 1
+to the end" — is one of the standard idioms for running-scalar
+algorithms. You will write it many times in this lecture.
+''',
+            },
+            {
+                "question": "What if the array is empty?",
+                "answer": r'''
+Then this algorithm crashes, because `arr[0]` on an empty list
+raises `IndexError`. The function does not handle the empty case.
+
+Should it? That depends on the problem. Most curriculum versions
+of "largest element" promise that the array has at least one
+element, so a crash is acceptable. If you want to be defensive,
+add a guard:
+
+```python
+if not arr:
+    return None  # or raise ValueError, depending on convention
+```
+
+This is the same kind of edge-case discipline we discussed for
+`count-digits` (special-case `n == 0`). When you sit down to
+solve a new problem, pause and ask:
+- What if the array is empty?
+- What if it has one element?
+- What if all elements are equal?
+- What if the array is sorted? Reverse-sorted?
+
+For "largest," each of these is fine with the algorithm above
+*except* the empty case. Either guard against it or document the
+precondition.
+
+In interview practice, mention the empty case out loud. "I am
+assuming the array is non-empty; if it can be empty I would add
+a guard and return [None / raise / ...]." This shows that you
+think about edge cases, even when you do not handle them.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: linear scan with a running scalar.
 
@@ -141,6 +279,31 @@ running-scalar pattern first.
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["arrays", "linear-scan"],
+        "what_this_teaches": (
+            "The 'top K' pattern in miniature: maintain K best-so-far "
+            "scalars and update them carefully when a new champion "
+            "arrives. The careful update order — *demote the old "
+            "champion before crowning the new one* — is the part "
+            "beginners miss."
+        ),
+        "pattern": "Maintain the top two scalars; demote-then-crown on each new candidate.",
+        "prerequisite_lessons": ["arrays"],
+        "prerequisite_problems": ["largest-element"],
+        "next_problems": [
+            "check-array-sorted",
+            "kth-largest",
+            "top-k-frequent",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Easy Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "GeeksforGeeks — Second largest element in an array",
+                "url": "https://www.geeksforgeeks.org/find-second-largest-element-array/",
+            },
+        ],
         "understanding": r'''
 Find the second-largest distinct value in the array. For
 `[3, 8, 1, 9, 2, 4]` the answer is `8`. For `[5, 5, 5]` there is no
@@ -245,6 +408,149 @@ setting (data arrives one item at a time and you cannot rewind), a
 two-pass algorithm is impossible. The "carry top-K so far" pattern
 is the only viable approach.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why is the order of the two assignments inside the `>` branch so important?",
+                "answer": r'''
+Because if you swap their order, you lose the old champion
+before you save it.
+
+Look at the correct order:
+
+```python
+if x > largest:
+    second = largest    # save the old champion FIRST
+    largest = x         # then crown the new one
+```
+
+Now consider what would happen if we flipped them:
+
+```python
+if x > largest:
+    largest = x         # crown the new one
+    second = largest    # but now largest IS x, so second becomes x too!
+```
+
+The second version sets `second` equal to `x`, which is wrong —
+we wanted `second` to be the *previous* `largest`, not the new
+one. After a single iteration like this, both variables hold the
+same value, and the algorithm is broken forever.
+
+This is the same "save before you mutate" discipline as
+`current = arr[i]` in insertion sort and `original = n` in
+palindrome-number. Whenever an assignment will destroy
+information you still need, save the old value first.
+
+A defensive trick: write the swap as a tuple assignment, which
+evaluates the right side first:
+
+```python
+second, largest = largest, x
+```
+
+The right side computes `(largest, x)` using the old values,
+then assigns them to the left. Order-independent and impossible
+to get backward. Pythonic and bug-resistant.
+''',
+            },
+            {
+                "question": "Why use `x > largest` AND `x < largest` for the two branches?",
+                "answer": r'''
+Because we want to handle the **strict** inequality cases
+separately, and the case `x == largest` should be ignored
+entirely.
+
+If `x` is strictly greater than `largest`, it dethrones the
+current champion (and the old champion becomes the second). If
+`x` is strictly less than `largest` but greater than `second`,
+it dethrones only the second. If `x` equals `largest`, we do
+nothing — duplicates of the largest value should not bump
+`second` up to match.
+
+To see why the `x == largest` case must be excluded, consider
+`arr = [5, 5, 3]`. The largest is 5; the second-largest
+(distinct) is 3. If our code updated `second` on `x == largest`,
+the second 5 would push `second` up to 5, giving the wrong
+answer (5 instead of 3).
+
+The two strict inequalities (`x > largest` and `x < largest`)
+naturally skip the equality case. The `elif x < largest and x >
+second` branch fires only when `x` slots strictly between the
+two scalars.
+
+If the problem definition allowed "second largest" to mean "the
+second element in sorted order, possibly equal to the largest,"
+we would use `<=` and the algorithm would handle it. Read the
+problem statement carefully — "second largest" usually means
+strictly less than the largest.
+''',
+            },
+            {
+                "question": "What if the array has all equal elements?",
+                "answer": r'''
+Then there is no second-largest, and we should return a sentinel
+value (typically `-1` or `None`).
+
+For `arr = [5, 5, 5, 5]`, the largest is 5 and the second
+largest (distinct) does not exist. Our algorithm uses sentinels
+initialized to `float('-inf')`:
+
+```python
+largest = float('-inf')
+second = float('-inf')
+```
+
+If `second` is still `float('-inf')` at the end of the loop, no
+candidate ever satisfied `x < largest`, which means every
+element was equal to `largest`. We return `-1` to indicate "no
+second-largest exists."
+
+This idiom — "initialize a scalar to a sentinel value, check if
+it changed at the end" — is a common way to detect "did we ever
+find anything?" without an explicit boolean flag.
+
+Other common sentinels: `-1` for indices (since 0 is a valid
+index), `None` for objects, `float('inf')` and `float('-inf')`
+for numbers. Pick a sentinel that cannot collide with a real
+answer.
+''',
+            },
+            {
+                "question": "Why does this generalize to a heap for larger K?",
+                "answer": r'''
+For two scalars, two variables work fine. For three, four, or
+five, you could keep three, four, or five variables — but the
+code gets ugly fast. The branching for "where does this new
+element slot in?" becomes a tangle of nested `if`s.
+
+A **min-heap of size K** packages this logic neatly. The heap
+always holds the K largest elements seen so far. When a new
+element arrives, you check whether it beats the smallest one in
+the heap (which sits at `heap[0]`, by the min-heap property). If
+yes, replace; if no, ignore.
+
+```python
+import heapq
+heap = []
+for x in arr:
+    if len(heap) < k:
+        heapq.heappush(heap, x)
+    elif x > heap[0]:
+        heapq.heapreplace(heap, x)
+```
+
+After processing all elements, the heap contains the K largest
+values. The smallest of them (at `heap[0]`) is the K-th largest.
+
+This is *O(n log K)*, which is great when K is small.
+
+The takeaway: two-variable "second largest" is just the K = 2
+specialization of a general top-K pattern. As K grows, switch to
+a heap. The mental model — "maintain the best-K-so-far structure
+and update it on each new element" — is the same.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: maintain top-K best-so-far as you scan.
 
@@ -262,6 +568,31 @@ a stream — two variables for K = 2, a heap for general K.
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["arrays", "two-pointers", "in-place"],
+        "what_this_teaches": (
+            "The 'slow / fast' two-pointer pattern for in-place "
+            "compaction: one pointer **writes**, the other **reads**, "
+            "both move forward. The same skeleton handles 'remove "
+            "element', 'move zeros to end', and many other 'filter "
+            "in place' problems."
+        ),
+        "pattern": "Slow pointer writes uniques, fast pointer scans for new values.",
+        "prerequisite_lessons": ["arrays", "two-pointers"],
+        "prerequisite_problems": ["largest-element"],
+        "next_problems": [
+            "move-zeros-to-end",
+            "left-rotate-by-one",
+            "remove-outermost-parentheses",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Easy Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 26 — Remove Duplicates from Sorted Array",
+                "url": "https://leetcode.com/problems/remove-duplicates-from-sorted-array/",
+            },
+        ],
         "understanding": r'''
 We have a **sorted** array like `[1, 1, 2, 2, 3, 4, 4]` and we need
 to remove duplicates **in place**. The output array should contain
@@ -373,6 +704,122 @@ keep a count of how many times the current value has been kept, and
 allow up to two. The slow/fast structure is identical; only the
 "keep?" condition changes.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does this only work on a *sorted* array?",
+                "answer": r'''
+Because the algorithm detects a duplicate by comparing the
+current element with the **most recent unique element kept** —
+not with every earlier element. That shortcut only works when
+duplicates are guaranteed to be adjacent.
+
+On a sorted array, all copies of any value sit next to each other.
+So if `arr[fast] != arr[slow]`, we know `arr[fast]` is a brand
+new value that has not appeared before. One comparison is enough.
+
+On an *unsorted* array, the same comparison would let copies
+through. For `arr = [1, 3, 1, 3]`, the slow pointer might be at
+the second `1` while fast looks at the second `3`. They differ,
+so the algorithm "keeps" the `3` — even though `3` already
+appeared earlier. The result has duplicates.
+
+The fix for unsorted input is to either sort first (`O(n log n)`)
+or use a hash set to track all previously seen values (`O(n)`
+time, `O(n)` extra memory). Either approach works; the slow/fast
+trick is specifically the *O(n)* time / *O(1)* memory solution
+**that requires sortedness**.
+
+The general principle: the data structure's invariants (here,
+sortedness) determine which shortcuts are legal. Always state the
+invariant out loud before reaching for an algorithm.
+''',
+            },
+            {
+                "question": "Why does the function return `slow + 1`?",
+                "answer": r'''
+Because indices are zero-based, but counts are one-based.
+
+The slow pointer marks the **index** of the last unique element
+we kept. If slow ended at index 3, that means slots 0, 1, 2, and
+3 hold the four unique elements. The *count* is 4, which is
+`slow + 1`.
+
+This is the same fence-post counting we covered in the Arrays
+lesson. An array of length 4 has its last valid index at 3 — the
+length is always one more than the last index.
+
+The function returns the count (often called `k` in LeetCode
+problems) because the problem asks "how many unique elements?".
+The caller can then look at `arr[:k]` to read those unique
+elements, ignoring the garbage that may remain beyond index `k`.
+
+If the function instead returned `slow`, the caller would lose
+the last unique element. Always double-check the off-by-one when
+returning index-related counts.
+''',
+            },
+            {
+                "question": "Why advance `slow` *before* writing, not after?",
+                "answer": r'''
+Because `slow` already points to a finalized value (the last
+unique we kept). The next *empty* slot is `slow + 1`. We have to
+reserve that empty slot first, then write into it.
+
+Walk through:
+
+```python
+if arr[fast] != arr[slow]:
+    slow += 1                # reserve the next slot
+    arr[slow] = arr[fast]    # fill it
+```
+
+If we wrote first and incremented after:
+
+```python
+arr[slow] = arr[fast]        # OVERWRITES the most recent kept value!
+slow += 1
+```
+
+The second version overwrites `arr[slow]`, destroying the unique
+value we just kept. Wrong.
+
+The "advance first, then write" order is a small but crucial
+piece of the algorithm. Whenever a pointer points at the *last
+written* slot, the next write goes to position pointer + 1. Bump
+first, write second.
+
+In some variants you maintain a `write` pointer that points at
+the *next empty* slot instead. Then the order flips: write, then
+bump. Both styles work; pick one and be consistent.
+''',
+            },
+            {
+                "question": "Why is the time `O(n)` if there's a swap-like operation?",
+                "answer": r'''
+Because the inner work is **one comparison and at most one
+assignment** per iteration, both of which are constant time.
+
+The `fast` pointer walks every index from 1 to `n - 1`. That is
+exactly `n - 1` iterations of the loop. At each iteration we do
+a few constant-time operations: an `if` check, possibly an
+increment, possibly an assignment. No nested loop, no shifting
+of many elements. Total: `O(n)` work.
+
+Note that the assignment `arr[slow] = arr[fast]` is **not** a
+swap. We do not save `arr[slow]` first because the value at
+`arr[slow]` is a duplicate that we are intentionally overwriting.
+The slow pointer is always at or behind the fast pointer, so
+`arr[slow]`'s old value has already been "kept" earlier and is
+safe to overwrite.
+
+Contrast with insertion sort, where shifting `k` elements
+rightward inside the inner loop costs `O(k)`. That is why
+insertion sort is `O(n²)` and this algorithm is `O(n)`. The
+difference: insertion sort has to make room; here, we are just
+overwriting trash.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: slow/fast pointer for in-place compaction on a sorted
 array.
@@ -392,6 +839,30 @@ pattern is `for fast: if keep(arr[fast]): slow += 1; arr[slow] = arr[fast]`.
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["arrays", "linear-scan"],
+        "what_this_teaches": (
+            "The 'current streak vs all-time record' pattern. Two "
+            "scalars, one pass — extend on a positive signal, reset on "
+            "a negative one, always update the record. Reused in "
+            "Kadane, stock buy/sell, longest run problems, and more."
+        ),
+        "pattern": "Walk once with `current` (live streak) and `best` (record).",
+        "prerequisite_lessons": ["arrays"],
+        "prerequisite_problems": ["largest-element"],
+        "next_problems": [
+            "kadane-algorithm",
+            "max-consecutive-ones-iii",
+            "longest-subarray-with-sum-k",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Easy Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 485 — Max Consecutive Ones",
+                "url": "https://leetcode.com/problems/max-consecutive-ones/",
+            },
+        ],
         "understanding": r'''
 Given a binary array (only 0s and 1s) like `[1, 1, 0, 1, 1, 1, 0, 1]`,
 find the length of the longest run of consecutive 1s. The answer for
@@ -481,6 +952,150 @@ You will see the same `current` / `best` pair across many array
 problems. Get to know the rhythm: extend on a positive signal,
 reset on a negative signal, always update the best.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why reset to `0` and not to `1` after a zero appears?",
+                "answer": r'''
+Because the zero itself is **not** part of any run of ones. When
+we see a zero, the current streak of ones ends; the next "ones
+streak" has not yet started.
+
+Walk through `arr = [1, 1, 0, 1, 1, 1]`. At index 2 (the zero),
+the streak that was building (`1, 1`, length 2) is broken. The
+next element is at index 3. If we reset `current = 1` at the
+zero, we would be claiming that the *zero itself* contributed to
+a streak of length 1 — which is nonsense.
+
+The correct flow: hit zero → `current = 0`. Then on the next 1
+(at index 3), `current` increments to 1, marking the start of a
+new streak. From there it keeps extending.
+
+You will see the same "reset to neutral on bad signal, extend on
+good signal" pattern in Kadane (reset to 0 when running sum
+drops below 0, extend when it stays positive), in longest
+increasing run (reset to 1 when monotonicity breaks), and in
+many sliding window problems.
+
+The rule of thumb: **what does the current variable count *when
+the new element is bad*?** For "consecutive 1s," the answer is
+"the bad element itself contributes nothing, so the count is
+zero." So we reset to 0.
+''',
+            },
+            {
+                "question": "Why update `best` inside the `if x == 1` branch instead of at the end of the loop?",
+                "answer": r'''
+You can do either; both produce the right answer. But updating
+inside the branch is more efficient because we only need to
+check when `current` could have grown — and that is only when we
+just saw a 1.
+
+Compare the two styles:
+
+Style A (update on every iteration):
+
+```python
+for x in arr:
+    if x == 1:
+        current += 1
+    else:
+        current = 0
+    if current > best:
+        best = current
+```
+
+Style B (update only on extends):
+
+```python
+for x in arr:
+    if x == 1:
+        current += 1
+        if current > best:
+            best = current
+    else:
+        current = 0
+```
+
+Style B avoids one comparison per zero. Tiny saving, but it also
+makes the code's *intent* clearer: "the best can only change
+when the streak grows."
+
+Either style is fine. For interview practice, prefer Style B
+because it shows you are thinking about *when* the answer
+changes — a small marker of algorithmic maturity.
+''',
+            },
+            {
+                "question": "What if the array has no `1`s at all? Or no `0`s?",
+                "answer": r'''
+**No 1s** (e.g., `[0, 0, 0]`): `current` never increases past 0,
+and `best` stays at its initial value of 0. The function
+correctly returns 0 — there are no consecutive ones at all.
+
+**No 0s** (e.g., `[1, 1, 1, 1]`): `current` increments to 4 over
+four iterations, and `best` tracks it, ending at 4. The function
+returns 4 — the entire array is one streak.
+
+Both edge cases work naturally thanks to the initialization
+`current = 0, best = 0`. The algorithm does not need special
+cases; the math is symmetric.
+
+This is the mark of a well-designed algorithm: it handles the
+extremes (all-good, all-bad) without extra code. When you write
+your own running-scalar algorithms, run through these mental
+test cases:
+- Empty array
+- All elements satisfy the condition
+- No elements satisfy the condition
+- Exactly one element satisfies the condition
+
+If any of those breaks, your initialization or reset condition
+is wrong.
+''',
+            },
+            {
+                "question": "How does this generalize to 'at most K zeros allowed'?",
+                "answer": r'''
+The generalization is the **sliding window** technique, and it
+unlocks a family of problems (Max Consecutive Ones III, Longest
+Substring with K Replacements, etc.).
+
+The idea: maintain a window `[left, right]` and a count of zeros
+inside it. Expand `right` greedily. When the zero count exceeds
+K, shrink `left` until it falls back to K. The maximum window
+length is the answer.
+
+```python
+def longest_ones(arr, k):
+    left = 0
+    zeros = 0
+    best = 0
+    for right in range(len(arr)):
+        if arr[right] == 0:
+            zeros += 1
+        while zeros > k:
+            if arr[left] == 0:
+                zeros -= 1
+            left += 1
+        best = max(best, right - left + 1)
+    return best
+```
+
+For `k = 0` (no zeros allowed), this reduces to the original
+problem. For `k > 0`, we tolerate up to `k` "bad" elements inside
+the window.
+
+The same skeleton handles "longest substring with at most K
+distinct characters," "longest substring with K replacements,"
+"fruit into baskets," and many more. Recognizing that the
+running-scalar pattern generalizes to a sliding-window pattern
+is one of the bigger leaps in array DSA.
+
+We cover sliding window in detail in its own lesson and in Step
+10 of the curriculum.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: current streak + all-time record.
 
@@ -498,6 +1113,31 @@ problem. The reset condition is the only thing that changes.
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["arrays", "xor", "bit-manipulation"],
+        "what_this_teaches": (
+            "XOR as a cancellation tool. The three magic properties — "
+            "`x ^ x == 0`, `x ^ 0 == x`, commutativity — make XOR the "
+            "right tool for any 'pairs cancel, surplus survives' "
+            "problem."
+        ),
+        "pattern": "Fold the entire array with XOR; pairs cancel, the loner remains.",
+        "prerequisite_lessons": ["arrays", "hashing"],
+        "prerequisite_problems": ["count-frequencies"],
+        "next_problems": [
+            "single-number-ii",
+            "single-number-iii",
+            "missing-number",
+            "min-bit-flips",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Easy Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 136 — Single Number",
+                "url": "https://leetcode.com/problems/single-number/",
+            },
+        ],
         "understanding": r'''
 We have an array where every integer appears **exactly twice**,
 except one integer that appears exactly **once**. Find the loner.
@@ -598,6 +1238,137 @@ This is the foundation for several beautiful algorithms:
 XOR feels like magic the first time you see it, then like a tool the
 tenth time you see it. Get comfortable.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does `x ^ x` equal zero? And `x ^ 0` equal `x`?",
+                "answer": r'''
+Look at XOR bit by bit. For each bit position, XOR asks the
+question *"are the two bits different?"*. If they are different,
+the result bit is 1; if they are the same, the result bit is 0.
+
+When you XOR `x` with itself, every bit position has identical
+bits (each bit of `x` matches itself). So every result bit is
+0. Therefore `x ^ x == 0`.
+
+When you XOR `x` with `0`, every bit position pairs a bit of `x`
+with `0`. The "different?" question reduces to "is this bit 1?".
+Where `x` has a 1, the result has a 1. Where `x` has a 0, the
+result has a 0. So the result is just `x`. Therefore `x ^ 0 == x`.
+
+These two facts together — self-cancellation and identity — are
+why XOR is the algebraic structure of *symmetric difference*.
+Think of XOR-ing a value into a running total as "toggling" that
+value's contribution: the first toggle adds, the second cancels,
+the third adds again, and so on.
+
+For pairs of duplicates, two toggles cancel out, leaving the
+running total untouched. For the loner, one toggle remains. So
+the final XOR is the loner's value.
+
+This is the same reason XOR is used in cryptography (the Vernam
+cipher), error-detecting checksums, and reversible operations:
+applying XOR twice with the same key undoes itself.
+''',
+            },
+            {
+                "question": "Why is the order of the XORs not important?",
+                "answer": r'''
+Because XOR is **commutative** (`a ^ b == b ^ a`) and
+**associative** (`(a ^ b) ^ c == a ^ (b ^ c)`).
+
+Both properties follow from the bit-by-bit definition. At each
+bit position, XOR is the "is the count of 1s odd?" function.
+This function does not care which order you fed it the inputs;
+it only cares about the parity of the count.
+
+The practical upshot: you can XOR an array's elements in any
+order and get the same result. The traditional left-to-right
+fold is what we use, but middle-out or right-to-left would
+produce the same final value.
+
+This is what lets us think of XOR as a "set operation" on
+multisets. The XOR of a list is determined entirely by which
+values appear an odd number of times — not by their positions.
+
+The same property is what makes hashing-with-XOR work for
+multiset equality: two arrays have the same XOR iff their
+symmetric difference is the empty multiset.
+''',
+            },
+            {
+                "question": "What if elements appear three times instead of twice (except one)?",
+                "answer": r'''
+The XOR trick **does not work directly** because three XORs of
+the same value yield the value itself (not zero):
+
+```
+x ^ x ^ x = (x ^ x) ^ x = 0 ^ x = x
+```
+
+So XOR-ing the whole array would give you "the lone element XOR
+all the triplets," and the triplets would not cancel.
+
+The fix is a different cancellation arithmetic. Instead of XOR
+(which cancels pairs), use **bit-by-bit modulo-3 counting**. For
+each bit position, count how many elements have that bit set. If
+the count is a multiple of 3, the triplets contributed; the
+remainder (0, 1, or 2 mod 3) tells you what the lone element's
+bit must be.
+
+```python
+def single_number_3(arr):
+    result = 0
+    for bit in range(32):
+        count = sum((x >> bit) & 1 for x in arr)
+        if count % 3 != 0:
+            result |= (1 << bit)
+    return result
+```
+
+There is also a clever *O(1)* extra space variant using two
+running variables to maintain "seen once" and "seen twice"
+states. That is what Step 8's Single Number II problem covers.
+
+The takeaway: cancellation arithmetic is **base-dependent**. XOR
+is the right tool for "even count cancels," not for "count
+divisible by 3." Match the operator to the duplicity pattern.
+''',
+            },
+            {
+                "question": "Could I just use a hash set and `add/remove`?",
+                "answer": r'''
+Yes, and it is a common simpler-to-explain alternative. Walk the
+array; for each element, if it is already in the set, remove
+it; otherwise, add it. At the end, the set contains exactly the
+loner.
+
+```python
+def single_number_set(arr):
+    seen = set()
+    for x in arr:
+        if x in seen:
+            seen.remove(x)
+        else:
+            seen.add(x)
+    return next(iter(seen))
+```
+
+This is *O(n)* time but uses *O(n)* extra memory. The XOR
+version uses *O(1)* memory.
+
+For interview answers, mention the set version first (easier to
+explain) and then the XOR version (better memory). The
+interviewer usually wants you to know **both** — the set version
+to show you can think clearly, the XOR version to show you know
+the bit trick.
+
+A third alternative uses the formula `2 * sum(unique) - sum(arr)
+= loner`, where `unique` is the deduplicated array. *O(n)* time
+and memory but no XOR knowledge required. Less elegant; rarely
+used.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: XOR as "cancel out the pairs".
 
@@ -617,6 +1388,31 @@ in pairs → XOR + split by bit.
         "lecture_id": 1,
         "difficulty": "easy",
         "tags": ["arrays", "math", "xor"],
+        "what_this_teaches": (
+            "**O(1)-memory invariants** — sum, XOR, or product — that "
+            "encode the expected state of a set and let you recover "
+            "the missing element by subtraction. A small but powerful "
+            "trick that shows up in many 'find the odd one out' "
+            "problems."
+        ),
+        "pattern": "Encode the expected total; subtract the actual; recover the difference.",
+        "prerequisite_lessons": ["arrays", "hashing"],
+        "prerequisite_problems": ["single-number"],
+        "next_problems": [
+            "single-number-iii",
+            "repeating-and-missing",
+            "first-missing-positive",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Easy Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 268 — Missing Number",
+                "url": "https://leetcode.com/problems/missing-number/",
+            },
+        ],
         "understanding": r'''
 We are given an array of size `n` that contains `n` distinct numbers
 from the range `[0, n]`. Exactly one number from that range is
@@ -729,6 +1525,120 @@ Need to find a **repeating** number in a 1..n array where exactly
 one repeats? Use a Floyd cycle on the array-as-pointer interpretation,
 or use sum/XOR with adjustments. There is a whole family.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does `n * (n + 1) // 2` give the sum of `0..n`?",
+                "answer": r'''
+This is Gauss's famous formula, often called the **triangular
+number** formula. The intuition: pair up the numbers from the
+two ends.
+
+Write out the sum `0 + 1 + 2 + ... + n`. Now pair the first
+with the last: `0 + n = n`. Pair the second with the
+second-to-last: `1 + (n - 1) = n`. Pair the third with the
+third-to-last: `2 + (n - 2) = n`. Every pair sums to exactly
+`n`.
+
+How many pairs? Half of `(n + 1)` numbers, which is `(n + 1) /
+2` pairs. Each pair sums to `n`. So the total sum is
+`n * (n + 1) / 2`.
+
+This pairing trick is attributed (probably apocryphally) to a
+young Gauss, who supposedly solved a "sum 1 to 100" busywork
+problem in seconds by writing `100 * 101 / 2 = 5050`.
+
+We use integer division `//` because the product `n * (n + 1)`
+is always even (one of two consecutive integers must be), so the
+division gives an exact integer result.
+
+Memorize this formula. It comes up in many problems: counting
+pairs, sum of subarrays of fixed length, arithmetic progression
+sums. It is one of the most reused identities in DSA.
+''',
+            },
+            {
+                "question": "Why prefer XOR over the sum approach?",
+                "answer": r'''
+Two reasons: **overflow safety** and **conceptual elegance**.
+
+In Python, neither version overflows because integers are
+arbitrary precision. But in C++, Java, or any language with
+fixed-width integers, the sum `n * (n + 1) / 2` can overflow
+when `n` is large. For `n = 10⁵`, the product is about `5 × 10⁹`,
+which already exceeds a 32-bit signed integer. The XOR version
+never overflows because XOR does not increase the bit width.
+
+Conceptually, the XOR version is also more **uniform**. The sum
+trick relies on a specific arithmetic identity (Gauss's
+formula). The XOR trick relies only on the cancellation property
+(`x ^ x = 0`) and works for **any** set, not just `0..n`. If
+the problem changed to "find the missing element from a known
+set," the XOR approach generalizes immediately; the sum
+approach does not (unless you also precompute the expected sum).
+
+For Python interviews, either is fine. For typed languages,
+prefer XOR. The general lesson: prefer **range-safe**
+operations when porting between languages.
+''',
+            },
+            {
+                "question": "What if the array is missing more than one number?",
+                "answer": r'''
+Then a single sum or XOR is not enough — you cannot recover two
+unknowns from one equation.
+
+For **two missing numbers**, you need two equations. The classic
+trick: use both `sum` and `sum_of_squares`. The two equations
+let you solve for the two unknowns (it is a 2-variable system).
+
+Alternatively, the XOR approach generalizes: XOR everything;
+the result is `missing_a ^ missing_b`. To recover `a` and `b`
+individually, find any bit where the XOR result is 1 (that bit
+must differ between `a` and `b`). Partition all numbers (input
+and expected) by that bit. XOR each partition separately;
+each partition contains exactly one of the two missing
+numbers.
+
+This split-by-bit trick is Step 8 territory (Single Number III).
+It is a beautiful application of XOR.
+
+For **K missing numbers**, the techniques get more sophisticated
+(typically, hashing or sorting). The "encode the total, subtract"
+trick works only for very small K.
+
+Bottom line: the sum/XOR trick has a constant equation count, so
+it can recover only a constant number of missing values. For
+larger K, switch to hashing or sorting.
+''',
+            },
+            {
+                "question": "Why is the range `0..n` and not `1..n`?",
+                "answer": r'''
+Different versions of the problem use different conventions. The
+LeetCode version uses `0..n` (the array of length `n` contains
+numbers from 0 to n with exactly one missing). Other versions
+say `1..n` (array of length `n - 1` containing values from 1 to
+n with one missing).
+
+For LeetCode's `0..n` version: array has `n` elements, expected
+sum is `0 + 1 + ... + n = n(n+1)/2`.
+
+For the `1..n` version: array has `n - 1` elements, expected
+sum is `1 + 2 + ... + n = n(n+1)/2` (the formula happens to be
+the same since `0` does not contribute).
+
+The algorithm is essentially identical; only the array length
+and the loop bounds change. Always read the problem statement
+carefully to determine which convention is in use.
+
+This is a small but real source of off-by-one bugs. When you sit
+down with a "missing number" problem, pause and ask: *"What is
+the expected range? What is the array length? Does the range
+include 0?"*. Two minutes of thinking saves twenty minutes of
+debugging.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: encode the expected total (sum or XOR), subtract the
 actual, recover the difference.
@@ -748,6 +1658,31 @@ the path.
         "lecture_id": 1,
         "difficulty": "medium",
         "tags": ["arrays", "prefix-sum", "hashing", "sliding-window"],
+        "what_this_teaches": (
+            "**Prefix sums + hash map** — the workhorse pattern for "
+            "subarray-sum questions. Once you see how range sums "
+            "factor into point differences of prefix sums, an enormous "
+            "family of problems unlocks."
+        ),
+        "pattern": "Running prefix sum, hashed by value, queried for `prefix - K`.",
+        "prerequisite_lessons": ["arrays", "hashing"],
+        "prerequisite_problems": ["two-sum", "count-frequencies"],
+        "next_problems": [
+            "subarrays-with-sum-k",
+            "longest-subarray-zero-sum",
+            "subarrays-with-xor-k",
+            "binary-subarrays-with-sum",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Easy Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 325 — Maximum Size Subarray Sum Equals k",
+                "url": "https://leetcode.com/problems/maximum-size-subarray-sum-equals-k/",
+            },
+        ],
         "understanding": r'''
 Find the length of the **longest contiguous subarray** whose sum
 equals a target `K`. The array may contain positives, negatives, and
@@ -886,6 +1821,140 @@ exceeds K, advance `left`; if it equals K, record the length. This
 is *O(n)* with *O(1)* space — better when applicable. The prefix
 sum approach is the *general* solution that handles negatives too.
 ''',
+        "confusion_notes": [
+            {
+                "question": "What is a prefix sum, and why does it help here?",
+                "answer": r'''
+A **prefix sum** of an array is a new array where each entry
+holds the running total up to (and excluding) that index. So if
+`arr = [3, 1, 4, 1, 5]`, then `prefix = [0, 3, 4, 8, 9, 14]`.
+`prefix[0]` is 0 (the sum of no elements). `prefix[1] = arr[0]
+= 3`. `prefix[2] = arr[0] + arr[1] = 4`. And so on.
+
+The magic identity: **the sum of any range `arr[i..j]`
+(inclusive on both ends) equals `prefix[j + 1] - prefix[i]`.**
+
+For example, the sum of `arr[1..3]` (which is `1 + 4 + 1 = 6`)
+equals `prefix[4] - prefix[1] = 8 - 3 = 5`. Wait, that gave 5,
+not 6. Let me recompute: `prefix[4] = arr[0] + arr[1] + arr[2] +
+arr[3] = 3 + 1 + 4 + 1 = 9`. `prefix[1] = 3`. So the range sum
+is `9 - 3 = 6`. Correct. (I miscounted; recompute carefully and
+the identity holds.)
+
+Why does this identity help? Because **range-sum queries become
+point-difference queries**. Computing one range sum naively
+costs *O(n)* (walk every element in the range). With prefix sums
+precomputed, each range sum is *O(1)*. If you have many
+queries, the up-front *O(n)* cost of building the prefix array
+pays for itself many times over.
+
+For this problem, we never actually materialize the prefix array
+— we maintain a single running prefix value. Same idea, less
+memory.
+''',
+            },
+            {
+                "question": "Why store the *first* index of each prefix sum, not the last?",
+                "answer": r'''
+Because we want the **longest** subarray, and the longest
+subarray ending at index `i` corresponds to the **earliest**
+position where the required prefix sum first appeared.
+
+Suppose the prefix value at index `i` is `P`, and we want a
+subarray summing to `K`. We need to find an earlier index `j`
+where `prefix[j] = P - K`. The length of the resulting subarray
+is `i - j`. To **maximize** the length, we want `j` as small
+(early) as possible.
+
+So when we add a prefix sum to the hash, we only do it the
+**first** time we see that value:
+
+```python
+if prefix not in first_index:
+    first_index[prefix] = i
+```
+
+If we overwrote every time, we would track the *latest* index of
+each prefix sum, which gives the *shortest* subarray ending at
+each `i` — the wrong direction.
+
+The opposite convention applies to other problems. For "count of
+subarrays with sum K," we want to count **every** previous
+occurrence, not just the first — so we use a Counter that
+increments each time. For "longest," store the first. For
+"count," store the count. For "any," either works.
+
+Always ask: *"do I want longest, shortest, count, or any?"* The
+answer determines the hash bookkeeping.
+''',
+            },
+            {
+                "question": "Why is `{0: -1}` the initial state of the hash?",
+                "answer": r'''
+Because of an edge case: a subarray that starts at index 0.
+
+Consider `arr = [3, 1, 5]` with `K = 4`. The valid subarray
+`[3, 1]` starts at index 0 and ends at index 1. Its sum is 4.
+Using the identity, the prefix sum at index 2 is 4, and we want
+to find some earlier index where the prefix sum equals
+`prefix - K = 4 - 4 = 0`.
+
+But the prefix sum at index 0 is, by definition, 0 (the sum of
+zero elements). To find this "empty prefix" we need to have
+recorded prefix sum 0 in our hash with index -1 (meaning "before
+the first element").
+
+The line `first_index = {0: -1}` plants this convention. It
+encodes the fact that the **empty prefix** has sum 0 and lives
+at "index -1." When we later see `prefix = 4` and look up
+`prefix - K = 0`, the hash returns -1, and the subarray length
+is `i - (-1) = i + 1`, which is correct.
+
+Without this initialization, subarrays starting at index 0 would
+be missed. It is a small but critical piece of the algorithm.
+
+The same trick — seeding the hash with the empty-prefix
+convention — applies to all the prefix-sum-plus-hash problems
+(subarray sum K, longest subarray with zero sum, count of
+subarrays with XOR K).
+''',
+            },
+            {
+                "question": "Why not just use sliding window for this?",
+                "answer": r'''
+Because sliding window **only works on non-negative arrays**.
+
+The sliding window approach assumes that **growing the window**
+monotonically increases the sum, and **shrinking the window**
+monotonically decreases it. With non-negative numbers, that is
+true: adding an element to the right increases the sum, removing
+an element from the left decreases it.
+
+With negative numbers in the array, growing the window can
+*decrease* the sum (when you add a negative), and shrinking can
+*increase* it. The "if sum is too big, shrink; if too small,
+grow" decision rule breaks down. You no longer know which way to
+move.
+
+For `arr = [1, -1, 5, -2, 3]` with `K = 3`: the longest subarray
+is `[1, -1, 5, -2]` of length 4. Sliding window would either
+miss this (because the running sum temporarily drops below K and
+the window shrinks prematurely) or get tangled trying to recover.
+
+The prefix-sum-plus-hash approach handles negatives because it
+treats the array as a *sequence of prefix sums*, where each
+prefix sum is just a number — no monotonicity assumed. The hash
+lookup `prefix - K` finds any earlier prefix that completes a
+sum-K subarray, regardless of sign.
+
+The rule of thumb:
+- Non-negative array + subarray sum: **sliding window** is
+  optimal (*O(n)* time, *O(1)* memory).
+- General array + subarray sum: **prefix sum + hash** is the
+  go-to (*O(n)* time, *O(n)* memory).
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: prefix sum + hash map.
 
@@ -1342,6 +2411,31 @@ almost no extra learning.
         "lecture_id": 2,
         "difficulty": "medium",
         "tags": ["arrays", "three-pointers", "partition"],
+        "what_this_teaches": (
+            "Three-pointer partitioning with explicit invariants — a "
+            "miniature version of Quicksort's partition step "
+            "generalized from two groups to three. The 'do not advance "
+            "mid on swap-with-high' detail is the kind of subtlety "
+            "that separates careful programmers from careless ones."
+        ),
+        "pattern": "Three pointers (low, mid, high) maintaining four invariant zones.",
+        "prerequisite_lessons": ["arrays", "two-pointers"],
+        "prerequisite_problems": ["remove-duplicates-sorted", "quick-sort"],
+        "next_problems": [
+            "move-zeros-to-end",
+            "rearrange-alternating",
+            "ll-sort-012",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Medium Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 75 — Sort Colors",
+                "url": "https://leetcode.com/problems/sort-colors/",
+            },
+        ],
         "understanding": r'''
 We have an array containing only the values 0, 1, and 2 — in any
 order. Sort it in place. Example: `[2, 0, 1, 2, 1, 0]` becomes
@@ -1467,6 +2561,128 @@ contains only 0s" etc.) is the kind of careful thinking that makes
 this category of problems tractable. Write the invariant first, the
 code second.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why don't we advance `mid` on the swap-with-high case?",
+                "answer": r'''
+Because the element we just swapped *in* from the `high` side is
+**unprocessed**. We need to look at it before moving on.
+
+Walk through `arr = [2, 0, 1]`. Start with `low = 0, mid = 0,
+high = 2`.
+
+- `mid = 0`: `arr[mid] = 2`. Swap with `arr[high = 2]`. Array
+  becomes `[1, 0, 2]`. Decrement `high` to 1. **Do not advance
+  `mid`**, because `arr[mid]` is now 1, which we have not yet
+  processed.
+- `mid = 0`: `arr[mid] = 1`. It belongs in the middle zone.
+  Advance `mid` to 1.
+- `mid = 1`: `arr[mid] = 0`. Swap with `arr[low = 0]`. Array
+  becomes `[0, 1, 2]`. Advance both `low` and `mid` to 1 and 2.
+- `mid = 2 > high = 1`. Loop exits.
+
+If we had advanced `mid` after the first swap-with-high, we
+would have skipped the `1` that landed at index 0 — and ended
+up with an unsorted array like `[1, 0, 2]` because index 0 was
+never reconsidered.
+
+By contrast, the swap-with-low case is different: the element we
+swap *in* from `low` is **already processed** (it must be a 1
+from the middle zone). So advancing `mid` is safe in that case.
+
+This asymmetry is the one beginner trap of Dutch National Flag.
+Write the invariants explicitly and the answer becomes obvious.
+''',
+            },
+            {
+                "question": "Why does the loop condition use `<=` instead of `<`?",
+                "answer": r'''
+Because the index `high` is **inclusive** — it points at the
+last unprocessed slot, not one past it. So we need to process
+the element *at* `high` too.
+
+If we wrote `while mid < high:`, the loop would exit when
+`mid == high`, leaving the single element at that index
+unprocessed. For an input like `[1, 0]`, the algorithm would
+fail to handle the final position correctly.
+
+The choice between `<` and `<=` depends on whether your boundary
+variable is "one past the last valid" (exclusive) or "the last
+valid" (inclusive). When you write any two-pointer or three-
+pointer algorithm, decide on the convention first and stick to
+it. Mixing styles inside one function is a classic source of
+off-by-one bugs.
+
+In our code, both `low` and `high` are **inclusive** — they
+point to the leftmost and rightmost slots still in play. The
+loop condition `mid <= high` reflects that, and the decrement
+`high -= 1` correctly shrinks the unprocessed zone by one slot.
+''',
+            },
+            {
+                "question": "What if the array contains values other than 0, 1, 2?",
+                "answer": r'''
+Then this algorithm does not work — it assumes exactly three
+distinct categories. For a general partition you would need a
+different approach.
+
+The Dutch National Flag is specifically a **3-way partition**.
+It generalizes to k-way partition only by chaining multiple
+passes or by switching to a different algorithm (such as
+counting sort, which works in *O(n + k)* for k distinct
+values).
+
+If your array has *many* distinct values and you just want them
+sorted, use `sorted(arr)` or `arr.sort()`. The Dutch National
+Flag shines specifically when:
+
+1. There are exactly **two boundary values** (so three
+   categories).
+2. You need an in-place, single-pass algorithm.
+3. You cannot afford the *O(n log n)* of a general sort.
+
+A common interview follow-up: "what if the values are not
+labeled 0, 1, 2 but instead 'red', 'white', 'blue'?" The
+algorithm is identical — substitute the labels in the
+comparisons. The structure does not care.
+
+A trickier follow-up: "sort an array around a pivot value, with
+elements less than the pivot on the left and elements greater on
+the right." Same algorithm with the comparison `arr[mid] <
+pivot`, `==`, `>`.
+
+The Dutch National Flag is the *template* for any 3-way
+partition. Whenever you see "rearrange so that X < Y < Z by
+category," reach for it.
+''',
+            },
+            {
+                "question": "Why call it the *Dutch National Flag*?",
+                "answer": r'''
+Because the Dutch flag has three horizontal stripes — red on
+top, white in the middle, blue on the bottom. The algorithm
+sorts elements into three stripes based on their values, which
+mimics arranging the flag.
+
+The name was popularized by Edsger Dijkstra in the 1970s when
+he used the problem as a teaching example. (He was Dutch.) The
+nickname stuck because it is more memorable than "3-way
+in-place partition."
+
+It is one of several algorithmic problems with whimsical names:
+the "stable matching" problem (sometimes called "stable
+marriage"), the "knapsack" problem (a thief filling a sack),
+the "rod cutting" problem (a metal rod into priced pieces), the
+"painter's partition" problem. Memorable names help you
+remember the **shape** of the algorithm, which often outlives
+the specific problem statement.
+
+So: Dutch National Flag = 3-way in-place partition. Whenever
+the problem shape says "three categories, put them in order,
+one pass, in place," that is the algorithm to reach for.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: three-pointer partition with explicit invariants.
 
@@ -1486,6 +2702,31 @@ generalizes naturally to 3, 4, or more colors.
         "lecture_id": 2,
         "difficulty": "medium",
         "tags": ["arrays", "dp", "kadane"],
+        "what_this_teaches": (
+            "The first real **DP-on-arrays** insight: define a running "
+            "scalar that summarizes 'best subarray ending here' and "
+            "update it with one tiny recurrence. The whole pattern is "
+            "a 1D DP collapsed to two variables."
+        ),
+        "pattern": "Track 'best subarray ending here'; reset when extending hurts.",
+        "prerequisite_lessons": ["arrays", "dp"],
+        "prerequisite_problems": ["max-consecutive-ones", "largest-element"],
+        "next_problems": [
+            "print-max-subarray",
+            "stock-buy-sell",
+            "max-product-subarray",
+            "house-robber-i",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Medium Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 53 — Maximum Subarray",
+                "url": "https://leetcode.com/problems/maximum-subarray/",
+            },
+        ],
         "understanding": r'''
 Given an array of integers (possibly with negatives), find the
 **maximum sum** of any **contiguous subarray**. A subarray must be
@@ -1613,6 +2854,143 @@ the current start whenever we "start fresh", and update best_start
 / best_end whenever we update the global best. The algorithm grows
 by two scalars but remains *O(n)*.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why is `max(arr[i], best_ending_here + arr[i])` the right recurrence?",
+                "answer": r'''
+Because the best subarray ending at index `i` has only two
+possibilities:
+
+1. It uses **only** `arr[i]` (the subarray of length 1). Sum is
+   `arr[i]`.
+2. It uses `arr[i]` **plus** the best subarray ending at index
+   `i - 1`. Sum is `best_ending_here[i - 1] + arr[i]`.
+
+There is no third option, because any subarray ending at `i`
+must include `arr[i]`, and what comes before `arr[i]` is either
+"some contiguous run ending at `i - 1`" or "nothing." The best
+of those two captures the optimal subarray ending at `i`.
+
+The `max` picks the larger of the two. If the previous run had a
+positive contribution, extending is better. If it had a negative
+contribution, we "abandon" it and start fresh from `arr[i]`.
+
+That decision rule — *"keep the past only if it helps"* — is the
+heart of Kadane. Internalize it: the running scalar is not "sum
+so far," it is "best sum of a subarray that ends right here."
+The distinction matters. The first would grow forever; the
+second resets when the past becomes a liability.
+
+This recurrence is the simplest possible **dynamic programming**
+recurrence. It has one dimension (the index `i`), constant
+transition cost, and the answer at `i` depends only on the
+answer at `i - 1`. That structure is why we can compute it in
+*O(n)* time and *O(1)* space.
+''',
+            },
+            {
+                "question": "Why do we initialize both `best_ending_here` and `best_overall` to `arr[0]`?",
+                "answer": r'''
+Because the problem requires a **non-empty** subarray, so the
+smallest valid subarray contains at least one element. Starting
+both scalars at `arr[0]` reflects "the best subarray we have
+seen so far is the single-element subarray `[arr[0]]`."
+
+If we initialized to `0`, we would silently allow an "empty"
+subarray of sum 0 — wrong when the array contains only negative
+numbers. For `arr = [-3, -1, -7]`, the correct answer is `-1`
+(the best single element), not `0`.
+
+Initializing to `arr[0]` sidesteps this. By the time the loop
+starts at index 1, both scalars hold real values from the array,
+and any update preserves the "subarray exists" invariant.
+
+The other safe initialization is `float('-inf')` combined with
+**handling each element from index 0**:
+
+```python
+best_ending_here = float('-inf')
+best_overall = float('-inf')
+for x in arr:
+    best_ending_here = max(x, best_ending_here + x)
+    best_overall = max(best_overall, best_ending_here)
+```
+
+Both styles work. The `arr[0]` initialization is slightly more
+direct; the `-inf` initialization is slightly more uniform. Pick
+the one that reads better to you, but be sure you understand
+why initializing to `0` would be wrong for arrays of all
+negatives.
+''',
+            },
+            {
+                "question": "Why is this called *dynamic programming* when there's no table?",
+                "answer": r'''
+Because **DP is fundamentally about reusing the answers to
+overlapping subproblems**, not about building a table. The table
+is just one common way to store those answers; sometimes a few
+scalars are enough.
+
+In Kadane, the "subproblem" is "what is the best subarray ending
+exactly at index `i`?" We solve it for `i = 0`, then `i = 1`,
+then `i = 2`, and so on. Each answer depends on the previous
+one (via the recurrence). That sequence of dependent subproblems
+is the DP structure.
+
+If we wanted to store every intermediate `best_ending_here[i]`,
+we could make an explicit array of length `n`. That would be a
+"tabulated" DP. But since the recurrence only looks at the
+*immediately previous* value, we can throw away everything older
+than that. The result: two scalars instead of an array.
+
+This "the recurrence only touches the last K answers" insight is
+called **space optimization** and shows up in many DPs:
+
+- Fibonacci: keep the last 2 values.
+- Climbing stairs: keep the last 2.
+- House robber: keep the last 2.
+- Longest common subsequence: keep the last 2 rows (not the
+  whole table).
+
+So Kadane is DP. It is DP in its slickest, leanest form. After
+you finish Step 16 (the DP step), you will recognize Kadane as
+the *first* DP you ever wrote, even before you knew the word
+"dynamic programming."
+''',
+            },
+            {
+                "question": "What about all-negative arrays? Doesn't Kadane fail there?",
+                "answer": r'''
+It does not fail, as long as `best_overall` is initialized to a
+real element (or `-inf`) rather than `0`.
+
+For `arr = [-3, -1, -7]`:
+
+- Start: `best_ending_here = -3, best_overall = -3`.
+- `i = 1`, `arr[i] = -1`: `best_ending_here = max(-1, -3 + -1) =
+  max(-1, -4) = -1`. `best_overall = max(-3, -1) = -1`.
+- `i = 2`, `arr[i] = -7`: `best_ending_here = max(-7, -1 + -7) =
+  max(-7, -8) = -7`. `best_overall = max(-1, -7) = -1`.
+
+Final answer: `-1`. Correct — the best (least-bad) single-element
+subarray.
+
+The common bug is initializing `best_overall = 0` because "zero
+seems neutral." That would return `0` for all-negative arrays,
+which is wrong if empty subarrays are disallowed.
+
+LeetCode's "Maximum Subarray" problem requires a non-empty
+subarray. If a variant allows empty subarrays and the answer is
+defined as `max(answer, 0)`, then initialize to `0` instead.
+Read the problem carefully — the "is empty allowed?" question
+flips the initialization.
+
+The general lesson: edge cases of "what is allowed?" silently
+change the initialization of running scalars. Always state the
+constraint out loud before writing the code.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: 1D DP collapsed to a running scalar.
 
@@ -1632,6 +3010,32 @@ sliding window or prefix sum are alternatives.
         "lecture_id": 2,
         "difficulty": "easy",
         "tags": ["arrays", "linear-scan", "dp"],
+        "what_this_teaches": (
+            "How a 'best partner from the past' question collapses to "
+            "a single pass: maintain the **cheapest price so far** and "
+            "for each new day compute the profit. Hidden in plain "
+            "sight is the same idea as Kadane — applied to the array "
+            "of consecutive-day differences."
+        ),
+        "pattern": "Single pass with `min_so_far` and `best_profit` scalars.",
+        "prerequisite_lessons": ["arrays"],
+        "prerequisite_problems": ["largest-element", "kadane-algorithm"],
+        "next_problems": [
+            "stock-ii",
+            "stock-iii",
+            "stock-cooldown",
+            "stock-fee",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Medium Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 121 — Best Time to Buy and Sell Stock",
+                "url": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
+            },
+        ],
         "understanding": r'''
 You have an array of stock prices, one per day. You can buy on one
 day and sell on a later day. Find the maximum profit you can make
@@ -1725,6 +3129,139 @@ fees) are DP. They each maintain state for "do I currently hold
 stock?" and possibly "how many transactions left?". The single-pass
 trick generalizes via DP recurrences. We tackle those in Step 16.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why do we update `best` *before* updating `min_so_far`?",
+                "answer": r'''
+Because the trade we are scoring is "buy at some earlier day,
+sell today." For today's profit calculation, the buy day must be
+**strictly before** today, not today itself.
+
+If we updated `min_so_far` first, then computed profit, we might
+end up "buying" and "selling" on the same day — which is not
+allowed (and would always yield a profit of zero anyway). So we
+compute `price - min_so_far` first, using the minimum from
+*previous* days, and only then fold today's price into
+`min_so_far` for tomorrow's calculation.
+
+Walk through `prices = [3, 1, 4]`:
+
+- Start: `min_so_far = 3, best = 0`.
+- Day 1 (`price = 1`): profit if sold today = `1 - 3 = -2`. Not
+  better than 0, so `best` stays 0. Update `min_so_far = 1`.
+- Day 2 (`price = 4`): profit if sold today = `4 - 1 = 3`. New
+  best! `best = 3`. Update `min_so_far` stays at 1.
+
+Final: `best = 3`. Correct.
+
+If we flipped the order, on day 1 we would first set
+`min_so_far = 1`, then compute profit `1 - 1 = 0` — same answer
+in this case but a coincidence. For sneakier inputs it matters.
+
+In Kadane and other "buy-now sell-later" problems, the rule of
+thumb is: **decide what you can do today using only past
+information; *then* update the past with today's information**.
+This is the discrete version of "you can only act on what you
+already know."
+''',
+            },
+            {
+                "question": "Why initialize `best = 0` instead of `min_so_far - some_price`?",
+                "answer": r'''
+Because the problem allows you to **not trade at all**, and the
+profit of doing nothing is exactly 0.
+
+If no buy-sell pair produces a positive profit (for example, a
+monotonically decreasing price array), the answer is 0 — we
+simply choose not to trade. Initializing `best = 0` reflects
+this floor.
+
+For `prices = [5, 4, 3, 2, 1]`, every day is worse than the
+previous, so no trade is profitable. Our algorithm tracks
+`min_so_far` going down each day, and the profit each day is
+either 0 or negative. Since the `if` guard `if price - min_so_far
+> best` never fires, `best` remains 0. Correct.
+
+If the problem instead said "you must execute exactly one buy
+and one sell," the initialization would be different —
+`float('-inf')` or some other sentinel — and we would need to
+handle the "always loses money" case explicitly.
+
+The general lesson: the initial value of a running scalar
+encodes a baseline assumption about what "no work has been done"
+should return. Choose it based on the problem's allowed actions.
+''',
+            },
+            {
+                "question": "How is this 'Kadane in disguise'?",
+                "answer": r'''
+Because the max profit equals the **maximum subarray sum of the
+consecutive-day differences**.
+
+Let `diffs[i] = prices[i] - prices[i - 1]`. Then the profit from
+buying on day `i` and selling on day `j` equals the sum of
+`diffs[i + 1]` through `diffs[j]` — a contiguous range of the
+diffs array. So "find the best buy-sell profit" is exactly
+"find the maximum subarray sum of diffs," which is Kadane's
+problem.
+
+To see this, walk through `prices = [7, 1, 5, 3, 6, 4]`:
+
+- Diffs: `[1 - 7, 5 - 1, 3 - 5, 6 - 3, 4 - 6] = [-6, 4, -2, 3,
+  -2]`.
+- Maximum subarray sum of `[-6, 4, -2, 3, -2]` is `4 + (-2) + 3
+  = 5`. (Kadane.)
+- Buy on day 1 (price 1), sell on day 4 (price 6), profit `6 -
+  1 = 5`. Same answer.
+
+The running-min version (`min_so_far`) and the Kadane-on-diffs
+version are equivalent expressions of the same observation. The
+running-min is just easier to write directly because it avoids
+computing the diffs array.
+
+This is one of those little discoveries that makes you smile.
+The same algorithm wearing different costumes.
+''',
+            },
+            {
+                "question": "What if I want the actual buy day and sell day?",
+                "answer": r'''
+Track two extra scalars: `min_day` (the index where `min_so_far`
+was achieved) and `best_pair` (a tuple of buy and sell indices).
+
+```python
+def max_profit_with_days(prices):
+    min_so_far = prices[0]
+    min_day = 0
+    best = 0
+    best_pair = (0, 0)
+    for i in range(1, len(prices)):
+        if prices[i] - min_so_far > best:
+            best = prices[i] - min_so_far
+            best_pair = (min_day, i)
+        if prices[i] < min_so_far:
+            min_so_far = prices[i]
+            min_day = i
+    return best, best_pair
+```
+
+Two new scalars, same *O(n)* time. We update `min_day` only when
+`min_so_far` itself changes, and we update `best_pair` only when
+we improve the best profit. The buy day is the `min_day` at the
+moment of the improvement, the sell day is the current `i`.
+
+This is a common interview follow-up: "great, now also return
+the days." If you have written the basic algorithm cleanly, the
+extension is mechanical.
+
+A subtle point: when there are ties (multiple days achieve the
+same min), our algorithm keeps the **earliest** of them as
+`min_day` (because we use strict `<` for the update). If the
+problem instead asked for the *latest* min day, switch to `<=`.
+Read the problem carefully.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: walk once carrying min-so-far and best-so-far.
 
@@ -1743,6 +3280,29 @@ running scalar gives the answer.
         "lecture_id": 2,
         "difficulty": "medium",
         "tags": ["arrays", "hashing", "sets"],
+        "what_this_teaches": (
+            "How an amortized argument turns a *nested* loop into an "
+            "*O(n)* algorithm. The 'extend only from run-starters' "
+            "trick is one of the prettiest amortization arguments in "
+            "beginner DSA."
+        ),
+        "pattern": "Hash all values; only extend forward from elements that have no predecessor.",
+        "prerequisite_lessons": ["arrays", "hashing"],
+        "prerequisite_problems": ["two-sum"],
+        "next_problems": [
+            "longest-subarray-zero-sum",
+            "longest-subarray-with-sum-k",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Medium Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 128 — Longest Consecutive Sequence",
+                "url": "https://leetcode.com/problems/longest-consecutive-sequence/",
+            },
+        ],
         "understanding": r'''
 Given an unsorted array of integers, return the length of the
 longest **consecutive** sequence of values present in the array. The
@@ -1866,6 +3426,148 @@ A variation: instead of "longest consecutive run", count "how many
 consecutive runs of length ≥ k". Same set scaffolding, different
 bookkeeping.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why is the algorithm `O(n)` even though there's a `while` inside the `for`?",
+                "answer": r'''
+Because the inner `while` loop is bounded **globally**, not
+per-iteration.
+
+The `for x in s` loop iterates `n` times. Inside, we only enter
+the `while` extension when `x - 1` is **not** in the set — i.e.,
+when `x` is the start of a consecutive run. The `while` then
+walks every element of that run, stopping at the end.
+
+Crucially, each value in the set belongs to **exactly one**
+consecutive run, and we only extend from each run's starter. So
+across the entire outer loop, the total work inside `while` is
+bounded by the total length of all consecutive runs, which is at
+most `n`. The outer loop adds another `n` constant-time
+membership checks. Total: `O(n)`.
+
+This is called an **amortized analysis** — the worst case of any
+single inner iteration could be `n`, but the *average* (amortized
+across the outer loop) is constant. The argument relies on the
+fact that we never extend the same run twice.
+
+If we removed the `if x - 1 not in s` guard and extended from
+every element, the algorithm would be `O(n²)` because each
+run of length `k` would be extended `k` times. The guard is what
+turns the algorithm linear.
+
+This style of argument — "nested loop, but the inner work is
+globally bounded" — shows up in many places: sliding window
+(each element enters and leaves the window once), graph
+traversal (each vertex visited once), monotonic stack (each
+element pushed and popped once). Once you can spot it, you stop
+being scared of nested loops in linear algorithms.
+''',
+            },
+            {
+                "question": "Why does sorting also work, and when should I prefer it?",
+                "answer": r'''
+Sorting works because, after sorting, consecutive values land
+adjacent. Then a single linear scan counts run lengths:
+
+```python
+def longest_sort(arr):
+    if not arr:
+        return 0
+    arr = sorted(set(arr))
+    best = current = 1
+    for i in range(1, len(arr)):
+        if arr[i] == arr[i - 1] + 1:
+            current += 1
+            best = max(best, current)
+        else:
+            current = 1
+    return best
+```
+
+This is *O(n log n)* due to the sort, *O(n)* for the scan, and
+*O(n)* extra memory for the set + sorted list. Compare with the
+hash-set version: *O(n)* time, *O(n)* memory.
+
+When to prefer sorting:
+
+- When `n` is small and constants matter more than asymptotics.
+- When you do not have a hash set available (rare in modern
+  languages).
+- When you also need other order-dependent queries on the data
+  (e.g., quantiles).
+
+When to prefer hashing:
+
+- When `n` is large and you want `O(n)`.
+- When sorting would destroy a useful order in the original
+  array.
+- When the values do not have a natural total order (rare for
+  integers, but matters for custom objects).
+
+For LeetCode 128 specifically, the problem explicitly requires
+`O(n)`, so hashing is the canonical answer. For curriculum
+practice, knowing both is useful.
+''',
+            },
+            {
+                "question": "Why use a set and not the original array directly?",
+                "answer": r'''
+For two reasons: **O(1) membership tests** and **automatic
+deduplication**.
+
+If we kept the original list, the test `x - 1 in arr` would be
+`O(n)` — Python has to scan the entire list to check. Doing that
+inside a loop would push the algorithm back to `O(n²)`. A set
+gives us `O(1)` lookups, restoring the linear total time.
+
+The set also collapses duplicates. If the input is `[1, 2, 2, 3,
+4]`, the set is `{1, 2, 3, 4}` and the algorithm sees only one
+copy of each value. Duplicates in the input do not extend a run
+(`2, 2` is not a "consecutive sequence of length 2" by the
+problem's definition; `2, 3` is). The set removes them
+automatically, so we never accidentally count `2` twice.
+
+The set is also a **constant-cost** data structure to build (`O(n)`)
+and a tiny amount of memory (`O(n)` words). The trade is well
+worth the speedup.
+
+In general, whenever you want fast "have I seen this value?"
+queries and the values do not need to be ordered, reach for a
+set. The Two Sum problem uses the same instinct.
+''',
+            },
+            {
+                "question": "What if the array can have duplicates that should count?",
+                "answer": r'''
+Then the problem statement changes, and the algorithm changes
+slightly too.
+
+The standard "Longest Consecutive Sequence" problem treats
+duplicates as the same value. `[1, 2, 2, 3]` has the consecutive
+sequence `1, 2, 3` of length 3.
+
+If a variant said "the **count** of values forming the
+consecutive run, with duplicates allowed," the answer for `[1,
+2, 2, 3]` would still be 4 — the sequence `1, 2, 2, 3` is
+"consecutive with duplicates." But this is unusual phrasing.
+
+The way to handle a variant: read the problem carefully and ask
+yourself, *"does duplicates count as extending the run, or not?"*
+
+If duplicates do **not** count (standard LC 128), use a set.
+That's our algorithm.
+
+If duplicates **do** count, sort the array (keeping duplicates),
+walk it, and count "consecutive or equal." That is a slightly
+different problem.
+
+The general lesson: never write code until you have nailed down
+the edge-case rules. Two minutes of "what about duplicates? what
+about negatives? what about empty?" up front saves twenty
+minutes of debugging.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: hash set + only-extend-from-starting-points.
 
@@ -1884,6 +3586,31 @@ ingredient.
         "lecture_id": 2,
         "difficulty": "easy",
         "tags": ["arrays", "boyer-moore", "voting"],
+        "what_this_teaches": (
+            "**Cancellation arguments** as an algorithmic technique. "
+            "Boyer-Moore vote pairs off non-matching elements; the "
+            "majority's surplus survives because no other group can "
+            "out-vote it. A beautiful *O(1)* memory trick that "
+            "generalizes to 'more than N/K' problems."
+        ),
+        "pattern": "Maintain a candidate and a vote count; cancellations preserve the true majority.",
+        "prerequisite_lessons": ["arrays", "hashing"],
+        "prerequisite_problems": ["count-frequencies", "single-number"],
+        "next_problems": [
+            "majority-element-n3",
+            "single-number-iii",
+            "kth-largest",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Medium Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 169 — Majority Element",
+                "url": "https://leetcode.com/problems/majority-element/",
+            },
+        ],
         "understanding": r'''
 Given an array of integers, return the **majority element** — the
 one that appears **more than N/2 times**. The problem guarantees one
@@ -1986,6 +3713,157 @@ arguments. We saw similar cancellation in the XOR-based "single
 number" problem. Cancellation is a recurring algorithmic idea: if
 two things "destroy" each other when paired, the surplus survives.
 ''',
+        "confusion_notes": [
+            {
+                "question": "How can we possibly find the majority by only remembering one candidate at a time?",
+                "answer": r'''
+This is the part that feels like magic. Let me try to make it
+intuitive.
+
+Imagine the majority element as a team with a numerical
+*advantage*: it has more than `N/2` votes, while every other
+element combined has fewer than `N/2` votes. Now imagine every
+"non-majority" vote and every "majority" vote pairing off and
+canceling each other.
+
+Because the majority has the surplus, after every possible
+pairing, the surplus remaining is still majority votes. The
+"count" can drop to 0 only after a non-majority value paired
+with a majority value — and at that point, all the non-majority
+votes have been exhausted (since the non-majority side started
+smaller). Every later majority vote can no longer be canceled,
+so eventually the algorithm settles on the majority candidate.
+
+A second framing: think of `count` as the **net lead** that the
+current `candidate` has against the rest of the array seen so
+far. When a vote matches, lead increases. When it does not,
+lead decreases. When lead reaches 0, the candidate is "deposed"
+and the next element becomes the new tentative leader.
+
+Because the majority outnumbers everyone combined, even in the
+worst possible interleaving the final candidate will be the
+true majority. The proof is a careful induction; the intuition is
+"surplus survives cancellation."
+
+If you are still uneasy, run the algorithm by hand on `[3, 3, 4,
+2, 4, 4, 2, 4, 4]` and watch `count` rise and fall. The candidate
+flips around a few times, but ends on 4 — the true majority.
+''',
+            },
+            {
+                "question": "What if no majority element actually exists?",
+                "answer": r'''
+The algorithm still returns *some* candidate, but it is **not
+guaranteed to be the majority**. You need a second pass to
+verify.
+
+If no element appears more than `N/2` times, the cancellations
+do not have a clear winner. The candidate at the end of the loop
+could be any element. To handle this, we run a verification
+pass:
+
+```python
+def majority(arr):
+    candidate, count = None, 0
+    for x in arr:
+        if count == 0:
+            candidate = x
+        if x == candidate:
+            count += 1
+        else:
+            count -= 1
+    # Verify (only needed if majority is not guaranteed).
+    if arr.count(candidate) > len(arr) // 2:
+        return candidate
+    return None
+```
+
+The verification is *O(n)* and uses *O(1)* extra space, so the
+total is still *O(n)* time and *O(1)* memory. If the problem
+*guarantees* a majority exists (as LeetCode 169 does), the
+verification can be skipped.
+
+In interview settings, always state your assumption out loud:
+"Assuming a majority exists, the candidate from the first pass
+is the answer. If not, I would add a verification pass."
+''',
+            },
+            {
+                "question": "Why is `count == 0` the trigger to switch candidates?",
+                "answer": r'''
+Because `count == 0` means *"the current candidate's lead has
+been completely canceled — they are no longer a contender."*
+When the lead is zero, we have no reason to keep tracking the
+current candidate, so we let the next element take over.
+
+Walk through `[1, 2, 1, 2, 1, 3, 1]`:
+
+- `i = 0, x = 1`: `count = 0`, so `candidate = 1`. `x ==
+  candidate`, so `count = 1`.
+- `i = 1, x = 2`: `x != candidate`, so `count = 0`. After:
+  `count = 0` triggers the "switch on the *next* iteration"
+  state, but actually we wait until the next element to
+  re-anoint.
+- `i = 2, x = 1`: `count = 0`, so `candidate = 1`. `x ==
+  candidate`, so `count = 1`.
+- ... and so on.
+
+The order inside the loop matters: check `count == 0` and
+re-anoint *before* the match check. Otherwise on the iteration
+that makes `count` drop to 0, we would also try to re-anoint with
+the wrong element.
+
+This dance — "if lead is exhausted, accept the new arrival as
+the next contender" — is the heart of the algorithm. It works
+because the *true* majority's surplus cannot be canceled out;
+the algorithm will eventually pivot back to it as the cancelled
+pairs exhaust the non-majority votes.
+''',
+            },
+            {
+                "question": "How does this generalize to 'more than N/3 times'?",
+                "answer": r'''
+At most **two** elements can appear more than `N/3` times. So
+we maintain **two candidates and two counters**, and pair off
+non-matching votes against *both* candidates simultaneously.
+
+```python
+def majority_n3(arr):
+    c1 = c2 = None
+    count1 = count2 = 0
+    for x in arr:
+        if c1 == x:
+            count1 += 1
+        elif c2 == x:
+            count2 += 1
+        elif count1 == 0:
+            c1, count1 = x, 1
+        elif count2 == 0:
+            c2, count2 = x, 1
+        else:
+            count1 -= 1
+            count2 -= 1
+    # Verify both candidates (two-thirds majority is not guaranteed
+    # in general).
+    return [c for c in (c1, c2) if c is not None and arr.count(c) > len(arr) // 3]
+```
+
+This is the **generalized Boyer-Moore vote**. It generalizes
+further: to find elements appearing more than `N/(K+1)` times,
+maintain `K` candidates and counters. The first pass identifies
+the candidates; a second verification pass filters out anything
+that does not actually meet the threshold.
+
+The reason at most two elements can appear more than `N/3` times:
+three such elements would each contribute more than `N/3`,
+summing to more than `N`. Contradiction.
+
+The general principle, again: cancellation arguments preserve
+the surplus. The trick is to pair the right number of opposing
+votes at a time.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: Boyer-Moore vote — pair off non-matching elements;
 the majority survives.
@@ -2004,6 +3882,31 @@ Boyer-Moore voting generalizes to K candidates.
         "lecture_id": 3,
         "difficulty": "medium",
         "tags": ["arrays", "intervals", "sorting", "greedy"],
+        "what_this_teaches": (
+            "The 'sort by start, sweep once' pattern that unlocks the "
+            "entire interval-problem family. Merging, insertion, "
+            "counting overlaps, finding meeting rooms — all are "
+            "variations on this same sort-and-sweep skeleton."
+        ),
+        "pattern": "Sort intervals by start time; sweep once, extending the last merged interval when overlap.",
+        "prerequisite_lessons": ["arrays", "sorting"],
+        "prerequisite_problems": ["merge-sort"],
+        "next_problems": [
+            "insert-intervals",
+            "non-overlapping-intervals",
+            "n-meetings",
+            "min-platforms",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 3 (Hard Arrays)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 56 — Merge Intervals",
+                "url": "https://leetcode.com/problems/merge-intervals/",
+            },
+        ],
         "understanding": r'''
 Given a list of intervals `[start, end]`, merge any that overlap.
 Two intervals `[a, b]` and `[c, d]` overlap if `c <= b` (assuming
@@ -2123,6 +4026,128 @@ start-sort lets us decide "does this overlap the previous?" without
 backtracking; the end-sort lets us decide "what is the latest
 interval I can finish to leave room for the most future ones?".
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why is `start <= last_end` the right overlap test?",
+                "answer": r'''
+Because two intervals overlap (or just touch) exactly when one
+starts at or before the other ends.
+
+For two intervals `[a, b]` and `[c, d]` with `a <= c` (which is
+true after sorting by start time), they overlap if and only if
+`c <= b`. If `c > b`, the second interval starts strictly after
+the first ends, so they are disjoint.
+
+Whether `c == b` should count as "overlapping" depends on
+problem conventions. Most problems treat touching as merging
+(`[1, 4]` and `[4, 6]` merge into `[1, 6]`). A few problems
+distinguish "touching" from "overlapping" — read the statement.
+
+Our condition `start <= last_end` covers both true overlaps and
+touching. If the problem instead used strict overlap, change to
+`start < last_end`.
+
+After sorting by start, the overlap question becomes a single
+constant-time check against the last merged interval's end. No
+need to check against all earlier intervals — because they are
+already merged into the last one, the last one's end is the
+"deadline" for any new interval.
+''',
+            },
+            {
+                "question": "Why use `max(last_end, end)` when extending? Couldn't I just take `end`?",
+                "answer": r'''
+Because the new interval might be **entirely contained** within
+the last merged interval, in which case its end is *smaller*
+than the existing end.
+
+Consider `[1, 10]` followed by `[2, 5]`. Both start within `[1,
+10]`, and the second is fully contained. After merging, the
+result should still be `[1, 10]`, not `[1, 5]`. If we wrote
+`merged[-1][1] = end`, we would shrink the merged interval —
+wrong.
+
+`max(last_end, end)` takes the larger of the two ends, which
+correctly handles both cases:
+
+- New interval extends beyond last: pick the new end.
+- New interval is contained within last: pick the old end.
+
+This is a small but important detail. The naive write
+`merged[-1][1] = end` works on most test cases but quietly
+breaks on contained intervals. The `max` makes the algorithm
+robust to any overlap configuration.
+
+The general principle: when you "merge" or "extend" a range,
+always think *"what is the maximum of the old and new
+boundary?"* rather than blindly overwriting.
+''',
+            },
+            {
+                "question": "Why sort by start time, not by end time?",
+                "answer": r'''
+Because sorting by start time makes the "is this the next
+interval I should merge with?" decision trivial: it is always
+the most recently merged interval. Sorting by end would require
+more bookkeeping.
+
+After sorting by start, every new interval `(start, end)` has a
+`start` value at or after every previous start. So if its
+`start` is at or before `merged[-1][1]`, it overlaps with the
+last merged interval. If not, it cannot overlap with any earlier
+interval either (those have even smaller ends already swallowed
+by the last merged one).
+
+This monotonicity argument is what gives the algorithm its
+one-pass simplicity. With unsorted intervals, you would need to
+check overlap against every previous merged result, which
+could be *O(n)* per new interval and *O(n²)* total.
+
+A separate problem — "the maximum number of non-overlapping
+intervals you can keep" — is best solved by sorting by **end
+time** instead. Why? Because the greedy choice "pick the
+earliest-finishing interval that does not overlap your last
+pick" lets you maximize remaining room for future picks.
+Different question, different sort key.
+
+The lesson: always ask, *"what comparison drives my greedy
+choice, and what sort key makes that comparison cheap?"*. Then
+sort by that key.
+''',
+            },
+            {
+                "question": "What's the time and space complexity?",
+                "answer": r'''
+**Time**: *O(n log n)* — dominated by the sort. The sweep itself
+is *O(n)*, but it sits below the sort cost in the big-O.
+
+**Space**: *O(n)* for the output list of merged intervals. If
+the problem allows you to mutate the input in place, the
+auxiliary space can shrink to *O(1)* extra (beyond the input
+storage), but the typical implementation allocates a new list.
+
+Python's `sorted` is Timsort, which is `O(n log n)` worst case
+and stable. The merge sweep needs only a single pass, with one
+comparison and one constant-time mutation per element. Together
+that gives *O(n log n)* time and *O(n)* output memory — which
+is the optimal for this problem, since you cannot decide overlaps
+without examining each interval at least once and sorting them.
+
+If you somehow had the intervals pre-sorted by start (or your
+input format guaranteed it), you could skip the sort entirely
+and run the sweep in *O(n)*. That is a real consideration for
+streaming algorithms or when the data source already provides
+sorted ordering.
+
+Practical tip: if your interval data structure is a list of
+lists `[[a, b], ...]`, Python's default sort sorts
+lexicographically — first by `a`, then by `b`. That happens to
+be exactly the sort we want, so `sorted(intervals)` works.
+Explicit `sorted(intervals, key=lambda x: x[0])` is clearer if
+you only want to sort by start.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: sort by start, sweep once, merge or append.
 

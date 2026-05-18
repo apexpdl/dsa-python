@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}DSA for Beginners — Home{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Learn DSA the slow way.</h1>
+  <p class="hero-subtitle">
+    A patient, deeply explained Python DSA platform — built for absolute
+    beginners. Every problem comes with a brute force, a thought
+    process, an optimized solution, and the concept behind it. Nothing
+    is rushed.
+  </p>
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="{{ url_for('learn_index') }}">Start with concepts</a>
+    <a class="btn" href="{{ url_for('practice_index') }}">Browse the sheet</a>
+  </div>
+  <p class="hero-stats">
+    <strong>{{ learn_lessons|length }}</strong> conceptual lessons —
+    <strong>{{ total_problems }}</strong> problems from the Striver A-Z sheet.
+  </p>
+</section>
+
+<section class="block">
+  <h2>How this site teaches</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Concept first</h3>
+      <p>
+        Every lesson and problem starts with the underlying idea — not
+        the code. We assume basic Python only.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Brute force, then better</h3>
+      <p>
+        We always write the most natural solution first. Then we walk
+        through the thought process that leads to a better one.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Patient explanations</h3>
+      <p>
+        Long paragraphs. Real-life analogies. Heavy line-by-line code
+        comments. Repetition where it helps.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Patterns, not tricks</h3>
+      <p>
+        Each problem ends with the pattern it teaches and how to spot
+        it next time. Build a vocabulary, not a memory dump.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Start with the basics</h2>
+  <ul class="lesson-list">
+    {% for lesson in learn_lessons[:6] %}
+    <li>
+      <a href="{{ url_for('learn_lesson', lesson_id=lesson.id) }}">
+        <strong>{{ lesson.title }}</strong>
+        <span class="muted">{{ lesson.summary }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  <p><a href="{{ url_for('learn_index') }}">All {{ learn_lessons|length }} lessons →</a></p>
+</section>
+
+<section class="block">
+  <h2>The Striver A-Z sheet, organized</h2>
+  <p class="muted">{{ total_problems }} problems across 18 steps.</p>
+  <ol class="step-grid">
+    {% for step in curriculum %}
+    <li>
+      <a href="{{ url_for('practice_step', step_id=step.id) }}">
+        <div class="step-id">Step {{ step.id }}</div>
+        <div class="step-title">{{ step.title }}</div>
+        <div class="step-summary muted">{{ step.summary }}</div>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

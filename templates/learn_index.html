@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Learn — DSA for Beginners{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>Learn</h1>
+  <p class="muted">
+    Long-form conceptual primers. Read these first, then start the
+    practice problems. Each lesson is a 10–15 minute read at human
+    speed.
+  </p>
+</section>
+
+<div class="lesson-grid">
+  {% for lesson in lessons %}
+  <a class="lesson-card" href="{{ url_for('learn_lesson', lesson_id=lesson.id) }}">
+    <h3>{{ lesson.title }}</h3>
+    <p>{{ lesson.summary }}</p>
+    <div class="tag-row">
+      {% for tag in lesson.tags %}
+      <span class="tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

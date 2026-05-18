@@ -1,0 +1,47 @@
+"""Problem registry — aggregates every problem write-up into one dict.
+
+Each topic module exports a `PROBLEMS` list of dictionaries. We merge
+them here and keep the order canonical (matching the curriculum).
+"""
+from __future__ import annotations
+
+from . import (
+    step01_basics,
+    step02_sorting,
+    step03_arrays,
+    step04_binary_search,
+    step05_strings,
+    step06_linked_list,
+    step07_recursion,
+    step09_stacks_queues,
+    step10_sliding_window,
+    step11_heaps,
+    step13_trees,
+    step15_graphs,
+    step16_dp,
+)
+
+
+def _build_registry() -> dict[str, dict]:
+    registry: dict[str, dict] = {}
+    for module in (
+        step01_basics,
+        step02_sorting,
+        step03_arrays,
+        step04_binary_search,
+        step05_strings,
+        step06_linked_list,
+        step07_recursion,
+        step09_stacks_queues,
+        step10_sliding_window,
+        step11_heaps,
+        step13_trees,
+        step15_graphs,
+        step16_dp,
+    ):
+        for problem in getattr(module, "PROBLEMS", []):
+            registry[problem["id"]] = problem
+    return registry
+
+
+PROBLEMS: dict[str, dict] = _build_registry()

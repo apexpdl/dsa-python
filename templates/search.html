@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Search — DSA for Beginners{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>Search results</h1>
+  {% if query %}
+  <p class="muted">
+    Showing matches for <strong>{{ query }}</strong> —
+    {{ results | length }} found.
+  </p>
+  {% else %}
+  <p class="muted">Type a query in the top bar to search.</p>
+  {% endif %}
+</section>
+
+{% if results %}
+<ul class="search-results">
+  {% for r in results %}
+  <li>
+    <a href="{{ r.url }}">
+      <span class="kind kind-{{ r.kind }}">{{ r.kind }}</span>
+      <strong>{{ r.title }}</strong>
+      <div class="tag-row">
+        {% for tag in r.tags %}
+        <span class="tag">{{ tag }}</span>
+        {% endfor %}
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% elif query %}
+<p>No matches. Try a broader term, like <em>recursion</em> or <em>two pointers</em>.</p>
+{% endif %}
+{% endblock %}

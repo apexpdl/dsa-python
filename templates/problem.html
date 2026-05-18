@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ problem.title }} — Practice{% endblock %}
+{% block content %}
+<article class="article problem-page" data-problem-id="{{ problem.id }}">
+  <nav class="breadcrumbs">
+    <a href="{{ url_for('index') }}">Home</a> /
+    <a href="{{ url_for('practice_index') }}">Practice</a> /
+    {% if problem.step_id %}
+    <a href="{{ url_for('practice_step', step_id=problem.step_id) }}">
+      Step {{ problem.step_id }}
+    </a> /
+    {% endif %}
+    <span>{{ problem.title }}</span>
+  </nav>
+
+  <header class="article-header">
+    <h1>{{ problem.title }}</h1>
+    {% if problem.difficulty %}
+    <span class="difficulty difficulty-{{ problem.difficulty }}">{{ problem.difficulty }}</span>
+    {% endif %}
+    <div class="tag-row">
+      {% for tag in problem.tags %}
+      <span class="tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    <div class="problem-toolbar">
+      <button data-toggle-bookmark class="btn btn-small">
+        <span class="bookmark-state">☆ Bookmark</span>
+      </button>
+      <button data-toggle-solved class="btn btn-small">
+        <span class="solved-state">○ Mark as solved</span>
+      </button>
+    </div>
+  </header>
+
+  {% if problem.status == 'coming-soon' %}
+  <div class="callout">
+    <strong>Coming soon.</strong>
+    <p>{{ problem.understanding }}</p>
+  </div>
+  {% else %}
+
+  <section class="problem-section">
+    <h2>A. Problem Understanding</h2>
+    <div class="prose">{{ problem.understanding | md }}</div>
+  </section>
+
+  {% if problem.brute_force %}
+  <section class="problem-section">
+    <h2>B. Brute Force Approach</h2>
+    <div class="prose">{{ problem.brute_force.explanation | md }}</div>
+    <div class="code-block">
+      <pre><code class="language-python">{{ problem.brute_force.code }}</code></pre>
+    </div>
+    <div class="prose complexity">{{ problem.brute_force.complexity | md }}</div>
+  </section>
+  {% endif %}
+
+  {% if problem.thought_process %}
+  <section class="problem-section">
+    <h2>C. Thought Process Breakdown</h2>
+    <div class="prose">{{ problem.thought_process | md }}</div>
+  </section>
+  {% endif %}
+
+  {% if problem.optimized %}
+  <section class="problem-section">
+    <h2>D. Optimized Approach</h2>
+    <div class="prose">{{ problem.optimized.explanation | md }}</div>
+    <div class="code-block">
+      <pre><code class="language-python">{{ problem.optimized.code }}</code></pre>
+    </div>
+    <div class="prose complexity">{{ problem.optimized.complexity | md }}</div>
+  </section>
+  {% endif %}
+
+  {% if problem.deep_concept %}
+  <section class="problem-section">
+    <h2>E. Deep Concept Explanation</h2>
+    <div class="prose">{{ problem.deep_concept | md }}</div>
+  </section>
+  {% endif %}
+
+  {% if problem.summary %}
+  <section class="problem-section problem-summary">
+    <h2>F. Final Summary</h2>
+    <div class="prose">{{ problem.summary | md }}</div>
+  </section>
+  {% endif %}
+
+  {% endif %}
+
+  <nav class="problem-nav">
+    {% if prev_problem %}
+    <a href="{{ url_for('practice_problem', problem_id=prev_problem.id) }}">
+      ← {{ prev_problem.title }}
+    </a>
+    {% else %}<span></span>{% endif %}
+    {% if next_problem %}
+    <a class="right" href="{{ url_for('practice_problem', problem_id=next_problem.id) }}">
+      {{ next_problem.title }} →
+    </a>
+    {% endif %}
+  </nav>
+</article>
+{% endblock %}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}DSA for Beginners{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{{ url_for('index') }}">
+      <span class="brand-logo">{ }</span>
+      <span class="brand-text">DSA for Beginners</span>
+    </a>
+    <nav class="topnav">
+      <a href="{{ url_for('learn_index') }}">Learn</a>
+      <a href="{{ url_for('practice_index') }}">Practice</a>
+      <a href="{{ url_for('bookmarks') }}">Bookmarks</a>
+    </nav>
+    <form class="search-form" action="{{ url_for('search') }}" method="get">
+      <input type="search" name="q" placeholder="Search problems, lessons..."
+             value="{{ request.args.get('q', '') }}">
+    </form>
+  </div>
+</header>
+
+<main class="content">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="bottombar">
+  <p>
+    A patient tutor for DSA — built for absolute beginners. Solutions
+    in Python. Curriculum based on the Striver A-Z DSA Sheet.
+  </p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

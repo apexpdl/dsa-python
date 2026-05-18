@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Not found{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>404 — Page not found</h1>
+  <p class="muted">
+    The thing you were looking for is not here. Maybe the URL is
+    mistyped, or the problem hasn't been written up yet.
+  </p>
+  <p>
+    <a class="btn btn-primary" href="{{ url_for('index') }}">Go home</a>
+    <a class="btn" href="{{ url_for('practice_index') }}">Browse the sheet</a>
+  </p>
+</section>
+{% endblock %}

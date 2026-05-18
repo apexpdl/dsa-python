@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ lesson.title }} — Learn{% endblock %}
+{% block content %}
+<article class="article">
+  <nav class="breadcrumbs">
+    <a href="{{ url_for('index') }}">Home</a> /
+    <a href="{{ url_for('learn_index') }}">Learn</a> /
+    <span>{{ lesson.title }}</span>
+  </nav>
+
+  <header class="article-header">
+    <h1>{{ lesson.title }}</h1>
+    <p class="lead">{{ lesson.summary }}</p>
+    <div class="tag-row">
+      {% for tag in lesson.tags %}
+      <span class="tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+  </header>
+
+  <div class="prose">
+    {{ lesson.body | md }}
+  </div>
+
+  <hr>
+  <h3>More lessons</h3>
+  <div class="lesson-pills">
+    {% for l in lessons %}
+      {% if l.id != lesson.id %}
+      <a class="pill" href="{{ url_for('learn_lesson', lesson_id=l.id) }}">{{ l.title }}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+</article>
+{% endblock %}

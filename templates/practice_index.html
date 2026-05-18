@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Practice — DSA for Beginners{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>Practice</h1>
+  <p class="muted">
+    The Striver A-Z DSA Sheet, organized into 18 steps and
+    {{ total_problems }} problems. Click any step to expand its
+    lectures and problems. Your progress is saved in this browser.
+  </p>
+  <div class="progress-summary" data-progress-summary>
+    Solved <span data-solved-count>0</span> /
+    <span data-total-count>{{ total_problems }}</span>
+  </div>
+</section>
+
+<div class="step-list">
+  {% for step in curriculum %}
+  {% set ns_count = namespace(n=0) %}
+  {% for lecture in step.lectures %}{% set ns_count.n = ns_count.n + (lecture.problems | length) %}{% endfor %}
+  <details class="step-card" {% if loop.index <= 4 %}open{% endif %}>
+    <summary>
+      <div>
+        <span class="step-num">Step {{ step.id }}</span>
+        <strong>{{ step.title }}</strong>
+      </div>
+      <span class="step-count muted">{{ ns_count.n }} problems</span>
+    </summary>
+    <p class="muted">{{ step.summary }}</p>
+    <div class="lecture-list">
+      {% for lecture in step.lectures %}
+      <div class="lecture">
+        <h4>Lecture {{ lecture.id }} — {{ lecture.title }}</h4>
+        <ol class="problem-list">
+          {% for pid in lecture.problems %}
+          <li data-problem-id="{{ pid }}">
+            <a href="{{ url_for('practice_problem', problem_id=pid) }}">
+              {{ pid.replace('-', ' ').title() }}
+            </a>
+            <span class="problem-status"></span>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+      {% endfor %}
+    </div>
+    <p>
+      <a href="{{ url_for('practice_step', step_id=step.id) }}">
+        See full step page →
+      </a>
+    </p>
+  </details>
+  {% endfor %}
+</div>
+{% endblock %}

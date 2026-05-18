@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Bookmarks — DSA for Beginners{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>Bookmarks</h1>
+  <p class="muted">
+    Problems you marked to come back to. Stored locally in this
+    browser — clearing site data wipes them.
+  </p>
+</section>
+
+<ul class="search-results" data-bookmarks-list>
+  <li class="muted" data-bookmarks-empty>You have no bookmarks yet.</li>
+</ul>
+
+<template id="bookmark-template">
+  <li>
+    <a data-href>
+      <span class="kind kind-problem">problem</span>
+      <strong data-title></strong>
+    </a>
+  </li>
+</template>
+{% endblock %}

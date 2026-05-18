@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Step {{ step.id }} — {{ step.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumbs">
+  <a href="{{ url_for('index') }}">Home</a> /
+  <a href="{{ url_for('practice_index') }}">Practice</a> /
+  <span>Step {{ step.id }}</span>
+</nav>
+
+<header class="page-header">
+  <span class="step-num">Step {{ step.id }}</span>
+  <h1>{{ step.title }}</h1>
+  <p class="lead">{{ step.summary }}</p>
+</header>
+
+{% for lecture in step.lectures %}
+<section class="lecture-block">
+  <h2>Lecture {{ lecture.id }} — {{ lecture.title }}</h2>
+  <ol class="problem-list-large">
+    {% for pid in lecture.problems %}
+    <li data-problem-id="{{ pid }}">
+      <a href="{{ url_for('practice_problem', problem_id=pid) }}">
+        {{ pid.replace('-', ' ').title() }}
+      </a>
+      <span class="problem-status"></span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endfor %}
+
+<nav class="step-nav">
+  {% set prev_id = step.id - 1 %}
+  {% set next_id = step.id + 1 %}
+  {% if prev_id >= 1 %}
+    <a href="{{ url_for('practice_step', step_id=prev_id) }}">← Step {{ prev_id }}</a>
+  {% else %}<span></span>{% endif %}
+  {% set ns = namespace(found=false) %}
+  {% for s in curriculum %}{% if s.id == next_id %}{% set ns.found = true %}{% endif %}{% endfor %}
+  {% if ns.found %}
+    <a href="{{ url_for('practice_step', step_id=next_id) }}">Step {{ next_id }} →</a>
+  {% endif %}
+</nav>
+{% endblock %}

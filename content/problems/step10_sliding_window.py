@@ -9,6 +9,32 @@ PROBLEMS: list[dict] = [
         "lecture_id": 1,
         "difficulty": "medium",
         "tags": ["sliding-window", "hashing"],
+        "what_this_teaches": (
+            "The **variable-size sliding window** template — grow on "
+            "the right, shrink on the left until valid, record the "
+            "best. This single skeleton handles a huge family of "
+            "'longest / shortest substring with property P' problems."
+        ),
+        "pattern": "Two pointers + a hash that summarizes the current window.",
+        "prerequisite_lessons": ["strings", "hashing", "sliding-window"],
+        "prerequisite_problems": ["two-sum", "count-frequencies"],
+        "next_problems": [
+            "longest-substring-k-distinct",
+            "longest-repeating-replacement",
+            "max-consecutive-ones-iii",
+            "fruit-into-baskets",
+            "min-window-substring",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 10 (Sliding Window)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 3 — Longest Substring Without Repeating Characters",
+                "url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+            },
+        ],
         "understanding": r'''
 Given a string `s`, return the length of the longest substring
 containing **no repeated character**. A substring is contiguous.
@@ -122,6 +148,141 @@ solve "at most K" twice, subtract. That trick converts hard
 Sliding window is one of the cleanest examples of trading
 *O(n²)* nested loops for *O(n)* incremental maintenance.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does the check `last_index[ch] >= left` use `>=` and not just `in`?",
+                "answer": r'''
+Because a character can be in the `last_index` dict from a
+**previous** appearance that has already slid out of the
+current window. Such a stale entry should be ignored — it does
+not represent a current duplicate.
+
+Walk through `s = "abba"`. After processing the first three
+characters:
+- `left = 0`, dict = `{a: 0, b: 2}`, current window is `"ab"`
+  followed by `"bb"` which shrinks left to 2, so window is
+  `"b"`.
+
+Hmm, let me redo that more carefully. Step by step:
+
+- `right = 0, ch = 'a'`: dict empty, `left = 0`. Record `{a:
+  0}`. Window `[0, 0]` = `"a"`, length 1.
+- `right = 1, ch = 'b'`: `'b'` not in dict. Record `{a: 0, b:
+  1}`. Window `[0, 1]` = `"ab"`, length 2.
+- `right = 2, ch = 'b'`: `'b'` is in dict at index 1, and `1 >=
+  left (0)`. So we set `left = 1 + 1 = 2`. Record `{a: 0, b:
+  2}`. Window `[2, 2]` = `"b"`, length 1.
+- `right = 3, ch = 'a'`: `'a'` is in dict at index 0, but `0 <
+  left (2)`. So the `'a'` we saw earlier is OUTSIDE the
+  current window — ignore it. Set `left` stays at 2. Record
+  `{a: 3, b: 2}`. Window `[2, 3]` = `"ba"`, length 2.
+
+Final answer: 2 (longest is `"ab"` or `"ba"`).
+
+If we had used just `if ch in last_index` (without the `>=
+left` check), the last step would have jumped `left` to 1,
+incorrectly treating the long-gone `'a'` as a duplicate inside
+the window. The window would shrink unnecessarily and the
+answer would be wrong.
+
+The `>= left` check is the critical "is this duplicate actually
+inside the current window?" filter.
+''',
+            },
+            {
+                "question": "Why do we write `last_index[ch] = right` even when ch is already in the dict?",
+                "answer": r'''
+Because we always want the dict to hold the **most recent**
+index where each character appeared. The next time we encounter
+that character, we want to jump `left` to just past its **most
+recent** occurrence, not its earliest one.
+
+If we only inserted on first encounter and never updated, the
+stale earliest-index entries would mislead the algorithm. For
+`s = "abcab"`:
+
+- After processing the first `'a'`, dict = `{a: 0}`.
+- After the second `'a'`, we should update dict to `{a: 3, ...}`
+  so the next `'a'` jumps `left` past index 3, not index 0.
+
+The pattern is "scan once, dict tracks the latest" for every
+character. The assignment `last_index[ch] = right` happens
+unconditionally on every iteration, with the value being the
+current `right`.
+
+This is the same pattern as **dictionary by overwriting** in
+many problems — Counter doing the same thing for counts,
+"last seen" maps for cycle detection, etc. The data structure
+holds the most recent state; old state is implicitly forgotten
+because it gets overwritten.
+
+A small note: if you wanted "first occurrence" instead (for a
+different problem), you would guard with `if ch not in
+last_index:`. For longest-substring-no-repeat, we want "most
+recent," so we just overwrite.
+''',
+            },
+            {
+                "question": "Why is the time complexity O(n) and not O(n²)?",
+                "answer": r'''
+Because **each character is processed at most twice** across the
+entire algorithm: once when `right` reaches it, and at most once
+when `left` slides past it.
+
+The `right` pointer marches from 0 to `n - 1` exactly once. The
+`left` pointer also only moves forward (it can jump, but never
+backward). So `left` also moves at most `n` steps total.
+
+Combined, the algorithm does at most `2n` pointer movements,
+plus constant-time dict operations per movement. That gives
+*O(n)* time.
+
+Each iteration's inner work is bounded:
+- One dict lookup: amortized *O(1)*.
+- One comparison and at most one assignment: *O(1)*.
+- One dict update: *O(1)*.
+- One max comparison: *O(1)*.
+
+So even though the inner branch updates `left`, the update is
+bounded by the total budget for `left`'s forward motion. The
+algorithm is genuinely linear.
+
+Contrast with a naive O(n²) approach: for each starting
+position, scan rightward until a duplicate is found, counting
+the length. That algorithm re-scans the same characters many
+times. The sliding-window version uses the dict to make those
+re-scans unnecessary.
+''',
+            },
+            {
+                "question": "Why does `right - left + 1` correctly count window length?",
+                "answer": r'''
+Because the window is the **inclusive** range `[left, right]`,
+and the number of integers in such a range is `right - left +
+1`.
+
+This is the fence-post counting rule from the Arrays lesson.
+For `left = 2, right = 5`, the indices in the window are `{2, 3,
+4, 5}` — four indices, which equals `5 - 2 + 1`.
+
+The `+ 1` is the easiest off-by-one to get wrong. A common bug
+is writing `right - left`, which gives **one less** than the
+correct length. For `left = 2, right = 5`, that returns 3
+instead of 4.
+
+To verify your formula: pick the smallest case (`left ==
+right`). The window contains just one element. Plug in:
+`right - left + 1 = 0 + 1 = 1`. Correct.
+
+If you instead used a half-open window `[left, right)`, the
+length would be `right - left` (no `+ 1`). Both styles are
+valid; pick one and be consistent throughout the function.
+
+Our code uses inclusive boundaries (the canonical sliding
+window style), so `right - left + 1` is the right formula.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: variable-size window `[left, right]` with a hash
 maintaining the inside-window state.

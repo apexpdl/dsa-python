@@ -5492,6 +5492,1039 @@ finish within K time" problem.
 ''',
     },
     {
+        "id": "floor-ceil-sorted",
+        "title": "Floor and Ceil in a Sorted Array",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "easy",
+        "tags": ["binary-search", "fundamentals"],
+        "what_this_teaches": (
+            "Two more queries that factor through lower bound. Floor "
+            "is 'largest value ≤ x'; ceil is 'smallest value ≥ x'. "
+            "Both are one binary search away."
+        ),
+        "pattern": "ceil = lower_bound(x); floor = lower_bound(x) - 1 (with guard).",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["lower-bound", "upper-bound"],
+        "next_problems": ["search-insert-position", "search-rotated-i"],
+        "resources": [_SHEET],
+        "understanding": r'''
+Given a sorted array and a target `x`, return:
+
+- **Floor**: the largest value in the array that is at most `x`
+  (`-1` or some sentinel if every value exceeds `x`).
+- **Ceil**: the smallest value that is at least `x` (sentinel
+  if every value is less than `x`).
+
+For `arr = [3, 4, 7, 8, 10]`:
+
+- `x = 5`: floor = 4, ceil = 7.
+- `x = 7`: floor = 7, ceil = 7 (exact match).
+- `x = 11`: floor = 10, ceil = sentinel (no value ≥ 11).
+- `x = 0`: floor = sentinel, ceil = 3.
+
+These are the array equivalents of mathematical floor and ceil
+operations.
+
+The clean formulation:
+
+- **Ceil** is `arr[lower_bound(x)]` (with a bounds check —
+  return sentinel if lower bound is past the end).
+- **Floor** is `arr[lower_bound(x) - 1]` if `arr[lower_bound]
+  != x`, otherwise `arr[lower_bound]` itself. More compactly:
+  if `lower_bound(x) < n` and `arr[lower_bound(x)] == x`, floor
+  is x. Else floor is `arr[lower_bound(x) - 1]` (with guard).
+
+The brute force is *O(n)* — walk and check. The binary search
+version is *O(log n)*.
+''',
+        "brute_force": {
+            "explanation": r'''
+Linear scan tracking floor and ceil as we walk.
+
+```python
+def floor_ceil_linear(arr, x):
+    floor_val = ceil_val = None
+    for v in arr:
+        if v <= x and (floor_val is None or v > floor_val):
+            floor_val = v
+        if v >= x and (ceil_val is None or v < ceil_val):
+            ceil_val = v
+    return floor_val, ceil_val
+```
+
+`O(n)` time. Correct on any array, sorted or not.
+
+For sorted arrays, binary search via lower bound brings us to
+`O(log n)`.
+''',
+            "code": r'''def floor_ceil_linear(arr: list[int], x: int) -> tuple:
+    floor_val = ceil_val = None
+    for v in arr:
+        if v <= x and (floor_val is None or v > floor_val):
+            floor_val = v
+        if v >= x and (ceil_val is None or v < ceil_val):
+            ceil_val = v
+    return floor_val, ceil_val
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "optimized": {
+            "explanation": r'''
+One binary search (lower bound) gives both floor and ceil.
+''',
+            "code": r'''def floor_ceil(arr: list[int], x: int) -> tuple:
+    # Lower bound: first index with arr[i] >= x.
+    lo, hi = 0, len(arr)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if arr[mid] >= x:
+            hi = mid
+        else:
+            lo = mid + 1
+    # lo is now the lower bound.
+    # CEIL: the smallest value >= x.
+    # If lo is past the end, no such value exists.
+    ceil_val = arr[lo] if lo < len(arr) else None
+    # FLOOR: the largest value <= x.
+    # If arr[lo] == x, floor is x itself.
+    # Otherwise, floor is at position lo - 1 (if lo > 0).
+    if lo < len(arr) and arr[lo] == x:
+        floor_val = x
+    elif lo > 0:
+        floor_val = arr[lo - 1]
+    else:
+        floor_val = None
+    return floor_val, ceil_val
+''',
+            "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+Lower bound returns the first index where `arr[i] >= x`. So:
+
+- If `arr[lo] == x`, both floor and ceil are `x` (exact match).
+- If `arr[lo] > x`, ceil is `arr[lo]` (smallest greater) and
+  floor is `arr[lo - 1]` (largest smaller) if `lo > 0`.
+- If `lo == len(arr)`, no value is ≥ x. Ceil is undefined; floor
+  is `arr[-1]` (the largest value in the array).
+- If `lo == 0` and `arr[0] > x`, floor is undefined; ceil is
+  `arr[0]`.
+
+One binary search; constant-time logic for the cases. *O(log n)*
+overall.
+''',
+        "deep_concept": r'''
+Yet another query that reduces to lower bound. The pattern:
+**any "find the nearest value with property P" query on a
+sorted array** is one or two lower/upper bound calls away.
+
+This builds intuition for the family. Soon enough, "floor /
+ceil / next-greater / next-smaller / count / first / last"
+become reflexive.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why does the same lower bound give both floor and ceil?",
+                "answer": r'''
+Because lower bound finds the "transition point" — the
+boundary between elements < x and elements ≥ x. Floor lives
+just left of this boundary; ceil lives at it (or to its
+right).
+
+If `arr[lo] == x`, both floor and ceil are x (exact match).
+Otherwise floor is at `lo - 1` and ceil is at `lo`. One search,
+two answers.
+''',
+            },
+        ],
+        "summary": "**Pattern**: lower bound + boundary handling = floor and ceil in *O(log n)*.",
+    },
+    {
+        "id": "nth-root",
+        "title": "Find the N-th Root of a Number",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "easy",
+        "tags": ["binary-search", "bs-on-answer", "math"],
+        "what_this_teaches": "Generalization of sqrt to N-th root using binary search on the answer.",
+        "pattern": "Binary search candidate in [0, m]; predicate is mid^n <= m.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["sqrt-using-bs"],
+        "next_problems": ["koko-bananas", "smallest-divisor-threshold"],
+        "resources": [
+            _SHEET,
+            {
+                "label": "Coding Ninjas — Nth Root",
+                "url": "https://www.codingninjas.com/studio/problems/1062679",
+            },
+        ],
+        "understanding": r'''
+Given two positive integers `n` and `m`, find the integer N-th
+root of `m`. That is, return the largest integer `r` such that
+`r^n <= m`. If `r^n == m` exactly, return `r`; otherwise some
+problems return `-1` for "no integer root."
+
+Examples:
+
+- `n = 3, m = 27`: 3rd root of 27 is 3 (`3^3 = 27`).
+- `n = 4, m = 69`: largest r with r^4 <= 69. `2^4 = 16, 3^4 =
+  81`. So r = 2 (no exact root).
+- `n = 2, m = 16`: 2nd root (square root) is 4.
+
+The structure is identical to `sqrt-using-bs`, generalized from
+2nd root to N-th root.
+
+The brute force tries each candidate from 1 up. *O(m^(1/n))*
+time — fewer iterations than for sqrt as n grows, but still
+unnecessary.
+
+Optimal: binary search on the candidate `r` in `[1, m]`.
+Feasibility predicate: `r^n <= m`. Computing `r^n` takes `O(log
+n)` via fast exponentiation, but Python's `**` operator handles
+that automatically. Total time `O(log m * log n)`.
+''',
+        "brute_force": {
+            "explanation": "Try each candidate from 1 upward; return the last whose n-th power doesn't exceed m.",
+            "code": r'''def nth_root_linear(n: int, m: int) -> int:
+    r = 1
+    while r ** n <= m:
+        r += 1
+    return r - 1
+''',
+            "complexity": "**Time**: *O(m^(1/n))*. **Space**: *O(1)*.",
+        },
+        "optimized": {
+            "explanation": "Binary search the candidate root with predicate r^n <= m.",
+            "code": r'''def nth_root(n: int, m: int) -> int:
+    # Candidate range: 1 to m (loose upper bound; for n >= 1, the
+    # n-th root is at most m).
+    lo, hi = 1, m
+    ans = 0
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        # Compute mid^n. Python's ** is fast and exact for integers.
+        # For very large n, we could early-exit when the partial product
+        # exceeds m, but for reasonable inputs Python's ** is fine.
+        power = mid ** n
+        if power == m:
+            # Exact n-th root found.
+            return mid
+        if power < m:
+            # mid is a feasible (but possibly not the largest) root.
+            ans = mid
+            lo = mid + 1
+        else:
+            # mid^n exceeds m; try smaller.
+            hi = mid - 1
+    # If we reached here, no exact root exists. Return the floor.
+    # (Some problems require -1 if no exact root; adjust as needed.)
+    return ans
+''',
+            "complexity": "**Time**: *O(log m × log n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": "Same BS-on-answer recipe as sqrt-using-bs, just with mid^n instead of mid*mid in the predicate.",
+        "deep_concept": "Demonstrates that the BS-on-answer pattern is fully parametric in the predicate. Change `mid * mid` to `mid ** n` and the same algorithm works.",
+        "confusion_notes": [
+            {
+                "question": "Why not use math.pow or **(1/n)?",
+                "answer": "Floating-point inaccuracy. `m ** (1/n)` can be off by tiny amounts that round wrong when cast to int. The integer-arithmetic binary search is exact.",
+            },
+        ],
+        "summary": "**Pattern**: BS-on-answer with `mid ** n` predicate. Direct generalization of integer sqrt.",
+    },
+    {
+        "id": "min-days-bouquets",
+        "title": "Minimum Days to Make M Bouquets",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "medium",
+        "tags": ["binary-search", "bs-on-answer"],
+        "what_this_teaches": "BS-on-answer where the candidate is a 'day count' and the feasibility checker counts how many bouquets we can make using flowers bloomed by that day.",
+        "pattern": "Binary search the day in [min, max] of bloomDay; feasibility = count of bouquets makeable by that day >= m.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["ship-packages-d-days", "smallest-divisor-threshold"],
+        "next_problems": ["aggressive-cows", "painters-partition"],
+        "resources": [
+            _SHEET,
+            _lc(1482, "minimum-number-of-days-to-make-m-bouquets"),
+        ],
+        "understanding": r'''
+You have a garden of `n` flowers; `bloomDay[i]` is the day on
+which flower `i` blooms. You need to make `m` bouquets, each
+containing exactly `k` **adjacent** bloomed flowers. Return the
+minimum number of days required, or `-1` if impossible (not
+enough flowers total).
+
+Example: `bloomDay = [1, 10, 3, 10, 2], m = 3, k = 1`. We need
+3 bouquets of 1 adjacent flower each. After day 3, the bloomed
+flowers (indices where `bloomDay[i] <= 3`) are `[1, _, 3, _,
+2]`. The bloomed positions are 0, 2, 4 — three of them. We can
+make 3 bouquets of size 1 each. So answer is 3.
+
+**Candidate range** for the day: from `min(bloomDay)` (the
+earliest any flower blooms) to `max(bloomDay)` (the latest).
+
+**Feasibility checker**: given a day `d`, count the maximum
+number of bouquets makeable. Walk the array; for each bloomed
+position (`bloomDay[i] <= d`), extend a "run" counter; every
+`k` consecutive bloomed flowers gives one bouquet. Reset the
+counter when an unbloomed flower interrupts.
+
+**Monotonicity**: more days → more bloomed flowers → more
+bouquets possible. So feasibility is monotonic in days. We
+want the smallest feasible day.
+
+**Binary search**: half-open lower-bound style.
+''',
+        "brute_force": {
+            "explanation": "Try each day from min to max; count bouquets makeable.",
+            "code": r'''def min_days_linear(bloomDay, m, k):
+    if m * k > len(bloomDay):
+        return -1
+    for d in range(min(bloomDay), max(bloomDay) + 1):
+        if can_make(bloomDay, d, k) >= m:
+            return d
+    return -1
+
+
+def can_make(bloomDay, d, k):
+    bouquets = 0
+    run = 0
+    for b in bloomDay:
+        if b <= d:
+            run += 1
+            if run == k:
+                bouquets += 1
+                run = 0
+        else:
+            run = 0
+    return bouquets
+''',
+            "complexity": "**Time**: *O((max - min) × n)*. **Space**: *O(1)*.",
+        },
+        "optimized": {
+            "explanation": "Binary search the day with a greedy bouquet-counting feasibility checker.",
+            "code": r'''def min_days(bloomDay: list[int], m: int, k: int) -> int:
+    # Quick infeasibility check: need m*k flowers total.
+    if m * k > len(bloomDay):
+        return -1
+
+    def can_make(d: int) -> int:
+        # Count the maximum number of bouquets makeable by day d.
+        # Walk the array; extend a run of bloomed flowers; harvest a
+        # bouquet whenever the run reaches k.
+        bouquets = 0
+        run = 0
+        for b in bloomDay:
+            if b <= d:
+                # This flower has bloomed by day d.
+                run += 1
+                if run == k:
+                    bouquets += 1
+                    run = 0  # reset; start a new run
+            else:
+                # Unbloomed; the run is broken.
+                run = 0
+        return bouquets
+
+    # Candidate range: min(bloomDay) to max(bloomDay).
+    lo, hi = min(bloomDay), max(bloomDay)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if can_make(mid) >= m:
+            # Feasible at this day; try earlier.
+            hi = mid
+        else:
+            # Not enough bouquets; need later.
+            lo = mid + 1
+    return lo
+''',
+            "complexity": "**Time**: *O(n × log(max - min))*. **Space**: *O(1)*.",
+        },
+        "thought_process": "Same BS-on-answer recipe: identify candidate (the day), write feasibility checker (greedy bouquet count), verify monotonicity (more days = more bouquets), binary search.",
+        "deep_concept": "The greedy 'harvest bouquets eagerly as runs reach k' is optimal because adjacent bloomed flowers must be used contiguously; delaying a harvest never helps.",
+        "confusion_notes": [
+            {
+                "question": "Why reset `run` to 0 after harvesting a bouquet?",
+                "answer": "Because each flower can only be used once. After harvesting k flowers into a bouquet, those flowers are 'spent' and the next bouquet must come from the next run.",
+            },
+            {
+                "question": "Why is the infeasibility check `m * k > len(bloomDay)`?",
+                "answer": "We need `m * k` flowers total to make `m` bouquets of size `k`. If the garden has fewer than that, no day count will work — return -1.",
+            },
+        ],
+        "summary": "**Pattern**: BS-on-answer with greedy run-counting feasibility checker.",
+    },
+    {
+        "id": "kth-missing-positive",
+        "title": "K-th Missing Positive Number",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "easy",
+        "tags": ["binary-search", "arrays"],
+        "what_this_teaches": "How to binary search using the count of missing positives up to each index — a clever transformation that turns 'find the k-th missing' into a lower-bound query.",
+        "pattern": "Missing count at index i = arr[i] - (i + 1). Binary search for the first index where missing count >= k.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["lower-bound", "binary-search"],
+        "next_problems": ["sqrt-using-bs"],
+        "resources": [
+            _SHEET,
+            _lc(1539, "kth-missing-positive-number"),
+        ],
+        "understanding": r'''
+Given a strictly-increasing array of positive integers and an
+integer `k`, return the k-th **missing** positive integer.
+
+For `arr = [2, 3, 4, 7, 11]`:
+- The positive integers not in `arr`: 1, 5, 6, 8, 9, 10, 12, 13, ...
+- The 5th missing positive is 9.
+
+The brute force walks 1, 2, 3, ... and counts how many are
+missing until k. *O(arr[-1] + k)*.
+
+The clever optimization: notice that at index `i`, the number
+of "missing" positive integers up to (and not including)
+`arr[i]` is `arr[i] - (i + 1)`. (Because if no numbers were
+missing, `arr[i]` would equal `i + 1`. Every extra is a missing
+slot.)
+
+So we binary search for the smallest index where
+`arr[i] - (i + 1) >= k`. The answer is `k + i` (the k-th missing
+sits just before `arr[i]`, at position `arr[i] - (count above i)`).
+Or more precisely: the answer is `k + lo` after the binary
+search, where `lo` is the lower bound.
+''',
+        "brute_force": {
+            "explanation": "Walk positive integers in order; skip the ones in arr; count to k.",
+            "code": r'''def kth_missing_linear(arr, k):
+    missing = 0
+    i = 0
+    num = 0
+    while True:
+        num += 1
+        if i < len(arr) and arr[i] == num:
+            i += 1
+        else:
+            missing += 1
+            if missing == k:
+                return num
+''',
+            "complexity": "**Time**: *O(arr[-1] + k)*. **Space**: *O(1)*.",
+        },
+        "optimized": {
+            "explanation": "Binary search on the 'missing count' function. At index i, missing = arr[i] - (i + 1).",
+            "code": r'''def find_kth_missing(arr: list[int], k: int) -> int:
+    # Binary search for the smallest index i where the number of
+    # missing positives up to arr[i] is at least k.
+    lo, hi = 0, len(arr)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        # missing[mid] = arr[mid] - (mid + 1).
+        # If this is < k, the k-th missing is past arr[mid]: lo = mid + 1.
+        # Otherwise, the k-th missing is at or before arr[mid]: hi = mid.
+        missing_count = arr[mid] - (mid + 1)
+        if missing_count < k:
+            lo = mid + 1
+        else:
+            hi = mid
+    # After the search, lo is the first index where missing >= k.
+    # The k-th missing positive is k + lo.
+    # (If lo == len(arr), all of arr's elements have been considered;
+    # the k-th missing is k + lo = k + len(arr).)
+    return k + lo
+''',
+            "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The transformation `missing(i) = arr[i] - (i + 1)` is the
+clever step. Let me unpack it.
+
+If `arr` were `[1, 2, 3, ..., n]` with no missing values, then
+`arr[i] == i + 1` for all `i`, so missing(i) = 0.
+
+Every time a positive integer is "skipped" (i.e., not in `arr`),
+the values shift up. `arr[i]` becomes larger than `i + 1` by
+exactly the number of values missing before `arr[i]`.
+
+So `arr[i] - (i + 1) = number of missing positives less than
+arr[i]`.
+
+We want the **k-th** missing. Binary-search the smallest `i`
+such that `missing(i) >= k`. Once found, the k-th missing is
+sandwiched between `arr[i - 1]` and `arr[i]`. Working out the
+arithmetic: the answer is `k + lo` (the lower bound returned).
+
+This kind of "transform the data and binary search the
+transform" trick is one of the prettiest patterns in DSA.
+''',
+        "deep_concept": "The transformation `arr[i] - (i + 1) = number of missing positives < arr[i]` is the heart of the algorithm. Recognizing such transformations turns linear scans into logarithmic searches.",
+        "confusion_notes": [
+            {
+                "question": "Why is the answer `k + lo`?",
+                "answer": "Because `lo` is the smallest index where `missing(lo) >= k`. Before index `lo`, `missing(lo - 1) < k`. So the k-th missing positive lies just past `arr[lo - 1]`, at position `k + lo`.",
+            },
+        ],
+        "summary": "**Pattern**: transform the data so that 'find the k-th missing' becomes 'find the lower bound of missing-count'. Then binary search.",
+    },
+    {
+        "id": "split-array-largest-sum",
+        "title": "Split Array Largest Sum",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "hard",
+        "tags": ["binary-search", "bs-on-answer", "partition"],
+        "what_this_teaches": "The same algorithm as book-allocation, painter's partition, and ship-packages-in-D-days, framed as 'split array into k contiguous subarrays minimizing the maximum sum'.",
+        "pattern": "Binary search the candidate max sum in [max(arr), sum(arr)]; greedy subarray-counting feasibility checker.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["book-allocation", "ship-packages-d-days", "aggressive-cows"],
+        "next_problems": ["painters-partition", "minimize-max-distance"],
+        "resources": [
+            _SHEET,
+            _lc(410, "split-array-largest-sum"),
+        ],
+        "understanding": r'''
+Given an array `nums` of non-negative integers and an integer
+`k`, split `nums` into `k` **non-empty contiguous** subarrays
+such that the largest subarray sum is minimized. Return that
+minimized maximum.
+
+Example: `nums = [7, 2, 5, 10, 8]`, `k = 2`. Possible splits:
+
+- `[7] | [2, 5, 10, 8]`: sums 7, 25. Max 25.
+- `[7, 2] | [5, 10, 8]`: 9, 23. Max 23.
+- `[7, 2, 5] | [10, 8]`: 14, 18. Max 18.
+- `[7, 2, 5, 10] | [8]`: 24, 8. Max 24.
+
+Minimum of the maxes: 18.
+
+This is **algorithmically identical to book-allocation** with
+"subarrays" playing the role of "students" and "sums" of
+"page totals." The same BS-on-answer recipe with greedy
+partition checker applies directly.
+''',
+        "brute_force": {
+            "explanation": "Enumerate all C(n-1, k-1) partitions. Infeasible for large inputs.",
+            "code": r'''# Combinatorial brute force; not recommended.
+def split_brute(nums, k):
+    # Try all positions to insert k-1 split points.
+    # Infeasible for large k; included only as a baseline.
+    from itertools import combinations
+    n = len(nums)
+    best = float('inf')
+    for splits in combinations(range(1, n), k - 1):
+        groups = []
+        prev = 0
+        for s in list(splits) + [n]:
+            groups.append(sum(nums[prev:s]))
+            prev = s
+        best = min(best, max(groups))
+    return best
+''',
+            "complexity": "**Time**: *O(C(n-1, k-1) × n)*. Astronomically slow. **Space**: *O(k)*.",
+        },
+        "optimized": {
+            "explanation": "Binary search the candidate max-sum; greedy partition checker counts how many subarrays are needed.",
+            "code": r'''def split_array(nums: list[int], k: int) -> int:
+    def partitions_needed(max_sum: int) -> int:
+        # Greedy: extend the current subarray until adding the next
+        # element would exceed max_sum; then start a new subarray.
+        groups = 1
+        current = 0
+        for x in nums:
+            if x > max_sum:
+                # Even a single element exceeds the cap. Infeasible.
+                return float('inf')
+            if current + x <= max_sum:
+                current += x
+            else:
+                groups += 1
+                current = x
+        return groups
+
+    # Candidate range:
+    # - Lower bound max(nums): no subarray can sum to less than its
+    #   largest single element.
+    # - Upper bound sum(nums): with k=1, the only subarray takes
+    #   everything.
+    lo, hi = max(nums), sum(nums)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if partitions_needed(mid) <= k:
+            # mid is feasible (we can do it with k or fewer subarrays).
+            # Try smaller.
+            hi = mid
+        else:
+            # Need more capacity per subarray.
+            lo = mid + 1
+    return lo
+''',
+            "complexity": "**Time**: *O(n × log(sum - max))*. **Space**: *O(1)*.",
+        },
+        "thought_process": "Same recipe as book-allocation, frame-renamed. The greedy 'extend current group until cap' is optimal by the exchange argument we covered there.",
+        "deep_concept": "This problem is the 'canonical' LeetCode formulation of the partition family. Once you've solved book-allocation, this is the same algorithm with renamed variables.",
+        "confusion_notes": [
+            {
+                "question": "Is this really the same problem as book-allocation?",
+                "answer": "Yes — algorithmically identical. Book-allocation says 'distribute books to students in order, minimize max pages per student'. Split-array-largest-sum says 'split array into k contiguous subarrays, minimize max sum'. They are word-for-word the same partition problem with different stories.",
+            },
+        ],
+        "summary": "**Pattern**: BS-on-answer with greedy partition checker. Same as book-allocation, ship-packages, painter's partition.",
+    },
+    {
+        "id": "painters-partition",
+        "title": "Painter's Partition Problem",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "hard",
+        "tags": ["binary-search", "bs-on-answer", "partition"],
+        "what_this_teaches": "Yet another framing of the partition family. Painters paint boards in order; minimize the time the slowest painter takes.",
+        "pattern": "Same as book-allocation / split-array-largest-sum / ship-packages.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["split-array-largest-sum", "book-allocation"],
+        "next_problems": ["minimize-max-distance"],
+        "resources": [
+            _SHEET,
+            {
+                "label": "GFG — Painter's Partition Problem",
+                "url": "https://www.geeksforgeeks.org/painters-partition-problem/",
+            },
+        ],
+        "understanding": r'''
+You have `k` painters and `n` boards (in order) with lengths
+given. Each painter paints one or more **adjacent** boards.
+Painting one unit of length takes one unit of time. All
+painters work in parallel. Minimize the time when **the slowest
+painter finishes** (i.e., when all boards are done).
+
+This is **exactly** split-array-largest-sum and book-allocation,
+with painters as the partitions and board lengths as the
+weights.
+
+The minimized maximum subarray sum = the time the slowest
+painter takes = the time all boards are done.
+
+Algorithm is identical to those problems.
+''',
+        "brute_force": {
+            "explanation": "Enumerate all partitions. Infeasible.",
+            "code": "# Same as split_brute; omitted.\n",
+            "complexity": "Astronomical.",
+        },
+        "optimized": {
+            "explanation": "Identical algorithm to split-array-largest-sum.",
+            "code": r'''def painters_partition(boards: list[int], k: int) -> int:
+    def painters_needed(max_time: int) -> int:
+        painters = 1
+        current = 0
+        for length in boards:
+            if length > max_time:
+                return float('inf')
+            if current + length <= max_time:
+                current += length
+            else:
+                painters += 1
+                current = length
+        return painters
+
+    lo, hi = max(boards), sum(boards)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if painters_needed(mid) <= k:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo
+''',
+            "complexity": "**Time**: *O(n × log(sum - max))*. **Space**: *O(1)*.",
+        },
+        "thought_process": "Same as split-array-largest-sum.",
+        "deep_concept": "The partition family is broad. Once you recognize 'minimize the max partition sum / cost / time', the algorithm is mechanical.",
+        "confusion_notes": [
+            {
+                "question": "What's the difference between painter's partition and book-allocation?",
+                "answer": "Nothing algorithmic. Different stories, same problem. Both minimize the max sum across k contiguous partitions.",
+            },
+        ],
+        "summary": "**Pattern**: same partition family. Painter / student / day / subarray — all interchangeable framings.",
+    },
+    {
+        "id": "minimize-max-distance",
+        "title": "Minimize Maximum Distance to Gas Station",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "hard",
+        "tags": ["binary-search", "bs-on-answer", "heap"],
+        "what_this_teaches": "BS-on-answer where the candidate is a real-valued distance and the feasibility checker counts how many new stations are needed to keep the max gap under the candidate.",
+        "pattern": "Real-valued binary search: lo, hi as floats; converge by tolerance instead of integer equality.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["aggressive-cows", "split-array-largest-sum"],
+        "next_problems": ["median-two-sorted"],
+        "resources": [
+            _SHEET,
+            _lc(774, "minimize-max-distance-to-gas-station"),
+        ],
+        "understanding": r'''
+You have gas stations at sorted positions `stations[0] <
+stations[1] < ... < stations[n-1]`. You can add `k` new
+stations at any positions. Minimize the **maximum** distance
+between any two adjacent stations.
+
+Return the minimum possible max-distance as a float (rounded to
+some precision).
+
+Example: `stations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]`, `k = 9`.
+Add 9 stations. The current gaps are all 1. Adding one station
+splits a gap of 1 into two halves of 0.5. With 9 new stations,
+we can split 9 gaps in half (or distribute differently). The
+answer is 0.5.
+
+**Real-valued binary search**: the candidate answer is a
+positive real number, not an integer. We use a binary search
+with floating-point bounds, converging when `hi - lo` is
+smaller than some tolerance (typically `1e-6`).
+
+**Feasibility checker**: given a candidate max-distance `d`,
+count how many new stations are needed to ensure no gap exceeds
+`d`. For each existing gap `g_i`, we need `ceil(g_i / d) - 1`
+new stations. Sum these. Feasible iff sum ≤ k.
+
+**Monotonicity**: smaller `d` → more stations needed.
+Feasibility is monotonic in `d`.
+
+**Binary search**: find the smallest feasible `d`. Use a real-
+valued binary search with a tolerance.
+''',
+        "brute_force": {
+            "explanation": "There's no clean integer enumeration. The brute force is the heap-based greedy that places stations one at a time in the largest gap. *O(k log n)* but doesn't generalize cleanly.",
+            "code": r'''import heapq
+
+def minimize_max_dist_heap(stations, k):
+    # Max-heap of gaps; place each new station in the current largest.
+    heap = []
+    for i in range(len(stations) - 1):
+        gap = stations[i + 1] - stations[i]
+        heapq.heappush(heap, (-gap, 1))  # (-priority, parts so far)
+    for _ in range(k):
+        neg_g, parts = heapq.heappop(heap)
+        g = -neg_g * parts / (parts + 1)
+        heapq.heappush(heap, (-g, parts + 1))
+    return -heap[0][0]
+''',
+            "complexity": "**Time**: *O((n + k) log n)*. **Space**: *O(n)*.",
+        },
+        "optimized": {
+            "explanation": "Real-valued binary search on the candidate max-distance.",
+            "code": r'''def minimize_max_distance(stations: list[int], k: int, tol: float = 1e-6) -> float:
+    import math
+
+    def stations_needed(d: float) -> int:
+        # For each existing gap, count how many new stations are needed
+        # to keep all sub-gaps <= d. A gap of g needs ceil(g / d) - 1
+        # new stations (subtract 1 because one fewer split-point gives
+        # ceil(g/d) parts).
+        total = 0
+        for i in range(len(stations) - 1):
+            g = stations[i + 1] - stations[i]
+            total += math.ceil(g / d) - 1
+        return total
+
+    lo, hi = 0.0, max(stations[i + 1] - stations[i]
+                      for i in range(len(stations) - 1))
+    # Real-valued binary search. Terminate when the window is smaller
+    # than the tolerance.
+    while hi - lo > tol:
+        mid = (lo + hi) / 2
+        if stations_needed(mid) <= k:
+            # Feasible at this max-distance; try smaller.
+            hi = mid
+        else:
+            # Need more stations than available; try larger.
+            lo = mid
+    return lo
+''',
+            "complexity": "**Time**: *O(n × log((max_gap) / tol))*. **Space**: *O(1)*.",
+        },
+        "thought_process": "Real-valued binary search has the same shape as integer binary search; we just use floats and a tolerance for the termination condition.",
+        "deep_concept": "Real-valued binary search is rarely emphasized but appears in geometric and continuous-optimization problems. The tolerance-based convergence replaces integer equality.",
+        "confusion_notes": [
+            {
+                "question": "Why tolerance-based convergence?",
+                "answer": "Because floats can never reach exact equality. We stop when the window `hi - lo` is smaller than our acceptable error. Typical tolerance: `1e-6` or `1e-7` depending on the problem's required precision.",
+            },
+        ],
+        "summary": "**Pattern**: real-valued binary search with tolerance termination. The feasibility checker uses ceiling-division on gap lengths.",
+    },
+    {
+        "id": "kth-element-two-sorted",
+        "title": "K-th Element of Two Sorted Arrays",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "hard",
+        "tags": ["binary-search", "partition"],
+        "what_this_teaches": "Generalization of median-two-sorted: find the k-th smallest of the merged sequence. Same partition idea, different half-size.",
+        "pattern": "Binary search the partition; half-size = k.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["median-two-sorted"],
+        "next_problems": [],
+        "resources": [
+            _SHEET,
+            {
+                "label": "GFG — k-th element of two sorted arrays",
+                "url": "https://www.geeksforgeeks.org/k-th-element-two-sorted-arrays/",
+            },
+        ],
+        "understanding": r'''
+Given two sorted arrays and an integer `k`, return the k-th
+smallest element of the merged sequence.
+
+This is the generalization of median-two-sorted. The median is
+the `(m + n + 1) // 2`-th element; the general problem asks for
+the k-th.
+
+The brute force merges the two arrays and reads the k-th. *O((m
++ n) log(m + n))* with sort, or *O(m + n)* with two-pointer
+merge (stopping at the k-th).
+
+The optimal *O(log(min(m, n)))* algorithm uses the same
+partition trick as median-two-sorted, with `half = k` instead of
+`(m + n + 1) // 2`.
+''',
+        "brute_force": {
+            "explanation": "Two-pointer merge until the k-th element.",
+            "code": r'''def kth_element_brute(a, b, k):
+    i = j = 0
+    last = 0
+    for _ in range(k):
+        if i < len(a) and (j == len(b) or a[i] <= b[j]):
+            last = a[i]
+            i += 1
+        else:
+            last = b[j]
+            j += 1
+    return last
+''',
+            "complexity": "**Time**: *O(k)*. **Space**: *O(1)*.",
+        },
+        "optimized": {
+            "explanation": "Partition-based binary search with half=k.",
+            "code": r'''def kth_element(a: list[int], b: list[int], k: int) -> int:
+    # Binary search the smaller array; ensure m <= n.
+    if len(a) > len(b):
+        a, b = b, a
+    m, n = len(a), len(b)
+    # Restrict the binary search range on i (the cut in array a) to
+    # the valid window given k. i must be at least max(0, k - n) and
+    # at most min(k, m).
+    lo = max(0, k - n)
+    hi = min(k, m)
+    while lo <= hi:
+        i = (lo + hi) // 2
+        j = k - i
+        # Boundary elements at the cut. Use sentinels for out-of-bounds.
+        a_left = a[i - 1] if i > 0 else float('-inf')
+        a_right = a[i] if i < m else float('inf')
+        b_left = b[j - 1] if j > 0 else float('-inf')
+        b_right = b[j] if j < n else float('inf')
+        # Check the cross condition.
+        if a_left <= b_right and b_left <= a_right:
+            # The k-th element is the max of the left side.
+            return max(a_left, b_left)
+        elif a_left > b_right:
+            hi = i - 1
+        else:
+            lo = i + 1
+    raise ValueError("inputs not sorted")
+''',
+            "complexity": "**Time**: *O(log(min(m, n)))*. **Space**: *O(1)*.",
+        },
+        "thought_process": "Same as median-two-sorted, with `half = k`.",
+        "deep_concept": "Demonstrates that the partition-based binary search generalizes from median to arbitrary k-th smallest.",
+        "confusion_notes": [
+            {
+                "question": "Why restrict the search range on i?",
+                "answer": "Because j = k - i must be in [0, n]. So i must be at least k - n (so j <= n) and at most k (so j >= 0). The tighter range avoids invalid partitions.",
+            },
+        ],
+        "summary": "**Pattern**: partition-based binary search; half = k.",
+    },
+    {
+        "id": "peak-element-2d",
+        "title": "Find Peak Element in a 2D Matrix",
+        "step_id": 4,
+        "lecture_id": 3,
+        "difficulty": "medium",
+        "tags": ["binary-search", "matrix", "peaks"],
+        "what_this_teaches": "Binary search on columns. For each candidate column, find the row of its max; then check whether that cell is a peak by comparing horizontally.",
+        "pattern": "Binary search columns; check the max of the chosen column against its horizontal neighbors.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["find-peak-element", "search-2d-matrix"],
+        "next_problems": ["matrix-median"],
+        "resources": [
+            _SHEET,
+            _lc(1901, "find-a-peak-element-ii"),
+        ],
+        "understanding": r'''
+Given a 2D matrix where no two adjacent cells are equal, find
+any **peak element** — a cell strictly greater than all four
+of its neighbors (with boundary cells comparing only to existing
+neighbors).
+
+The algorithm: binary search the columns. For each candidate
+column `mid`, find the row index of its maximum value (one
+linear scan, *O(m)*). The cell at `(max_row, mid)` is greater
+than its vertical neighbors (since it's the column max).
+Compare it with its horizontal neighbors. If it's greater than
+both, it's a peak. Otherwise, move toward the larger horizontal
+neighbor.
+
+Why does this work? Because moving toward the larger neighbor
+keeps a "ridge of locally large values" that must eventually
+contain a peak. The argument is similar to the 1D peak
+algorithm.
+
+Time: *O(m log n)* (binary search on columns, linear scan per
+column).
+''',
+        "brute_force": {
+            "explanation": "Check every cell against its neighbors.",
+            "code": r'''def peak_brute(matrix):
+    m, n = len(matrix), len(matrix[0])
+    for i in range(m):
+        for j in range(n):
+            ok = True
+            for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                ni, nj = i + di, j + dj
+                if 0 <= ni < m and 0 <= nj < n and matrix[ni][nj] > matrix[i][j]:
+                    ok = False
+                    break
+            if ok:
+                return [i, j]
+    return [-1, -1]
+''',
+            "complexity": "**Time**: *O(m × n)*. **Space**: *O(1)*.",
+        },
+        "optimized": {
+            "explanation": "Binary search on columns; pick row by column max; move toward larger neighbor.",
+            "code": r'''def find_peak_grid(matrix: list[list[int]]) -> list[int]:
+    m, n = len(matrix), len(matrix[0])
+    lo, hi = 0, n - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        # Find the row with the max value in column mid.
+        max_row = 0
+        for i in range(m):
+            if matrix[i][mid] > matrix[max_row][mid]:
+                max_row = i
+        # Compare with horizontal neighbors.
+        left_val = matrix[max_row][mid - 1] if mid > 0 else float('-inf')
+        right_val = matrix[max_row][mid + 1] if mid < n - 1 else float('-inf')
+        if matrix[max_row][mid] > left_val and matrix[max_row][mid] > right_val:
+            return [max_row, mid]
+        elif left_val > matrix[max_row][mid]:
+            hi = mid - 1
+        else:
+            lo = mid + 1
+    return [-1, -1]
+''',
+            "complexity": "**Time**: *O(m log n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": "Binary search on columns instead of values. The 'max of the column' guarantees the chosen cell beats its vertical neighbors; we only check horizontally.",
+        "deep_concept": "Generalizes 1D peak search to 2D. The key: pick a structural axis (columns) to binary search, and reduce the other dimension by argmax.",
+        "confusion_notes": [
+            {
+                "question": "Why is the column max guaranteed to be greater than its vertical neighbors?",
+                "answer": "By definition. The max of a column is at least as large as every other element in that column, including the cell directly above and below. Since the problem says no two adjacent cells are equal, the max is strictly greater.",
+            },
+        ],
+        "summary": "**Pattern**: binary search on one matrix dimension; linear argmax on the other.",
+    },
+    {
+        "id": "matrix-median",
+        "title": "Median of a Sorted Matrix",
+        "step_id": 4,
+        "lecture_id": 3,
+        "difficulty": "hard",
+        "tags": ["binary-search", "matrix"],
+        "what_this_teaches": "BS-on-answer where the candidate is the median value and the feasibility checker counts how many elements are <= that value.",
+        "pattern": "Binary search the value in [matrix min, matrix max]; count elements <= mid using row-wise binary search.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["search-2d-matrix-ii", "upper-bound"],
+        "next_problems": [],
+        "resources": [
+            _SHEET,
+            {
+                "label": "GFG — Median in a row-wise sorted Matrix",
+                "url": "https://www.geeksforgeeks.org/find-median-row-wise-sorted-matrix/",
+            },
+        ],
+        "understanding": r'''
+Given an `m × n` matrix where each row is sorted, find the
+median of all `m × n` elements. The total count `m × n` is
+odd, so the median is well-defined as the `(m × n + 1) // 2`-th
+element.
+
+The brute force: flatten the matrix, sort, return the middle.
+*O(mn log(mn))*.
+
+A better approach: use a heap to merge-sort the rows and stop
+at the middle. *O(mn log m)*.
+
+The optimal: **binary search the median value**. The candidate
+range is `[min, max]` of the matrix. For each candidate `v`,
+count how many elements are `<= v` using row-wise upper bound
+(*O(m log n)*). If count >= the target, `v` is at or past the
+median; else not.
+
+Total time: *O(m log n × log(max - min))*.
+
+This is BS-on-answer with a row-wise count as the feasibility
+checker.
+''',
+        "brute_force": {
+            "explanation": "Flatten, sort, return middle.",
+            "code": r'''def matrix_median_brute(matrix):
+    flat = [v for row in matrix for v in row]
+    flat.sort()
+    return flat[len(flat) // 2]
+''',
+            "complexity": "**Time**: *O(mn log(mn))*. **Space**: *O(mn)*.",
+        },
+        "optimized": {
+            "explanation": "Binary search the median value; row-wise upper-bound count as feasibility checker.",
+            "code": r'''def matrix_median(matrix: list[list[int]]) -> int:
+    import bisect
+    m, n = len(matrix), len(matrix[0])
+    # Candidate range: matrix min to matrix max.
+    lo = min(row[0] for row in matrix)
+    hi = max(row[-1] for row in matrix)
+    # We want the (m*n+1)//2-th smallest element (the median).
+    target = (m * n + 1) // 2
+    while lo < hi:
+        mid = (lo + hi) // 2
+        # Count elements <= mid using row-wise upper bound.
+        # bisect_right gives the count of values <= mid in each row.
+        count = sum(bisect.bisect_right(row, mid) for row in matrix)
+        if count < target:
+            # Not enough elements <= mid; the median is larger.
+            lo = mid + 1
+        else:
+            # Enough; the median is at or below mid.
+            hi = mid
+    return lo
+''',
+            "complexity": "**Time**: *O(m log n × log(max - min))*. **Space**: *O(1)*.",
+        },
+        "thought_process": "BS-on-answer for the value rather than the index. The feasibility checker counts how many elements are at most the candidate.",
+        "deep_concept": "A classic example of binary searching the *value space* of the matrix rather than the index space.",
+        "confusion_notes": [
+            {
+                "question": "Why is the answer `lo` and not the value found at `mid`?",
+                "answer": "Because the binary search converges to the smallest value v such that at least `target` elements are <= v. That value is exactly the median.",
+            },
+        ],
+        "summary": "**Pattern**: BS-on-answer on the value space; row-wise upper bound for the feasibility count.",
+    },
+    {
         "id": "first-last-occurrence",
         "title": "First and Last Occurrence in a Sorted Array",
         "step_id": 4,

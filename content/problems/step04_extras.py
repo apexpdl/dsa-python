@@ -2794,6 +2794,872 @@ array with a regular pattern" problem. The parity / pair-pattern
 trick generalizes.
 ''',
     },
+    # =================================================================
+    # Lecture 2 — Binary search on the answer
+    # =================================================================
+    {
+        "id": "aggressive-cows",
+        "title": "Aggressive Cows (Maximize Minimum Distance)",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "hard",
+        "tags": ["binary-search", "bs-on-answer", "greedy"],
+        "what_this_teaches": (
+            "The maximize-the-minimum pattern. Binary search the "
+            "answer (the minimum spacing); the feasibility checker "
+            "uses a greedy placement; binary search picks the largest "
+            "feasible spacing."
+        ),
+        "pattern": (
+            "Sort stalls; binary search the minimum spacing in "
+            "[1, max - min]; greedy check that K cows fit with at "
+            "least that spacing."
+        ),
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["koko-bananas", "binary-search"],
+        "next_problems": ["book-allocation", "split-array-largest-sum", "painters-partition"],
+        "resources": [
+            _SHEET,
+            {
+                "label": "SPOJ — Aggressive Cows",
+                "url": "https://www.spoj.com/problems/AGGRCOW/",
+            },
+        ],
+        "understanding": r'''
+You are given the positions of `n` stalls on a number line and
+a number `k` of aggressive cows. You want to place each cow in
+a distinct stall such that the **minimum distance between any
+two cows is as large as possible**. Return that maximum
+possible minimum distance.
+
+This is one of the cleanest "binary search on the answer"
+problems. Read it carefully — the phrasing "the minimum distance
+between any two cows is as large as possible" is what makes it
+a min-max optimization.
+
+Example: stalls = `[1, 2, 4, 8, 9]`, `k = 3`. We need to place
+3 cows in 3 of these 5 stalls. Possible placements include:
+
+- `(1, 2, 4)`: pairwise distances are 1, 2, 3. Minimum is 1.
+- `(1, 4, 8)`: distances 3, 4, 7. Minimum is 3.
+- `(1, 4, 9)`: distances 3, 5, 8. Minimum is 3.
+- `(1, 8, 9)`: distances 1, 7, 8. Minimum is 1.
+
+Among all valid placements, the **maximum** of these
+**minimums** is 3, achieved by placing cows at positions 1, 4,
+8 or 1, 4, 9.
+
+So the answer is 3. The question is how to compute this
+efficiently. There are `C(n, k)` possible placements — far too
+many to enumerate.
+
+The trick is to **binary search on the answer**. The candidate
+answer is the minimum distance, ranging from 1 (any two cows
+are at least 1 apart) up to `max_stall - min_stall` (the
+maximum possible spread). For each candidate distance `d`, we
+ask the feasibility question:
+
+> *"Can we place at least `k` cows with every pairwise distance
+> at least `d`?"*
+
+That feasibility question has a greedy answer: walk the sorted
+stalls left to right, place a cow at the leftmost stall (or any
+fixed first choice), then place each subsequent cow at the
+first stall that is at least `d` away from the previously
+placed cow. Count how many we successfully placed. If at least
+`k`, feasibility is true.
+
+The greedy "place at the leftmost available, then the first
+stall d away, etc." works because of an **exchange argument**:
+any placement using more than the greedy minimum could be
+shifted left without violating constraints, and the greedy
+chooses the smallest valid set of stalls for a given count.
+
+Once you have the feasibility checker, binary search becomes
+mechanical:
+
+- `lo = 1, hi = max(stalls) - min(stalls)`.
+- At each `mid`, check feasibility. If feasible, try a larger
+  d (`lo = mid + 1`); record `mid` as the best so far. If not,
+  try smaller (`hi = mid - 1`).
+
+The largest `d` for which feasibility holds is the answer.
+''',
+        "brute_force": {
+            "explanation": r'''
+The naive approach: enumerate every possible placement and
+compute its minimum pairwise distance, tracking the maximum.
+
+There are `C(n, k)` placements. For `n = 10^5, k = 50`, that's
+astronomically many. Infeasible.
+
+A slightly less naive approach: try every possible minimum
+distance `d` from 1 up to `max - min`, and for each, check
+feasibility. That's `O((max - min) × n)` time. For small max-
+min, possibly OK; for large ranges, slow.
+
+The optimal is binary search on `d`, giving `O(n log (max -
+min))`. Far better.
+
+We won't even write the *O(C(n,k))* brute force because it's
+totally impractical. The "try every d" linear search is
+mentioned only as a stepping stone.
+''',
+            "code": r'''def aggressive_cows_linear(stalls: list[int], k: int) -> int:
+    # Sort the stalls so that we can place greedily left-to-right.
+    stalls = sorted(stalls)
+    # Try every candidate minimum distance from 1 up to the range.
+    best = 0
+    for d in range(1, stalls[-1] - stalls[0] + 1):
+        if can_place(stalls, k, d):
+            best = d
+        else:
+            # If d failed, every larger d also fails (monotonic),
+            # so we could break here. But linear search ignores this.
+            pass
+    return best
+
+
+def can_place(stalls, k, d):
+    # Greedy: place the first cow at the leftmost stall.
+    count = 1
+    last = stalls[0]
+    for s in stalls[1:]:
+        if s - last >= d:
+            count += 1
+            last = s
+            if count >= k:
+                return True
+    return count >= k
+''',
+            "complexity": (
+                "**Time**: *O((max - min) × n)*. For wide stall "
+                "ranges, this is too slow.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "thought_process": r'''
+The optimization is binary search on `d`. Let's set up the
+recipe.
+
+**Step 1: Identify the candidate range.** The minimum distance
+must be at least 1 (cows must be in distinct stalls) and at
+most `max(stalls) - min(stalls)` (the maximum possible
+spread). So `d` ranges over `[1, max - min]`.
+
+**Step 2: Write the feasibility checker.** Given a candidate
+`d`, can we place at least `k` cows with every pairwise distance
+≥ `d`?
+
+Greedy: sort the stalls. Place the first cow at `stalls[0]`.
+For each subsequent stall, if its distance from the last
+placed cow is at least `d`, place a cow there. Count placements.
+Feasibility holds if count ≥ k.
+
+**Step 3: Verify monotonicity.** If `d = D` is feasible, then
+every `d < D` is also feasible (with the same or more placements
+possible). And if `d = D` is infeasible, every `d > D` is also
+infeasible. This is the monotonic boundary.
+
+**Step 4: Binary search.** Use the half-open style. The answer
+is the **largest** `d` for which feasibility holds. So we're
+looking for the last feasible candidate.
+
+```python
+lo, hi = 1, max(stalls) - min(stalls)
+while lo <= hi:
+    mid = (lo + hi) // 2
+    if can_place(stalls, k, mid):
+        # mid is feasible; try larger.
+        lo = mid + 1
+    else:
+        # mid is infeasible; try smaller.
+        hi = mid - 1
+# After the loop, hi is the largest feasible d.
+return hi
+```
+
+The "record the best feasible" version is also valid:
+
+```python
+best = 0
+while lo <= hi:
+    mid = (lo + hi) // 2
+    if can_place(stalls, k, mid):
+        best = mid
+        lo = mid + 1
+    else:
+        hi = mid - 1
+return best
+```
+
+Both compute the same answer.
+
+Worked example on stalls = `[1, 2, 4, 8, 9]`, `k = 3`:
+
+- Sort: already sorted.
+- `lo = 1, hi = 8`. `mid = 4`. `can_place(d = 4)`? Place cow at
+  1. Next stall: 2, distance 1, not ≥ 4 — skip. Next: 4,
+  distance 3 — skip. Next: 8, distance 7 — place. Cows so far:
+  2. Next: 9, distance 1 — skip. Total: 2 < k. Infeasible.
+  `hi = 3`.
+- `lo = 1, hi = 3`. `mid = 2`. `can_place(d = 2)`? Place at 1.
+  Next: 2, distance 1 — skip. Next: 4, distance 3 — place.
+  Next: 8, distance 4 — place. Total: 3 ≥ k. Feasible.
+  `lo = 3`.
+- `lo = 3, hi = 3`. `mid = 3`. `can_place(d = 3)`? Place at 1.
+  Next: 2 — skip. Next: 4, distance 3 — place. Next: 8,
+  distance 4 — place. Total: 3 ≥ k. Feasible. `lo = 4`.
+- `lo = 4, hi = 3`. Loop exits.
+- Return `hi = 3`. Correct.
+
+The answer is 3, matching our hand analysis above. Three to
+four iterations on a five-element array; logarithmic in the
+range.
+''',
+        "optimized": {
+            "explanation": r'''
+Binary search on the minimum-distance answer with a greedy
+feasibility checker.
+''',
+            "code": r'''def aggressive_cows(stalls: list[int], k: int) -> int:
+    # Sort the stalls. Without sorting, the greedy placement does not
+    # work — we need to walk in increasing position order.
+    stalls = sorted(stalls)
+    n = len(stalls)
+
+    def can_place(d: int) -> bool:
+        # Can we place at least k cows with all pairwise distances >= d?
+        # Greedy: place the first cow at the leftmost stall.
+        count = 1                       # we always start with one cow
+        last = stalls[0]                # position of the most recently placed cow
+        # Try each subsequent stall in order.
+        for s in stalls[1:]:
+            # If this stall is at least d away from the last placed cow,
+            # we can place another cow here.
+            if s - last >= d:
+                count += 1
+                last = s
+                # Early exit: once we hit k, the placement is feasible.
+                # Further iterations can only add more cows; no need to count them.
+                if count >= k:
+                    return True
+        # We finished the stalls; check whether we placed enough.
+        return count >= k
+
+    # Binary search the candidate minimum distance d.
+    # The smallest meaningful d is 1 (cows in distinct stalls).
+    # The largest possible d is max - min (the full range of the stalls).
+    lo, hi = 1, stalls[-1] - stalls[0]
+    # Track the largest feasible d we have found so far.
+    best = 0
+    # Closed-interval binary search. The condition lo <= hi means the
+    # window has at least one candidate.
+    while lo <= hi:
+        # Midpoint of the candidate range.
+        mid = (lo + hi) // 2
+        # Test feasibility at d = mid.
+        if can_place(mid):
+            # mid is feasible. Update best and try a larger d.
+            best = mid
+            lo = mid + 1
+        else:
+            # mid is infeasible. Every d >= mid is also infeasible
+            # (monotonicity). Try smaller.
+            hi = mid - 1
+    return best
+''',
+            "complexity": (
+                "**Time**: *O(n log(max - min))*. The binary search "
+                "has *O(log(max - min))* iterations, each doing an "
+                "*O(n)* feasibility check. Sorting is *O(n log n)*, "
+                "absorbed into the total.\n\n"
+                "**Space**: *O(1)* beyond the sort."
+            ),
+        },
+        "deep_concept": r'''
+This problem is the canonical example of **binary search on
+the answer** with a greedy feasibility checker.
+
+The shape generalizes to a whole family:
+
+- **Aggressive cows**: maximize the minimum pairwise distance.
+- **Painter's partition**: minimize the maximum painter's
+  workload.
+- **Split array largest sum**: minimize the maximum subarray
+  sum across `k` partitions.
+- **Book allocation**: minimize the maximum books per student.
+- **Minimum days to make M bouquets**: minimize the day count
+  while ensuring enough bouquets can be made.
+- **Capacity to ship packages in D days**: minimize the
+  capacity needed to ship within D days.
+
+All of them are "binary search on the answer" with a feasibility
+test. The recipe:
+
+1. Identify the candidate range for the answer.
+2. Write a polynomial-time feasibility checker.
+3. Verify the monotonic boundary (if feasible at X, feasible
+   at all Y on the correct side of X).
+4. Binary search.
+
+Once you can mechanically apply this recipe, an entire lecture
+of "hard" problems collapses into mechanical work. The hard part
+is recognizing that the problem fits the pattern. The
+implementation is rote.
+
+The recognition signal: **the problem asks for the maximum or
+minimum of some integer quantity, and a feasibility test for
+"can we achieve this value?" runs in polynomial time**.
+
+When you see that combination, binary search on the answer is
+the move.
+
+The greedy feasibility checker also deserves a moment. Why does
+"place cows leftmost-first" work? Because of an **exchange
+argument**: any valid placement can be transformed into the
+greedy placement by shifting cows leftward (which preserves the
+minimum distance), without changing the count. So the greedy
+gives the maximum possible count of cows that can be placed
+with spacing ≥ d. If even the greedy can't reach k cows, no
+placement can. This is the kind of argument that justifies
+greedy choices throughout the binary-search-on-answer family.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why does the greedy 'place leftmost first' approach work?",
+                "answer": r'''
+Because of an **exchange argument**. Suppose there exists a
+valid placement of `k` cows with minimum spacing ≥ `d`. Consider
+the leftmost cow in this placement. We can move it to `stalls[
+0]` (the leftmost stall) without decreasing any pairwise
+distance — its new neighbors are at least as far away as its
+old neighbors. So there's a valid placement with the first cow
+at `stalls[0]`.
+
+By induction, we can keep shifting cows leftward to the
+"greedy" positions: cow `i` is at the smallest stall at least
+`d` away from cow `i - 1`'s position. The result has the same
+count as the original placement and is the unique greedy
+placement.
+
+So the greedy placement uses the **same** number of cows as
+any optimal placement. If the greedy places fewer than `k`,
+no placement can place `k`.
+
+This is the formal correctness argument. In practice, you don't
+have to prove it in interviews — just state "the leftmost-first
+greedy is optimal for this kind of placement problem."
+
+The same exchange argument justifies the greedy in painter's
+partition, book allocation, and many other "binary search on
+the answer" problems.
+''',
+            },
+            {
+                "question": "Why is the candidate range `[1, max - min]`?",
+                "answer": r'''
+- **Lower bound 1**: cows must be at distinct stalls, so any two
+  cows are at least 1 apart. The minimum meaningful spacing is
+  1. (For 0 we could place cows at the same stall — but the
+  problem disallows that.)
+
+- **Upper bound max - min**: the maximum possible pairwise
+  distance is between the leftmost and rightmost stalls. If we
+  place just two cows there, the spacing is `max - min`. With
+  more cows, the minimum spacing can only decrease. So the
+  maximum spacing for k cows is at most `max - min`.
+
+A tighter upper bound: the maximum possible "minimum spacing"
+for k cows fitting in a range of `max - min` is `(max - min) /
+(k - 1)`. For 3 cows in a range of 8 (stalls 1 to 9), that's
+`8 / 2 = 4`. Our example confirmed the answer is 3, which is
+≤ 4. So `(max - min) / (k - 1)` is a tighter upper bound than
+`max - min`.
+
+Either bound works for correctness; the tighter one just reduces
+the binary-search iteration count by a small constant factor.
+''',
+            },
+            {
+                "question": "What's the difference between this and binary search on a sorted array?",
+                "answer": r'''
+The structure is identical, but the search space is different.
+
+- **Binary search on a sorted array**: search over the array
+  indices for a target value.
+- **Binary search on the answer**: search over the space of
+  possible answer values, using a feasibility checker as the
+  comparison.
+
+In both cases, we have a monotonic property over a 1D space.
+The difference is what the 1D space represents.
+
+For array binary search, the property is "is arr[mid] ≥ target?"
+and the 1D space is the array index set.
+
+For binary search on the answer, the property is "is mid a
+feasible answer?" and the 1D space is the set of candidate
+answer values.
+
+Same algorithm, different interpretation. Once you see the
+generalization, "binary search" stops being just a sorted-array
+algorithm and becomes a general optimization technique.
+''',
+            },
+            {
+                "question": "What if k = 1? Or k = n? Edge cases?",
+                "answer": r'''
+**k = 1**: only one cow. There's no "pairwise distance" to
+optimize. The answer is conventionally 0 (or infinity, depending
+on convention — but 0 is more common). Our algorithm with
+`lo = 1, hi = max - min` and `best = 0` would return `best`,
+which starts at 0 and never updates. Actually it might return
+the upper bound — let me think.
+
+For k = 1, every d in [1, max - min] is feasible (we can always
+place 1 cow). So the binary search would push `lo` all the way
+up to `max - min + 1`, and `best` would be updated to `max - min`.
+
+For most problem statements, this is a meaningless edge case
+that the constraints usually exclude (k >= 2).
+
+**k = n**: place a cow at every stall. The minimum distance is
+`min(stalls[i+1] - stalls[i] for i in range(n-1))`. Our binary
+search would still work but is overkill; you could compute
+directly with a single pass.
+
+**k > n**: more cows than stalls. Impossible. The algorithm
+would return 0 (or whatever `best` was initialized to) — the
+feasibility checker would never return True.
+
+For all edge cases, the algorithm gives sensible results, but
+some are degenerate. In an interview, mention them out loud
+when you state the algorithm.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: binary search on the minimum-distance answer +
+greedy feasibility checker.
+
+**Lesson**: when a problem asks for the maximum or minimum of
+some integer quantity and the feasibility test is monotonic
+and polynomial, binary search the answer. This recipe applies
+to an entire family of "min/max" optimization problems.
+
+**Recognize next time**: any problem with the words "maximize
+the minimum" or "minimize the maximum" — they are almost always
+binary-search-on-answer problems.
+''',
+    },
+    {
+        "id": "book-allocation",
+        "title": "Allocate Books to Students (Minimize Max Books)",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "hard",
+        "tags": ["binary-search", "bs-on-answer", "partition"],
+        "what_this_teaches": (
+            "The dual of aggressive cows. Where aggressive cows "
+            "maximized the minimum, this minimizes the maximum. Same "
+            "binary-search-on-answer recipe, with the feasibility "
+            "direction flipped."
+        ),
+        "pattern": (
+            "Binary search the maximum books per student in "
+            "[max(books), sum(books)]; greedy partition checker."
+        ),
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["aggressive-cows", "koko-bananas"],
+        "next_problems": ["split-array-largest-sum", "painters-partition"],
+        "resources": [
+            _SHEET,
+            {
+                "label": "GFG — Allocate Minimum Number of Pages",
+                "url": "https://www.geeksforgeeks.org/allocate-minimum-number-pages/",
+            },
+        ],
+        "understanding": r'''
+You have `n` books with given page counts, and `m` students.
+You want to distribute the books to the students such that:
+
+1. Each student gets at least one book.
+2. Books are distributed in **contiguous chunks** (you cannot
+   skip a book and give a later one to the same student).
+3. Each book goes to exactly one student.
+4. The **maximum number of pages any one student receives is
+   minimized**.
+
+Return the minimized maximum.
+
+Examples:
+
+- books = `[12, 34, 67, 90]`, m = 2 students. The four valid
+  contiguous partitions:
+  - `[12]` and `[34, 67, 90]`: max = 191.
+  - `[12, 34]` and `[67, 90]`: max = 157.
+  - `[12, 34, 67]` and `[90]`: max = 113.
+
+  Minimum of these maxes is 113.
+
+- books = `[10, 20, 30]`, m = 4 students: impossible (4 > 3
+  books). Return -1.
+
+This is **the dual of aggressive cows**. Where aggressive cows
+maximized the minimum (give cows as much distance as possible),
+book allocation minimizes the maximum (give students as
+balanced a load as possible).
+
+The same "binary search on the answer" recipe applies, with
+the direction flipped.
+
+**Candidate range** for the answer (the maximum pages any
+student gets):
+
+- Lower bound: `max(books)`. No student can receive less than
+  the heaviest single book (because books can't be split).
+- Upper bound: `sum(books)`. In the worst case (m = 1 student),
+  one student takes everything.
+
+**Feasibility checker**: given a candidate maximum `M`, can we
+distribute the books to ≤ `m` students such that no student
+exceeds `M` pages? Greedy: assign books to students one by one,
+moving to the next student whenever adding the current book
+would exceed `M`. Count students used. Feasible if count ≤ m.
+
+**Monotonicity**: if a candidate `M` is feasible, every larger
+`M` is also feasible. We want the **smallest** feasible `M`.
+
+**Binary search**: half-open lower-bound style — find the first
+M for which feasibility holds.
+''',
+        "brute_force": {
+            "explanation": r'''
+The naive brute force enumerates every possible partition of
+the books into `m` contiguous groups and computes each
+partition's maximum group sum. There are `C(n - 1, m - 1)`
+partitions — combinatorially large.
+
+A slightly better brute force: try every candidate max-pages
+value from `max(books)` to `sum(books)` linearly. For each,
+check feasibility. `O((sum - max) × n)` time. Still slow for
+large books.
+
+The optimal binary-search-on-answer brings this down to `O(n
+log(sum - max))`.
+''',
+            "code": r'''# Linear scan over candidate maxes — works but slow for large ranges.
+def book_allocation_linear(books: list[int], m: int) -> int:
+    if m > len(books):
+        return -1
+    for max_pages in range(max(books), sum(books) + 1):
+        if can_allocate(books, m, max_pages):
+            return max_pages
+    return -1
+
+
+def can_allocate(books, m, max_pages):
+    students = 1
+    current = 0
+    for b in books:
+        if current + b <= max_pages:
+            current += b
+        else:
+            students += 1
+            current = b
+            if students > m:
+                return False
+    return True
+''',
+            "complexity": (
+                "**Time**: *O((sum - max) × n)* for the linear search "
+                "over candidate maxes. Too slow when book sums are "
+                "large.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "thought_process": r'''
+The optimization: binary search the candidate answer `M`.
+
+**Why is the feasibility checker greedy?** Given a candidate
+`M`, we want to know if we can distribute books to ≤ `m`
+students with no student exceeding `M`. The greedy algorithm:
+walk through books left to right; keep adding to the current
+student until the next book would push them past `M`; start a
+new student. Count how many students we used.
+
+This greedy is optimal because **any partition with fewer
+students can be transformed into this one by merging adjacent
+groups**. The greedy uses the minimum possible students for a
+given `M`. So if even the greedy needs more than `m`, no
+partition can fit in `m`. Conversely, if the greedy fits in
+`m`, the partition is feasible.
+
+**Monotonicity**: larger `M` lets each student carry more, so
+fewer students are needed. So feasibility is monotonic in `M`:
+if `M = X` works, every `M > X` works too. We want the
+**smallest** feasible `M`.
+
+**Binary search**: lower-bound style. Find the first `M` for
+which feasibility holds.
+
+```python
+lo, hi = max(books), sum(books)
+while lo < hi:
+    mid = (lo + hi) // 2
+    if can_allocate(books, m, mid):
+        hi = mid          # mid is feasible; try smaller
+    else:
+        lo = mid + 1      # mid is infeasible; try larger
+return lo
+```
+
+When the loop exits, `lo == hi` is the smallest feasible `M`.
+
+Worked example on books = `[12, 34, 67, 90]`, m = 2:
+
+- `lo = max = 90, hi = sum = 203`.
+- `mid = 146`. Greedy: student 1 takes 12 + 34 + 67 = 113;
+  adding 90 would exceed 146, so start student 2; student 2
+  takes 90. Total students: 2 ≤ m. Feasible. `hi = 146`.
+- `lo = 90, hi = 146`. `mid = 118`. Greedy: student 1 takes 12
+  + 34 + 67 = 113; adding 90 would exceed 118, so start student
+  2 with 90. Total: 2 ≤ m. Feasible. `hi = 118`.
+- `lo = 90, hi = 118`. `mid = 104`. Greedy: student 1 takes 12
+  + 34 = 46; adding 67 would exceed 104, so start student 2.
+  Student 2 takes 67; adding 90 would exceed, so start student
+  3. Student 3 takes 90. Total: 3 > m. Infeasible. `lo = 105`.
+- `lo = 105, hi = 118`. `mid = 111`. Greedy: student 1 takes 12
+  + 34 = 46; adding 67 = 113 > 111. Start student 2 = 67.
+  Adding 90 > 111, start student 3. 3 > m. Infeasible. `lo = 112`.
+- `lo = 112, hi = 118`. `mid = 115`. Greedy: student 1 takes
+  12 + 34 = 46; + 67 = 113. Adding 90 > 115, start student 2 =
+  90. Total: 2. Feasible. `hi = 115`.
+- `lo = 112, hi = 115`. `mid = 113`. Greedy: student 1: 12 + 34
+  + 67 = 113. Adding 90 > 113, start student 2 = 90. Total: 2.
+  Feasible. `hi = 113`.
+- `lo = 112, hi = 113`. `mid = 112`. Greedy: student 1: 12 + 34
+  = 46; +67 = 113 > 112. Start student 2 = 67; +90 > 112, start
+  student 3. Total: 3 > m. Infeasible. `lo = 113`.
+- `lo = 113, hi = 113`. Exit. Return 113.
+
+The answer matches our hand analysis. About 7 binary-search
+iterations on a small example; `log2(113)` ≈ 7.
+''',
+        "optimized": {
+            "explanation": r'''
+Binary search the candidate maximum-pages answer; greedy
+feasibility checker.
+''',
+            "code": r'''def book_allocation(books: list[int], m: int) -> int:
+    # Edge case: fewer books than students. Impossible to give
+    # every student at least one book.
+    if m > len(books):
+        return -1
+
+    def can_allocate(max_pages: int) -> bool:
+        # Greedy: assign books to students in order. Each student
+        # accumulates books until adding the next one would exceed
+        # max_pages; then start a new student.
+        students = 1          # we always need at least one student
+        current = 0           # pages assigned to the current student
+        for b in books:
+            # If a single book exceeds max_pages, allocation is
+            # impossible at this candidate. (The binary search's
+            # lower bound max(books) prevents this from happening
+            # for valid inputs, but we guard anyway.)
+            if b > max_pages:
+                return False
+            # If adding this book keeps the current student under
+            # the cap, add it.
+            if current + b <= max_pages:
+                current += b
+            else:
+                # Otherwise, move to a new student starting with this book.
+                students += 1
+                current = b
+                # Early exit: if we already need more than m students,
+                # this candidate is infeasible.
+                if students > m:
+                    return False
+        return students <= m
+
+    # The candidate range for the answer.
+    # Lower bound: max(books). No student can carry less than the
+    # heaviest single book (books can't be split).
+    # Upper bound: sum(books). With m = 1, the only student gets
+    # everything.
+    lo, hi = max(books), sum(books)
+    # Half-open lower-bound binary search. We want the smallest
+    # feasible candidate.
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if can_allocate(mid):
+            # mid is feasible. Keep it in the window; try smaller.
+            hi = mid
+        else:
+            # mid is infeasible. Try larger.
+            lo = mid + 1
+    return lo
+''',
+            "complexity": (
+                "**Time**: *O(n × log(sum - max))*. The binary search "
+                "has *O(log(range))* iterations, each doing an *O(n)* "
+                "feasibility check.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "deep_concept": r'''
+This problem cements the **min-max dual** of aggressive cows.
+Both problems use binary search on the answer with a greedy
+feasibility checker; they differ only in the direction of the
+search.
+
+- **Aggressive cows**: maximize the minimum. Search for the
+  largest feasible distance.
+- **Book allocation**: minimize the maximum. Search for the
+  smallest feasible page cap.
+
+A whole family of problems sits on this dual:
+
+- **Split array largest sum** (LC 410): minimize the maximum
+  subarray sum across `k` partitions.
+- **Painter's partition**: minimize the time for `k` painters
+  to finish.
+- **Capacity to ship packages in D days**: minimize the
+  capacity needed.
+- **Find smallest divisor given a threshold**: minimize the
+  divisor that keeps quotient sums under a threshold.
+
+All of them fit the same template. The feasibility checker is
+typically a greedy walk; the binary search picks the
+optimal feasible value.
+
+Once you recognize this pattern, an entire lecture of "hard"
+problems becomes mechanical. The hard part is recognizing the
+fit, not implementing the algorithm. So when you see "minimize
+maximum" or "maximize minimum" in a problem statement, stop
+and ask: "is this binary search on the answer?". If yes, the
+recipe writes itself.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why is the greedy feasibility checker optimal?",
+                "answer": r'''
+Because of an exchange argument. Suppose there's a valid
+partition with ≤ m students and max pages ≤ `M`. We can
+transform it into the greedy partition by **merging adjacent
+non-greedy groups**:
+
+If the greedy would put book `i` with the previous student but
+the actual partition starts a new student at `i`, we can merge
+the new student into the previous one. The merged group has
+sum ≤ `M` (because the greedy was about to add it without
+exceeding M).
+
+By repeating this merge, we reach the greedy partition. Each
+merge keeps the max page count ≤ `M` and decreases (or keeps
+the same) the student count. So the greedy partition uses **at
+most as many students** as any valid partition.
+
+Therefore: if the greedy needs more than `m` students, no
+partition can fit in `m`. The greedy is the tightest possible
+test for feasibility.
+
+This is the formal correctness. In practice you state "greedy
+left-to-right is optimal here" and move on. But knowing the
+underlying argument helps when adapting the algorithm to
+variants.
+''',
+            },
+            {
+                "question": "Why `max(books)` as the lower bound?",
+                "answer": r'''
+Because no student can carry less than the heaviest single book.
+Books can't be split. So any partition has at least one
+student carrying at least `max(books)` pages.
+
+If we tried `M = max(books) - 1` as the candidate, the
+feasibility checker would fail immediately when it encountered
+the largest book. So `max(books)` is the tightest possible
+lower bound.
+
+Some implementations use 1 or 0 as the lower bound — that's
+still correct (the binary search will just take a few extra
+iterations to converge to `max(books)`), but `max(books)` is
+the tight choice.
+
+Similarly, `sum(books)` is the tight upper bound: with one
+student, the answer is the sum. With more students, the answer
+can only decrease.
+
+Setting tight bounds is a small optimization. The binary search
+asymptotics are the same with loose bounds; the constant just
+goes up.
+''',
+            },
+            {
+                "question": "What if a book has zero pages?",
+                "answer": r'''
+The algorithm handles it correctly — the greedy adds the
+zero-page book to the current student without changing their
+total, and we move on.
+
+Zero-page books are a weird edge case usually not present in
+practice, but if your input might include them, the algorithm
+is robust.
+
+What if a book has *negative* pages? That's mathematically
+ill-defined for this problem and the problem statement should
+exclude it. The algorithm would still run but produce
+nonsensical results.
+''',
+            },
+            {
+                "question": "How does this differ from 'split array largest sum' (LC 410)?",
+                "answer": r'''
+They are the same problem! "Split Array Largest Sum" is
+algorithmically identical to "Book Allocation" — both partition
+an array into `k` contiguous groups and minimize the maximum
+group sum.
+
+The implementations are identical. Only the problem framing
+differs ("students and books" vs "subarrays and sum").
+
+Other equivalent framings:
+
+- **Painter's partition**: minimize time for `k` painters to
+  paint boards in order.
+- **Capacity to ship packages in D days**: minimize ship
+  capacity to deliver in D days. ("Days" plays the role of
+  "students" / "subarrays".)
+
+All four are the same algorithm with different surface stories.
+Once you've solved one, you've effectively solved all four.
+
+This is part of why DSA preparation is more efficient than it
+looks — many "different" problems are really the same problem
+in disguise.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: binary search the minimum max-load + greedy
+partition checker.
+
+**Lesson**: minimize-the-maximum is the dual of maximize-the-
+minimum. Same binary-search-on-answer recipe, opposite search
+direction.
+
+**Recognize next time**: "minimize the maximum X" or "minimize
+the worst case Y" problems. All canonical BS-on-answer.
+
+**Closely related**: split array largest sum (LC 410),
+painter's partition, capacity to ship packages in D days. All
+the same algorithm.
+''',
+    },
     {
         "id": "first-last-occurrence",
         "title": "First and Last Occurrence in a Sorted Array",

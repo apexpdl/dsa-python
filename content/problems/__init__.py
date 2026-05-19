@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from . import (
     step01_basics,
+    step01_extras,
     step02_sorting,
     step03_arrays,
     step04_binary_search,
@@ -26,6 +27,7 @@ def _build_registry() -> dict[str, dict]:
     registry: dict[str, dict] = {}
     for module in (
         step01_basics,
+        step01_extras,
         step02_sorting,
         step03_arrays,
         step04_binary_search,

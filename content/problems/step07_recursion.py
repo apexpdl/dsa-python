@@ -9,6 +9,32 @@ PROBLEMS: list[dict] = [
         "lecture_id": 2,
         "difficulty": "medium",
         "tags": ["recursion", "backtracking", "subsequences"],
+        "what_this_teaches": (
+            "The **take-or-skip** recursion is the single most reused "
+            "shape in subset / subsequence / combination problems. "
+            "Every leaf of the binary decision tree is a unique "
+            "subset; the recursion just enumerates them all."
+        ),
+        "pattern": "At each index, recurse twice — skip the element, take the element. Undo after.",
+        "prerequisite_lessons": ["recursion", "backtracking"],
+        "prerequisite_problems": ["fibonacci-number", "factorial-of-n"],
+        "next_problems": [
+            "subsequence-sum-k",
+            "subset-sum-i",
+            "subset-sum-ii",
+            "combination-sum",
+            "power-set-bitwise",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 7 (Subsequence Pattern)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 78 — Subsets",
+                "url": "https://leetcode.com/problems/subsets/",
+            },
+        ],
         "understanding": r'''
 Given an array (or string), print every **subsequence**. A
 subsequence is any subset obtained by deleting zero or more
@@ -134,6 +160,173 @@ about an aggregate (sum, weight, etc.) rather than the specific
 elements: the leaves with the same aggregate collapse into one
 state, and we memoize.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does the code call `current[:]` instead of just `current`?",
+                "answer": r'''
+Because `current` is a **mutable list** that the algorithm keeps
+modifying. If we appended `current` itself to `out`, every entry
+in `out` would point at the *same* list object. By the time the
+recursion ended, every entry would show the final state of
+`current` — which is the empty list, because the recursion's
+last action is always to pop everything off.
+
+`current[:]` creates a **shallow copy** — a brand-new list with
+the same elements. The copy is frozen at the moment we made it;
+later mutations of `current` cannot affect it.
+
+A tiny demonstration:
+
+```python
+out = []
+current = [1, 2, 3]
+out.append(current)        # out = [[1, 2, 3]]
+current.pop()              # current = [1, 2]
+out.append(current)        # out = [[1, 2], [1, 2]]  -- same object!
+print(out)                 # [[1, 2], [1, 2]]
+```
+
+If we use `current[:]`:
+
+```python
+out = []
+current = [1, 2, 3]
+out.append(current[:])     # snapshot [1, 2, 3]
+current.pop()
+out.append(current[:])     # snapshot [1, 2]
+print(out)                 # [[1, 2, 3], [1, 2]]  -- correct
+```
+
+Other equivalent ways to snapshot: `list(current)`,
+`current.copy()`, `[*current]`. All produce a new list with the
+same contents.
+
+This is the **#1 most common bug** beginners hit in backtracking.
+If your algorithm gives correct counts but the results all look
+identical, you forgot to snapshot.
+''',
+            },
+            {
+                "question": "Why do we `current.pop()` after the recursive call?",
+                "answer": r'''
+Because we **mutated** `current` by appending `arr[i]` before
+the recursion, and we have to **undo** that change before the
+function returns. Otherwise the caller (the previous recursive
+frame) sees the mutation and the "skip" branch starts with the
+wrong state.
+
+Walk through the take-or-skip skeleton:
+
+```python
+def go(i):
+    if i == len(arr):
+        out.append(current[:])
+        return
+    # Choice 1: skip
+    go(i + 1)
+    # Choice 2: take
+    current.append(arr[i])
+    go(i + 1)
+    current.pop()              # UNDO
+```
+
+Imagine we are at `i = 0`, `current = []`. We skip — recurse with
+`current = []`. After that returns, we take — append `arr[0]`,
+recurse with `current = [arr[0]]`. After that returns, we
+pop, restoring `current = []`. The function exits, and the
+**caller** sees `current = []`, exactly as it was before our
+call.
+
+Without the `pop()`, after handling index 0, `current` would
+still contain `arr[0]`. Any subsequent recursive frames at index
+0's "skip" branch from a sibling call would see `[arr[0]]` —
+wrong.
+
+This is the **backtracking discipline**: every mutation must
+have a matching undo before the function returns. Asymmetric
+mutate/undo is the second-most-common bug after forgetting to
+snapshot.
+
+A defensive alternative: pass `current + [arr[i]]` as an
+argument to the recursive call, which creates a new list per
+branch and avoids mutation entirely. Slower (allocates), but
+impossible to mess up.
+''',
+            },
+            {
+                "question": "Why is the total time `O(2^n × n)` and not just `O(2^n)`?",
+                "answer": r'''
+Because each of the `2^n` subsets has a *snapshot cost* of up to
+`O(n)`. The `2^n` is the number of leaves in the recursion
+tree, but visiting a leaf is not free — we copy a list of up to
+`n` elements into `out`.
+
+Detailed accounting:
+
+- The recursion tree has `2^n` leaves and approximately
+  `2 * 2^n - 1` internal calls. Each non-leaf call does *O(1)*
+  work (the append + pop pair).
+- Each leaf does `current[:]`, which copies the current list of
+  size at most `n`.
+- Total work at leaves: `2^n * O(n) = O(2^n × n)`.
+- Total work at internal nodes: `2 * 2^n * O(1) = O(2^n)`.
+- Sum: `O(2^n × n)`. The leaf work dominates.
+
+If you do not need to materialize the snapshots — for example,
+if you only want to **count** subsets satisfying some property
+— the cost drops to `O(2^n)`.
+
+The memory cost is also `O(2^n × n)` if you store every subset
+in `out`. If you instead use a generator (`yield current[:]`),
+the memory for `out` disappears and you only pay `O(n)` for the
+recursion stack.
+
+The takeaway: `2^n` subsets are a lot. For `n = 30`, that is a
+billion. Be careful with subset enumeration on inputs of size
+beyond 25 or so.
+''',
+            },
+            {
+                "question": "How does the bitmask version relate to the recursive one?",
+                "answer": r'''
+They produce the exact same set of subsets, just enumerated in
+a different order.
+
+The recursive version walks a depth-`n` binary decision tree.
+Each leaf corresponds to a sequence of `n` binary choices
+("skip" or "take" at each index). That sequence can be written
+as an `n`-bit binary number, with each bit indicating the
+choice.
+
+The bitmask version walks integers from `0` to `2^n - 1`. For
+each integer, its binary representation is a sequence of `n`
+bits, each indicating "include" or "exclude" for the
+corresponding element.
+
+```python
+for mask in range(1 << n):
+    subset = [arr[i] for i in range(n) if mask & (1 << i)]
+    out.append(subset)
+```
+
+The two approaches produce subsets in different orders. The
+recursive `skip-then-take` produces subsets in
+lexicographically-ascending-by-bitmask order. The bitmask loop
+naturally produces the same order if "include" means the bit is
+1. Both correct; both cover all `2^n` subsets.
+
+When to prefer bitmask: when you want explicit iteration order
+(useful for testing) or when you need to skip subsets without
+extending them. When to prefer recursion: when you need to add
+pruning ("stop exploring this branch if the partial sum
+exceeds K") or when the recursion shape extends naturally to
+related problems (combinations with limits, partitioning).
+
+Both are correct. Both are `O(2^n × n)` time. Pick the one that
+fits the surrounding logic best.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: take-or-skip recursion with undo.
 
@@ -152,6 +345,32 @@ branching rules vary.
         "lecture_id": 3,
         "difficulty": "hard",
         "tags": ["recursion", "backtracking", "constraints"],
+        "what_this_teaches": (
+            "Backtracking with **constraint-checking sets** that turn "
+            "O(N) verification into O(1). The two diagonal "
+            "encodings — `row - col` for one direction, `row + col` "
+            "for the other — are the iconic trick that makes "
+            "N-Queens fast enough to be solvable for N up to ~13."
+        ),
+        "pattern": "Place one queen per row; track conflicts with three sets; backtrack on dead ends.",
+        "prerequisite_lessons": ["recursion", "backtracking"],
+        "prerequisite_problems": ["print-all-subsequences", "generate-parentheses"],
+        "next_problems": [
+            "sudoku-solver",
+            "m-coloring",
+            "rat-in-a-maze",
+            "word-search",
+        ],
+        "resources": [
+            {
+                "label": "Striver's A2Z DSA Course — Step 7 (Hard Recursion)",
+                "url": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+            },
+            {
+                "label": "LeetCode 51 — N-Queens",
+                "url": "https://leetcode.com/problems/n-queens/",
+            },
+        ],
         "understanding": r'''
 Place `N` queens on an `N × N` chessboard so that no two queens
 attack each other. Queens attack along rows, columns, and both
@@ -290,6 +509,152 @@ N-Queens teaches the three lessons of practical backtracking:
 The same recipe handles Sudoku, M-coloring, and Rat in a Maze. The
 specifics change; the skeleton does not.
 ''',
+        "confusion_notes": [
+            {
+                "question": "Why does `row - col` identify a diagonal?",
+                "answer": r'''
+Because **every cell on a top-left-to-bottom-right diagonal has
+the same `row - col` value**.
+
+Picture an `N × N` board. The top-left cell `(0, 0)` has
+`row - col = 0`. The cell just to its lower-right, `(1, 1)`, also
+has `row - col = 0`. And `(2, 2)`, and so on. All cells on the
+main diagonal share `row - col = 0`.
+
+Now look at the diagonal starting from `(0, 1)`. Its cells are
+`(0, 1), (1, 2), (2, 3), ...`. Each has `row - col = -1`. A
+different constant for a different diagonal.
+
+In general, the diagonals from upper-left to lower-right are
+labeled by the integer `row - col`, ranging from `-(N - 1)` to
+`+(N - 1)` — that is `2N - 1` distinct diagonals.
+
+So to detect "are any two queens on the same `↘` diagonal?", we
+maintain a set of all `row - col` values that already contain a
+queen. Placing a queen at `(row, col)` is illegal if `row - col`
+is already in the set.
+
+The same logic for `↗` diagonals (upper-right to lower-left)
+uses `row + col`. Cells `(0, 2), (1, 1), (2, 0)` all have `row +
+col = 2`. We keep a second set keyed by `row + col`.
+
+Three sets total — columns, `row - col` diagonals, and `row +
+col` diagonals — give us *O(1)* conflict checks for every
+queen placement.
+''',
+            },
+            {
+                "question": "Why place one queen per row instead of searching every cell?",
+                "answer": r'''
+Because **two queens in the same row would always attack each
+other**, so we never need to consider placing two queens in the
+same row. Fixing "exactly one queen per row" eliminates an
+entire dimension of the search space without losing any valid
+solution.
+
+The naive search would consider every combination of `N`
+positions on an `N × N` board. That is `C(N², N)` combinations
+— astronomical even for `N = 8` (around `4 × 10⁹`). Pruning
+"two queens in the same row" via "one queen per row" reduces
+the search to `N^N` (around `1.6 × 10⁷` for `N = 8`) — still
+exponential but much more tractable.
+
+Diagonal and column pruning shrinks it further. In practice,
+the algorithm explores far fewer than `N^N` configurations
+because branches die fast.
+
+The lesson: **good problem decomposition is itself a form of
+pruning**. Before writing code, ask whether the constraints
+force any structural property (like "one per row") that you can
+encode in the search itself.
+
+This style of "fix one dimension, vary the other" is the entire
+trick of N-Queens. The same trick applies to Sudoku ("one digit
+per row, column, and box") and M-coloring ("each region gets
+one color").
+''',
+            },
+            {
+                "question": "Why does every `add` have a matching `remove`?",
+                "answer": r'''
+Because we are doing **backtracking**, and backtracking requires
+**leaving no trace** of a branch's work when we abandon it.
+
+When we place a queen at `(row, col)`, we mutate three sets:
+`cols.add(col)`, `diag1.add(row - col)`, `diag2.add(row + col)`.
+We also mutate the board: `board[row][col] = "Q"`. Then we
+recurse to the next row.
+
+If the recursion finds a valid solution, great — we snapshot the
+board. If it dead-ends, we return. Either way, **the caller
+expects the data structures to look exactly as they did before
+this call**. So before returning, we have to **undo** every
+mutation.
+
+```python
+# Place
+cols.add(col); diag1.add(row - col); diag2.add(row + col)
+board[row][col] = "Q"
+
+go(row + 1)
+
+# Undo (matches placement, exact reverse)
+cols.remove(col); diag1.remove(row - col); diag2.remove(row + col)
+board[row][col] = "."
+```
+
+If we forget any of these undos, a sibling branch will see the
+phantom queen and either block valid placements or accept
+invalid ones. The algorithm becomes silently wrong.
+
+This is the **#1 source of bugs in backtracking**: asymmetric
+mutate / undo. Make it a habit to write the matching `remove`
+line *immediately* after the `add` line, before you even fill
+in the recursive call. The structure of "place, recurse, undo"
+is more important than the specific work being done.
+''',
+            },
+            {
+                "question": "Why isn't this `O(N!)` or `O(N^N)` despite the search space?",
+                "answer": r'''
+The **worst case** is technically `O(N!)`, but **with the
+constraint-set pruning**, the practical runtime is dramatically
+smaller — usually polynomial-with-a-small-exponent times a tiny
+fraction of `N!`.
+
+Here is the reasoning:
+
+- We try at most `N` columns per row.
+- We have `N` rows.
+- So the brute-force tree has at most `N^N` nodes.
+- But each conflict (column or diagonal) kills an entire
+  subtree. By the time we are placing the 5th or 6th queen,
+  most columns are blocked, so we branch into only one or two
+  options, not `N`.
+
+Empirical numbers for solving "all solutions":
+
+- `N = 8`: 92 solutions, around 16,000 total recursive calls.
+- `N = 10`: 724 solutions, around 175,000 calls.
+- `N = 12`: 14,200 solutions, around 5,000,000 calls.
+- `N = 13`: 73,712 solutions, around 30,000,000 calls.
+
+So while it scales worse than polynomial, the constants are
+tiny. For `N` up to about 12 or 13, all solutions fit in seconds
+on a typical laptop.
+
+For very large `N`, the explosion of solutions itself becomes
+the bottleneck. Finding *all* solutions becomes infeasible
+around `N = 15`. Finding *any* solution stays fast much longer
+(there are many; you do not have to search exhaustively).
+
+The general lesson: **practical runtime of backtracking depends
+on pruning**, not asymptotic bounds. A clever constraint check
+that kills 90% of branches before they grow is worth far more
+than a tighter recursion.
+''',
+            },
+        ],
         "summary": r'''
 **Pattern**: backtracking with explicit constraint sets.
 

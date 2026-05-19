@@ -3661,6 +3661,812 @@ the same algorithm.
 ''',
     },
     {
+        "id": "median-two-sorted",
+        "title": "Median of Two Sorted Arrays",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "hard",
+        "tags": ["binary-search", "partition", "hard"],
+        "what_this_teaches": (
+            "Binary search the partition point — not the array values, "
+            "and not the candidate answer, but the *cut* through the "
+            "two arrays that gives equal-sized halves with the "
+            "median-defining property. One of the hardest binary "
+            "search variants in the curriculum."
+        ),
+        "pattern": (
+            "Binary search the partition of the smaller array; derive "
+            "the partition of the larger; check the four-element "
+            "cross-condition."
+        ),
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["binary-search", "lower-bound", "koko-bananas"],
+        "next_problems": ["kth-element-two-sorted"],
+        "resources": [
+            _SHEET,
+            _lc(4, "median-of-two-sorted-arrays"),
+        ],
+        "understanding": r'''
+You are given two sorted arrays `nums1` and `nums2` of sizes
+`m` and `n`. Find the median of the **combined** sorted array
+in *O(log(min(m, n)))* time.
+
+This is the LeetCode 4 problem — widely regarded as the hardest
+binary-search problem on the platform. The recursive partition
+algorithm is beautiful but unforgiving; any boundary mistake
+gives the wrong answer.
+
+Examples:
+
+- `nums1 = [1, 3], nums2 = [2]`: combined sorted = `[1, 2, 3]`,
+  median = 2.
+- `nums1 = [1, 2], nums2 = [3, 4]`: combined = `[1, 2, 3, 4]`,
+  median = (2 + 3) / 2 = 2.5.
+- `nums1 = [0, 0], nums2 = [0, 0]`: combined = `[0, 0, 0, 0]`,
+  median = 0.
+
+The brute force is *O(m + n)* — merge the two arrays (or just
+the lower half) and read off the median. Easy to write,
+correct, and beats most production needs. But the
+*O(log(min(m, n)))* algorithm is what the problem demands.
+
+**Why binary search?** Because the median has a specific
+structural property that lets us narrow down by halving. The
+median of the combined array is the value such that exactly
+half of all elements are at most it and half are at least it.
+If we can find a "cut" through both arrays that puts the right
+counts on each side, we have the median.
+
+**The cut definition**: imagine inserting a vertical line at
+position `i` in `nums1` (with `i` elements to the left and
+`m - i` to the right) and at position `j` in `nums2` (`j` to
+the left, `n - j` to the right). The total elements to the left
+of the cut is `i + j`; to the right is `(m - i) + (n - j)`.
+
+For the cut to define the median, we need:
+
+1. **Equal-sized halves**: `i + j` should equal `(m + n + 1) //
+   2`. (The "+1" handles odd total sizes — the left half gets
+   the extra one when total is odd.)
+2. **Crossing condition**: the largest left-element ≤ the
+   smallest right-element. That is, `nums1[i-1] ≤ nums2[j]`
+   AND `nums2[j-1] ≤ nums1[i]`.
+
+If both conditions hold, the median is:
+
+- If `m + n` is odd: `max(nums1[i-1], nums2[j-1])`.
+- If even: average of `max(nums1[i-1], nums2[j-1])` and
+  `min(nums1[i], nums2[j])`.
+
+The algorithm binary searches over `i` in `nums1` (the smaller
+array). Once `i` is fixed, `j` is determined by condition (1).
+We check condition (2). If both crosses hold, we have the
+answer. If `nums1[i-1] > nums2[j]`, we have too many small
+elements on the left of nums1 — decrease `i`. If `nums2[j-1] >
+nums1[i]`, we have too few — increase `i`.
+
+This is the algorithm. It is *O(log(min(m, n)))* time.
+
+The implementation has fiddly boundary cases (when `i = 0` or
+`i = m`, some of the comparisons reference "out of bounds"
+indices, which we handle with sentinel values `-∞` and `+∞`).
+Get the boundaries right and the algorithm is one of the
+prettiest in DSA. Get them wrong and it's debugging hell.
+''',
+        "brute_force": {
+            "explanation": r'''
+The easiest correct algorithm: merge the two arrays into one
+sorted array, then read the median.
+
+```python
+def median_brute(nums1, nums2):
+    merged = sorted(nums1 + nums2)
+    n = len(merged)
+    if n % 2 == 1:
+        return merged[n // 2]
+    return (merged[n // 2 - 1] + merged[n // 2]) / 2
+```
+
+`O((m + n) log(m + n))` due to the sort. Correct on any input.
+
+A smarter brute force: two-pointer merge (since both inputs are
+already sorted), stop at the median index. *O(m + n)* time,
+*O(1)* extra space:
+
+```python
+def median_two_pointer(nums1, nums2):
+    m, n = len(nums1), len(nums2)
+    total = m + n
+    i = j = 0
+    prev = curr = 0
+    for _ in range(total // 2 + 1):
+        prev = curr
+        if i < m and (j == n or nums1[i] <= nums2[j]):
+            curr = nums1[i]
+            i += 1
+        else:
+            curr = nums2[j]
+            j += 1
+    if total % 2 == 0:
+        return (prev + curr) / 2
+    return curr
+```
+
+This is the right answer for production code in most cases.
+*O(m + n)* time is excellent. The LeetCode-required
+*O(log(min(m, n)))* algorithm exists primarily as an
+algorithmic exercise; the gain in practice is modest unless
+`m + n` is enormous.
+''',
+            "code": r'''def median_two_pointer(nums1: list[int], nums2: list[int]) -> float:
+    # Sizes of the two arrays and their total.
+    m, n = len(nums1), len(nums2)
+    total = m + n
+    # Two pointers, one per array.
+    i = j = 0
+    # prev and curr track the last two values yielded by the merge.
+    # We need them both because even-length merges average two
+    # adjacent values.
+    prev = curr = 0
+    # Walk through the merged sequence up to position total // 2.
+    # For odd total, the median is at this position. For even, the
+    # median is the average of this and the previous position.
+    for _ in range(total // 2 + 1):
+        prev = curr
+        # Pick the next smallest available element. If nums1 is
+        # exhausted (i == m), take from nums2. Otherwise compare
+        # nums1[i] with nums2[j] (or take from nums1 if nums2 is
+        # exhausted).
+        if i < m and (j == n or nums1[i] <= nums2[j]):
+            curr = nums1[i]
+            i += 1
+        else:
+            curr = nums2[j]
+            j += 1
+    # If total length is even, average the last two values.
+    if total % 2 == 0:
+        return (prev + curr) / 2
+    # Odd: the median is the value we just stopped at.
+    return curr
+''',
+            "complexity": (
+                "**Time**: *O(m + n)*. We walk only the first half of "
+                "the merged sequence.\n\n"
+                "**Space**: *O(1)*. Just a handful of pointers."
+            ),
+        },
+        "thought_process": r'''
+The optimal *O(log(min(m, n)))* algorithm uses **binary search
+on the partition point**. This is a different flavor of binary
+search from anything we've seen — we are not searching for a
+value, not searching for an index in a single array, and not
+searching for the answer. We are searching for the *partition*
+that splits both arrays into halves with a specific property.
+
+Let `m = len(nums1), n = len(nums2)`. Assume WLOG `m <= n`
+(swap if not — binary searching the smaller array gives the
+better log factor).
+
+We want to find positions `i ∈ [0, m]` and `j ∈ [0, n]` such
+that:
+
+1. **`i + j == (m + n + 1) // 2`** (the left half has exactly
+   half the total, rounding up to handle odd totals).
+2. **`nums1[i-1] <= nums2[j]`** AND **`nums2[j-1] <= nums1[i]`**
+   (every element in the left half is at most every element in
+   the right half).
+
+If both hold, the median is computable from the four boundary
+elements:
+
+- For odd total: median = `max(nums1[i-1], nums2[j-1])`.
+- For even total: median = average of `max(nums1[i-1], nums2[j-1])`
+  and `min(nums1[i], nums2[j])`.
+
+The binary search varies `i` over `[0, m]`. Once `i` is fixed,
+`j = (m + n + 1) // 2 - i` is determined by condition (1). So
+we have one variable and one constraint to verify (condition 2).
+
+If condition 2 fails because `nums1[i-1] > nums2[j]`: there are
+too many small elements in `nums1`'s left part. **Decrease i**.
+Set `hi = i - 1`.
+
+If condition 2 fails because `nums2[j-1] > nums1[i]`: there are
+too few small elements in `nums1`'s left part. **Increase i**.
+Set `lo = i + 1`.
+
+The binary search converges to the unique `i` where both halves
+of condition 2 hold.
+
+**Boundary cases**: when `i = 0`, there's no `nums1[i-1]` to
+read — we use `-∞` as a sentinel. When `i = m`, no `nums1[i]`;
+use `+∞`. Same for `j = 0` and `j = n`. The sentinels make the
+comparisons go through cleanly.
+
+Worked example on `nums1 = [1, 3], nums2 = [2]`, m = 2, n = 1.
+Wait — we need m <= n, so swap: `nums1 = [2], nums2 = [1, 3]`,
+m = 1, n = 2. Total = 3. Left half size = `(3 + 1) // 2 = 2`.
+
+- `lo = 0, hi = 1`. `i = 0`, `j = 2 - 0 = 2`.
+  - `nums1[i-1] = nums1[-1] = -∞` (sentinel).
+  - `nums1[i] = nums1[0] = 2`.
+  - `nums2[j-1] = nums2[1] = 3`.
+  - `nums2[j] = nums2[2] = +∞` (sentinel).
+  - Check: `-∞ <= +∞`? Yes. `3 <= 2`? **No**. Condition fails
+    because `nums2[j-1] = 3 > nums1[i] = 2`. Increase `i`. `lo
+    = 1`.
+- `lo = 1, hi = 1`. `i = 1`, `j = 2 - 1 = 1`.
+  - `nums1[i-1] = 2`.
+  - `nums1[i] = nums1[1] = +∞`.
+  - `nums2[j-1] = nums2[0] = 1`.
+  - `nums2[j] = nums2[1] = 3`.
+  - Check: `2 <= 3`? Yes. `1 <= +∞`? Yes. Both pass.
+- Total = 3 (odd). Median = `max(2, 1) = 2`. Correct.
+
+Two iterations. Beautiful.
+
+The hardest part of implementing this is the sentinel handling
+and getting `i, j` initialization exactly right. Once those are
+working, the algorithm is one of the slickest in DSA.
+''',
+        "optimized": {
+            "explanation": r'''
+Binary search the partition point on the smaller array. Sentinel
+values handle the boundary cases.
+''',
+            "code": r'''def find_median_sorted_arrays(nums1: list[int], nums2: list[int]) -> float:
+    # Ensure nums1 is the smaller array. Binary searching the
+    # smaller one gives the better log factor (and simplifies the
+    # boundary cases). Swap if needed.
+    if len(nums1) > len(nums2):
+        nums1, nums2 = nums2, nums1
+    m, n = len(nums1), len(nums2)
+    # Total length of both arrays combined. We need to know the
+    # size of the left half: half (rounded up) of the total.
+    total = m + n
+    # Size of the left half. The "+1" handles odd totals — the
+    # left half gets the extra element.
+    half = (total + 1) // 2
+    # Binary search the partition position i in nums1.
+    # i ranges over [0, m] (inclusive on both ends).
+    lo, hi = 0, m
+    while lo <= hi:
+        # i is the count of elements taken from nums1 for the left
+        # half. j is computed from the half-size constraint.
+        i = (lo + hi) // 2
+        j = half - i
+        # The four boundary elements around the cut.
+        # Sentinels: when i = 0 there's no nums1[i-1] — use -inf.
+        # When i = m there's no nums1[i] — use +inf. Same for j.
+        nums1_left = nums1[i - 1] if i > 0 else float('-inf')
+        nums1_right = nums1[i] if i < m else float('inf')
+        nums2_left = nums2[j - 1] if j > 0 else float('-inf')
+        nums2_right = nums2[j] if j < n else float('inf')
+        # Crossing condition: the largest left element from either
+        # array must not exceed the smallest right element from the
+        # other array.
+        if nums1_left <= nums2_right and nums2_left <= nums1_right:
+            # Found the correct partition.
+            if total % 2 == 0:
+                # Even total: median is the average of the largest left
+                # and the smallest right.
+                return (max(nums1_left, nums2_left) +
+                        min(nums1_right, nums2_right)) / 2
+            # Odd total: median is the largest element of the left half.
+            return max(nums1_left, nums2_left)
+        elif nums1_left > nums2_right:
+            # Too many small elements in nums1's left. Decrease i.
+            hi = i - 1
+        else:
+            # nums2_left > nums1_right: too few in nums1's left. Increase i.
+            lo = i + 1
+    # Should never reach here for valid input.
+    raise ValueError("inputs not sorted")
+''',
+            "complexity": (
+                "**Time**: *O(log(min(m, n)))*. The binary search "
+                "halves the smaller array's possible partition "
+                "points.\n\n"
+                "**Space**: *O(1)*. Just a constant number of "
+                "scalars."
+            ),
+        },
+        "deep_concept": r'''
+This problem teaches the deep idea that **binary search can
+operate on any one-dimensional monotonic space, even when that
+space is not the obvious index set or value set**.
+
+Here, we binary search on the **partition point** `i` in nums1.
+The decision predicate is "is the cross-condition satisfied?".
+The space is `[0, m]`. Monotonicity: as `i` increases, we move
+small-to-large elements across the cut from right to left;
+the cross conditions shift in a predictable direction.
+
+Once you internalize this, you start seeing binary-search
+opportunities in problems that don't even mention "search."
+
+The reason we binary-search the smaller array: it gives the
+better log factor (`log(min(m, n))` instead of `log(max)`), and
+the sentinels for `i = 0` / `i = m` are easier to reason about
+when there are fewer boundary cases.
+
+The reason for the `(total + 1) // 2` formula: it works for
+both odd and even totals. For odd totals, the left half gets
+one more element than the right (the median sits at the right
+end of the left half). For even totals, the halves are equal
+size. The `+1` rounding handles both cases in a single formula.
+
+**Common interview pitfalls**:
+
+1. Forgetting the sentinel values. Without them, `nums1[i - 1]`
+   when `i = 0` raises `IndexError`.
+2. Mixing up which array to binary search. Searching the larger
+   one gives a worse log factor and more boundary cases.
+3. Confusing the role of `i` and `j`. `j` is determined by `i`
+   and the total; it is not a second binary-search variable.
+4. Off-by-one in the `half` formula. Use `(total + 1) // 2`,
+   not `total // 2` (the latter handles only even totals).
+
+Once you've coded this once or twice, it becomes mechanical.
+But the first time it bites everyone.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why partition? Why not just find the k-th smallest?",
+                "answer": r'''
+You could! The median is just the k-th smallest where `k = (m +
+n + 1) // 2` (for odd total) or "average of the (m+n)/2-th and
+((m+n)/2 + 1)-th smallest" (for even total).
+
+There is an *O(log(m + n))* algorithm for finding the k-th
+smallest of two sorted arrays — it eliminates half of `k` each
+iteration. Slightly different from the partition approach but
+equivalent in complexity.
+
+Both algorithms are *O(log)*. The partition approach is cleaner
+once you understand the cross-condition; the k-th smallest is
+arguably more intuitive but has its own boundary subtleties.
+
+In an interview, mention both and implement whichever you find
+clearer. The partition approach is more famous, so prefer it if
+you've practiced it.
+
+A related observation: the partition approach generalizes to
+"k-th element of two sorted arrays" with minor changes — set
+`half = k` instead of `(m + n + 1) // 2`. The same binary
+search finds the partition; the k-th element is `max(nums1_left,
+nums2_left)`.
+''',
+            },
+            {
+                "question": "Why the `(total + 1) // 2` formula instead of `total // 2`?",
+                "answer": r'''
+Because the partition needs to put the median (or the
+"left half of the median pair," for even totals) into the left
+side of the cut.
+
+For **odd total** (e.g., 5 elements), the median is the 3rd
+element. We want the left half to contain the first 3 elements
+(including the median), and the right half to contain the last
+2. `half = (5 + 1) // 2 = 3`. Correct.
+
+For **even total** (e.g., 6 elements), the median is the
+average of the 3rd and 4th. The cut should put the first 3 on
+the left and the last 3 on the right. `half = (6 + 1) // 2 = 3`
+(integer division of 7 by 2). Also correct.
+
+With `total // 2`:
+
+- Odd 5: `5 // 2 = 2`. Left half = first 2 elements, right =
+  last 3. But the median is the 3rd, which is in the right
+  half. The cross-condition formulas don't match this layout
+  cleanly.
+- Even 6: `6 // 2 = 3`. OK in this case.
+
+So `(total + 1) // 2` is the unified formula that works for
+both. It's a small but critical detail.
+''',
+            },
+            {
+                "question": "What if one of the arrays is empty?",
+                "answer": r'''
+The algorithm handles this gracefully.
+
+If `nums1` is empty (`m = 0`), the binary search only allows
+`i = 0`. Then `j = (n + 1) // 2 - 0 = (n + 1) // 2`, and the
+median is computed directly from nums2.
+
+`nums1_left = -inf` (sentinel), `nums1_right = +inf` (sentinel).
+The cross-condition `-inf <= nums2[j]` is always true, and
+`nums2[j-1] <= +inf` is always true. So the loop converges
+immediately with `i = 0`.
+
+The median is read from `nums2_left` and `nums2_right`. Correct.
+
+If `nums2` is empty, we'd swap to put the empty one as nums1.
+Same logic applies in mirror.
+
+If both are empty, the problem is undefined (the median of
+nothing). The problem statement usually excludes this case.
+
+For input like `nums1 = [], nums2 = [1]`, the algorithm
+correctly returns 1 (the only element).
+''',
+            },
+            {
+                "question": "Why is this so much harder than the average binary search?",
+                "answer": r'''
+Three reasons.
+
+**First, the search space is non-obvious.** Most binary searches
+look at an array's indices or a candidate-answer range. Here,
+we search the partition position — a concept that requires you
+to first understand what "partition" means in this context.
+
+**Second, the cross-condition has multiple parts.** Most binary
+searches compare a single value to a single target. Here, we
+check four boundary elements against each other in a specific
+crossing pattern. Getting the four `<=` comparisons right is
+where most beginners trip.
+
+**Third, the boundary sentinels.** When `i = 0` or `i = m`, the
+formulas reference "out of bounds" elements. Without sentinels,
+the code crashes. With wrong sentinels, the cross-condition is
+miscomputed. Both kinds of bugs are subtle.
+
+These three reasons together make this problem one of the
+"hardest LeetCode binary search" by reputation. The fact that
+the algorithm is *O(log)* makes it tempting to try, but the
+implementation needs careful boundary handling.
+
+For interview purposes: practice this problem at least three
+times. Once is not enough. The boundary intuition only
+develops with repetition.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: binary search the partition point on the smaller
+array. Use sentinels for out-of-bounds indices. Check the
+four-element cross-condition.
+
+**Lesson**: binary search applies to any 1D monotonic space.
+Here, the space is "the partition point in the smaller array,"
+not the usual array indices or candidate answers.
+
+**Recognize next time**: "k-th element of two sorted arrays" is
+the close cousin. Same partition idea, slightly different
+half-size formula.
+''',
+    },
+    {
+        "id": "search-rotated-ii",
+        "title": "Search in Rotated Sorted Array II (With Duplicates)",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "medium",
+        "tags": ["binary-search", "rotated"],
+        "what_this_teaches": (
+            "How duplicates degrade binary search. The 'one half is "
+            "sorted' check fails when arr[lo] == arr[mid] == arr[hi]; "
+            "we recover by shrinking the ambiguous boundary, "
+            "accepting an O(n) worst case."
+        ),
+        "pattern": (
+            "Same as search-rotated-i, but on the ambiguous "
+            "arr[lo] == arr[mid] == arr[hi] case, shrink lo and hi "
+            "by one."
+        ),
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["search-rotated-i", "min-in-rotated"],
+        "next_problems": ["single-element-sorted"],
+        "resources": [
+            _SHEET,
+            _lc(81, "search-in-rotated-sorted-array-ii"),
+        ],
+        "understanding": r'''
+Like the first "search in a rotated sorted array" problem, but
+the array may now contain **duplicates**. Return `True` if the
+target is present, `False` otherwise.
+
+For `arr = [2, 5, 6, 0, 0, 1, 2]`, target = `0`: return `True`.
+For target = `3`: return `False`.
+
+The presence of duplicates breaks the previous algorithm's "one
+half is always sorted" detection. Recall: in the no-duplicates
+version, we determined which half was sorted by comparing
+`arr[lo]` to `arr[mid]`. If `arr[lo] <= arr[mid]`, left half is
+sorted; else right half is. That comparison is unambiguous when
+all elements are distinct.
+
+With duplicates, the comparison can be misleading. Consider
+`arr = [3, 1, 2, 3, 3, 3, 3]`, target = `2`. At the first
+midpoint, `arr[lo] = 3, arr[mid] = 3, arr[hi] = 3`. All three
+are equal. Is the left half sorted? Could be. Could be that
+the discontinuity is hidden in the run of duplicates. We don't
+know.
+
+The fix: when `arr[lo] == arr[mid] == arr[hi]`, we cannot
+deterministically decide. We give up on this iteration and just
+**shrink both boundaries by 1**: `lo += 1` and `hi -= 1`. This
+loses the *O(log n)* guarantee in the worst case (e.g., the
+array is all duplicates and the target is absent — we end up
+walking the whole array). The worst case becomes *O(n)*.
+
+In practice — when the array has only a few duplicates — the
+algorithm still runs in *O(log n)*. The *O(n)* worst case
+applies only to adversarial inputs.
+
+This problem teaches an important meta-lesson: **algorithms
+depend on the data's exact properties**. A small relaxation
+(allowing duplicates) can break the *O(log n)* guarantee. When
+porting an algorithm to a related problem, always ask: "what
+properties did the original algorithm rely on, and do they
+still hold?"
+''',
+        "brute_force": {
+            "explanation": r'''
+Linear scan. Walk every element. *O(n)*.
+
+```python
+def search_brute(arr, target):
+    return target in arr
+```
+
+Correct, simple. The *in* operator is *O(n)* for lists.
+
+For very small arrays or arrays with many duplicates (where the
+optimized version is also *O(n)*), this is just as fast and
+simpler to write.
+
+The optimized binary-search version below has the same *O(n)*
+worst case but does *O(log n)* on inputs without too many
+duplicates.
+''',
+            "code": r'''def search_brute(arr: list[int], target: int) -> bool:
+    return target in arr
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The optimized algorithm extends `search-rotated-i` with one new
+branch: when `arr[lo] == arr[mid] == arr[hi]`, shrink both
+boundaries by 1.
+
+```python
+def search(arr, target):
+    lo, hi = 0, len(arr) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if arr[mid] == target:
+            return True
+        # NEW: handle the ambiguous case.
+        if arr[lo] == arr[mid] == arr[hi]:
+            lo += 1
+            hi -= 1
+            continue
+        # Otherwise, same as search-rotated-i.
+        if arr[lo] <= arr[mid]:
+            if arr[lo] <= target < arr[mid]:
+                hi = mid - 1
+            else:
+                lo = mid + 1
+        else:
+            if arr[mid] < target <= arr[hi]:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+    return False
+```
+
+Why does the shrink work? When `arr[lo] == arr[mid] == arr[hi]`,
+we don't lose any potential matches by trimming `lo` and `hi`
+each by one: the values at `lo` and `hi` equal the value at `mid`,
+which we just checked (and it didn't equal the target). So those
+boundary values are also not the target. Removing them is safe.
+
+The worst case is when the array is mostly duplicates. For
+`arr = [1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1]` (one off-pattern
+element), the ambiguity branch fires many times before the
+search narrows. The worst-case complexity becomes *O(n)*.
+
+For most realistic inputs, the algorithm stays *O(log n)*. The
+*O(n)* worst case applies only when the array is pathologically
+dominated by duplicates.
+
+A practical note: in interview settings, mention the *O(n)*
+worst case upfront. If the interviewer asks for a strictly
+*O(log n)* algorithm even with duplicates, the answer is:
+"it cannot be done in the worst case; the duplicates break the
+sortedness signal." Different problem formulations require
+different acknowledgments.
+''',
+        "optimized": {
+            "explanation": r'''
+Binary search adapted for duplicates. When the boundary
+comparison is ambiguous, shrink both ends by 1 and retry.
+''',
+            "code": r'''def search(arr: list[int], target: int) -> bool:
+    # Standard binary search bounds.
+    lo, hi = 0, len(arr) - 1
+    while lo <= hi:
+        # Midpoint of the current window.
+        mid = (lo + hi) // 2
+        # Exact match — return immediately.
+        if arr[mid] == target:
+            return True
+        # The ambiguous case: all three boundary values are equal.
+        # We cannot determine which half is sorted, because the
+        # discontinuity could be hidden in a run of duplicates.
+        # Safe fallback: trim one element from each end.
+        # We know arr[lo] == arr[mid] != target, so removing arr[lo]
+        # cannot remove the target. Same for arr[hi].
+        if arr[lo] == arr[mid] == arr[hi]:
+            lo += 1
+            hi -= 1
+            continue
+        # Otherwise, determine which half is sorted using arr[lo]
+        # vs arr[mid]. This is the same logic as search-rotated-i.
+        if arr[lo] <= arr[mid]:
+            # Left half [lo, mid] is fully sorted.
+            if arr[lo] <= target < arr[mid]:
+                # Target is in the sorted left half.
+                hi = mid - 1
+            else:
+                # Target must be in the unsorted right half (if anywhere).
+                lo = mid + 1
+        else:
+            # Right half [mid, hi] is fully sorted.
+            if arr[mid] < target <= arr[hi]:
+                # Target is in the sorted right half.
+                lo = mid + 1
+            else:
+                # Target must be in the unsorted left half (if anywhere).
+                hi = mid - 1
+    # Window emptied without finding the target.
+    return False
+''',
+            "complexity": (
+                "**Time**: *O(log n)* average; *O(n)* worst case for "
+                "arrays with many duplicates.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "deep_concept": r'''
+This problem cements the meta-lesson from the previous "Search
+in Rotated Sorted Array" (LC 33): **the algorithm depends on
+the input's structural properties, and a small relaxation can
+break the guarantees**.
+
+LC 33 (no duplicates) → *O(log n)* guaranteed.
+LC 81 (with duplicates) → *O(log n)* average, *O(n)* worst.
+
+The worst-case degradation is unavoidable for this kind of
+input. Consider `arr = [1, 1, 1, 1, 1, 1, 0, 1]` and target =
+`0`. There is no constant-time check at any midpoint that
+deterministically locates the `0` — the boundary values give
+no signal. Any algorithm must scan past the duplicates, hence
+*O(n)* worst case.
+
+The general principle: when designing an algorithm, list the
+properties it relies on. Then ask which problem inputs can
+violate those properties. The complexity claim only holds for
+inputs that don't violate.
+
+A practical takeaway: in real code with truly large arrays
+containing many duplicates, the binary-search approach is no
+better than a linear scan. Don't reach for it expecting *O(log
+n)* on adversarial inputs. For "almost sorted with some
+duplicates," it's still faster than the linear scan on average.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why shrink BOTH lo and hi when they're equal?",
+                "answer": r'''
+Symmetry. The ambiguous case is `arr[lo] == arr[mid] == arr[hi]`
+— all three boundary values equal. Since we just checked
+`arr[mid] != target`, we know all three are not the target.
+
+Shrinking `lo` removes the leftmost equal value (which is not
+the target). Shrinking `hi` removes the rightmost. Both moves
+are safe.
+
+You could shrink only one side, and the algorithm would still
+be correct — just slightly slower (one ambiguity-clearing
+step per iteration instead of two). Shrinking both is the
+standard implementation.
+
+A subtle point: shrinking only `lo` would still preserve
+correctness because `lo += 1` advances toward the boundary
+where we eventually leave the duplicate run. Same for `hi -=
+1`. But doing both at once is twice as efficient — and the
+implementation is no harder.
+''',
+            },
+            {
+                "question": "Can the worst case really hit O(n)?",
+                "answer": r'''
+Yes. Consider `arr = [1, 1, 1, 1, 0, 1]` and target = `0`.
+
+- `lo = 0, hi = 5, mid = 2`. All equal (1, 1, 1). Shrink. `lo
+  = 1, hi = 4`.
+- `lo = 1, hi = 4, mid = 2`. arr[lo] = 1, arr[mid] = 1, arr[hi]
+  = 0. Not all equal. arr[lo] <= arr[mid], so left is sorted.
+  arr[lo] = 1 <= 0 < arr[mid] = 1? 1 <= 0 is False, so target
+  is in the right half. lo = mid + 1 = 3.
+- ...
+
+Actually this particular example terminates pretty fast. But
+for `arr = [1] * (n - 1) + [0]` and target = `0`, the algorithm
+spends most iterations on ambiguity shrinks before finally
+locating the `0`. The total iterations approach `n`.
+
+For non-adversarial inputs, the algorithm typically converges
+fast. But you cannot claim *O(log n)* worst case when
+duplicates are present.
+
+In interview settings, write the algorithm and quote *O(n)*
+worst case, *O(log n)* average. That's the honest answer.
+''',
+            },
+            {
+                "question": "Is there a way to keep O(log n) worst case for the duplicates case?",
+                "answer": r'''
+No, not for arbitrary duplicates. The information-theoretic
+argument: with all-duplicate inputs, no constant-time test at
+any midpoint can reliably distinguish "target is to the left"
+from "target is to the right." Without such a test, you cannot
+halve the search space each iteration. So you cannot achieve
+*O(log n)* in the worst case.
+
+For specific structured duplicate patterns (e.g., "at most k
+distinct values"), specialized algorithms might do better. But
+for arbitrary "rotated sorted with duplicates," *O(n)* is the
+proven lower bound.
+
+This is one of those cases where the optimal answer depends on
+the input restrictions. The interview answer for LC 81 is
+"average *O(log n)*, worst *O(n)*" — exactly what we
+implemented.
+''',
+            },
+            {
+                "question": "When does the algorithm beat linear scan in practice?",
+                "answer": r'''
+For arrays with few duplicates, the algorithm typically runs in
+near-*O(log n)*. The ambiguity branch fires only when the
+boundary values happen to all equal — rare for inputs with
+mostly distinct values.
+
+For arrays where the rotation pivot is far from the boundary
+duplicates, the algorithm narrows the search quickly.
+
+For all-duplicates or near-all-duplicates inputs, the algorithm
+degrades to *O(n)*, no better than linear scan. The linear
+scan in such cases is simpler and may actually be faster in
+constant factors.
+
+A real-world rule of thumb: if you expect the input to have at
+most a small fraction of duplicates, the binary-search approach
+is better. If duplicates are common, use the linear scan and
+move on.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: same as search-rotated-i, with an extra ambiguity-
+handling branch when `arr[lo] == arr[mid] == arr[hi]`.
+
+**Lesson**: duplicates degrade binary search from *O(log n)* to
+*O(n)* worst case. The "one half is sorted" detection fails
+when boundary values coincide.
+
+**Recognize next time**: any "rotated sorted array with
+duplicates" variant. Accept the worst-case degradation; quote
+the honest complexity.
+''',
+    },
+    {
         "id": "first-last-occurrence",
         "title": "First and Last Occurrence in a Sorted Array",
         "step_id": 4,

@@ -4467,6 +4467,1031 @@ the honest complexity.
 ''',
     },
     {
+        "id": "sqrt-using-bs",
+        "title": "Square Root of a Number Using Binary Search",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "easy",
+        "tags": ["binary-search", "bs-on-answer", "math"],
+        "what_this_teaches": (
+            "The cleanest possible 'binary search on the answer' "
+            "example. The answer space is `[0, n]`, the feasibility "
+            "predicate is `mid * mid <= n`, monotonicity is obvious. "
+            "Once you've written this, every other BS-on-answer "
+            "problem feels familiar."
+        ),
+        "pattern": (
+            "Binary search the candidate answer in [0, n]; predicate "
+            "is `mid * mid <= n`."
+        ),
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["koko-bananas", "lower-bound"],
+        "next_problems": [
+            "nth-root",
+            "smallest-divisor-threshold",
+            "ship-packages-d-days",
+            "min-days-bouquets",
+        ],
+        "resources": [
+            _SHEET,
+            _lc(69, "sqrtx"),
+        ],
+        "understanding": r'''
+Compute the **integer square root** of a non-negative integer
+`n`. That is, return the largest integer `r` such that `r * r
+<= n`.
+
+For `n = 16`, return `4` (since `4 * 4 = 16`).
+For `n = 17`, return `4` (since `4 * 4 = 16 <= 17` but `5 * 5
+= 25 > 17`).
+For `n = 0`, return `0`.
+
+This is LeetCode 69 with a slight phrasing twist (LC 69 asks
+for `floor(sqrt(n))`, which is the same as our "largest r with
+r * r <= n").
+
+You might be tempted to call Python's `math.isqrt(n)` and be
+done — and in production code, that's the right answer. But
+the educational point of this problem is to **practice the
+"binary search on the answer" pattern on its cleanest possible
+example**. Once you can do this from memory, the harder
+BS-on-answer problems (aggressive cows, painter's partition,
+ship packages) feel like variations on the same theme.
+
+So let's solve it three ways: brute force linear search, binary
+search on the answer, and the closed-form (`math.isqrt`).
+''',
+        "brute_force": {
+            "explanation": r'''
+Try every candidate from 0 upward. The largest `r` such that
+`r * r <= n` is the integer square root.
+
+```python
+def isqrt_linear(n):
+    r = 0
+    while (r + 1) * (r + 1) <= n:
+        r += 1
+    return r
+```
+
+`O(sqrt(n))` time. For `n = 10^9`, that's about 31,623 iterations
+— acceptable for one query but slow if you have many.
+
+The brute force is correct and obvious. The binary search
+version brings it down to `O(log n)` — about 30 iterations even
+for `n = 10^9`.
+''',
+            "code": r'''def isqrt_linear(n: int) -> int:
+    # Walk from 0 upward, increasing r until (r + 1)^2 exceeds n.
+    # The largest r with r^2 <= n is the answer.
+    r = 0
+    while (r + 1) * (r + 1) <= n:
+        r += 1
+    return r
+''',
+            "complexity": "**Time**: *O(sqrt(n))*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The optimized algorithm is binary search on the answer. Let's
+walk through the recipe.
+
+**Step 1: Identify the candidate range.** The integer square
+root is at least 0 (for `n = 0`) and at most `n` (a loose
+bound; for `n >= 1`, the answer is at most `n` since `n * n >=
+n`). So the candidate range is `[0, n]`.
+
+A tighter upper bound: `n // 2 + 1` for `n >= 2` (because
+`(n // 2)^2 >= n` for `n >= 4`). But `n` works fine as a loose
+upper bound and the log factor barely changes.
+
+**Step 2: Write the feasibility predicate.** Given a candidate
+`r`, "is this a valid answer?" means `r * r <= n`. This is a
+constant-time check.
+
+**Step 3: Verify monotonicity.** If `r * r <= n`, then for any
+`r' < r`, `r' * r' < r * r <= n`. So smaller candidates are
+also valid. If `r * r > n`, every larger candidate also has
+`r'^2 >= r^2 > n`. So feasibility is monotonic: the valid
+candidates form a contiguous prefix `[0, ans]`, and we want
+the largest one.
+
+**Step 4: Binary search.** Use the "find the largest feasible
+candidate" template:
+
+```python
+lo, hi = 0, n
+ans = 0
+while lo <= hi:
+    mid = (lo + hi) // 2
+    if mid * mid <= n:
+        ans = mid       # feasible; record and try larger
+        lo = mid + 1
+    else:
+        hi = mid - 1    # infeasible; try smaller
+return ans
+```
+
+Worked example on `n = 17`:
+
+- `lo = 0, hi = 17`. `mid = 8`. `8 * 8 = 64 > 17`. Infeasible.
+  `hi = 7`.
+- `lo = 0, hi = 7`. `mid = 3`. `3 * 3 = 9 <= 17`. Feasible. `ans
+  = 3`. `lo = 4`.
+- `lo = 4, hi = 7`. `mid = 5`. `5 * 5 = 25 > 17`. Infeasible.
+  `hi = 4`.
+- `lo = 4, hi = 4`. `mid = 4`. `4 * 4 = 16 <= 17`. Feasible.
+  `ans = 4`. `lo = 5`.
+- `lo = 5, hi = 4`. Loop exits.
+- Return `ans = 4`. Correct.
+
+Four iterations for `n = 17`. `log2(17) ≈ 4.1`, so this matches.
+
+For `n = 10^18`, the binary search converges in about 60
+iterations.
+''',
+        "optimized": {
+            "explanation": r'''
+Binary search on the candidate answer. The predicate is one
+multiplication; the iteration count is logarithmic.
+''',
+            "code": r'''def isqrt(n: int) -> int:
+    # Edge case: sqrt(0) is 0.
+    if n < 2:
+        return n
+    # Candidate range: 0 to n inclusive. We will tighten it via
+    # binary search.
+    lo, hi = 1, n
+    # Track the largest feasible candidate seen so far.
+    ans = 0
+    while lo <= hi:
+        # Midpoint of the current candidate window.
+        mid = (lo + hi) // 2
+        # Feasibility check: is mid * mid still within n?
+        # We use multiplication rather than computing the square root
+        # because integer multiplication is exact and avoids the
+        # floating-point pitfalls of math.sqrt.
+        if mid * mid <= n:
+            # mid is a valid answer (mid^2 fits within n). Could there
+            # be a larger valid answer? Yes — try larger.
+            ans = mid
+            lo = mid + 1
+        else:
+            # mid^2 already exceeds n. No larger candidate will work.
+            # Try smaller.
+            hi = mid - 1
+    return ans
+''',
+            "complexity": (
+                "**Time**: *O(log n)*. The binary search halves the "
+                "window each iteration.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "deep_concept": r'''
+This problem is the canonical "binary search on the answer"
+exercise. It is intentionally simple — the candidate range is
+just `[0, n]`, the feasibility predicate is one multiplication,
+and monotonicity is obvious. There is no greedy subroutine to
+worry about.
+
+Once this problem is in your fingers, the harder BS-on-answer
+problems (Koko, aggressive cows, ship packages) feel like
+small variations: identify the candidate range, write a
+slightly more elaborate feasibility checker, verify monotonicity,
+binary search.
+
+A subtle technical point: **why not use `math.sqrt(n)` and cast
+to int?**
+
+```python
+return int(math.sqrt(n))
+```
+
+This is `O(1)` and looks cleaner. But it has a subtle
+floating-point pitfall: `math.sqrt` returns a float, and floats
+have only about 15-17 significant digits of precision. For very
+large `n` (close to `2^53`), `math.sqrt(n)` can be off by 1.
+The cast then gives the wrong answer.
+
+Example: `math.sqrt(2**52 - 1)` might return `67108863.99999998`
+or `67108864.0` depending on rounding. The correct integer
+square root is `67108863`. The float-based approach can give
+`67108864`, which is wrong.
+
+`math.isqrt(n)` (added in Python 3.8) avoids this entirely by
+using integer arithmetic internally. **It is the right
+production answer**.
+
+But for interview practice, the binary search version
+demonstrates understanding of BS-on-answer. Mention both: "I'd
+use `math.isqrt` in production for safety; here's the binary
+search to show I understand the underlying algorithm."
+
+The connection to the algorithm hierarchy:
+
+- `math.isqrt`: O(1) (or very fast), but a built-in.
+- Binary search: O(log n), educational, what interviewers want.
+- Linear scan: O(sqrt(n)), baseline.
+- Newton's method: O(log log n), faster but more involved.
+
+Newton's method is mentioned for completeness; it's rarely the
+right interview answer because the algorithm is more complex
+and the speedup over binary search is negligible for typical
+inputs.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why use `mid * mid <= n` instead of `mid <= sqrt(n)`?",
+                "answer": r'''
+Because `mid * mid` is **exact integer arithmetic** while
+`sqrt(n)` returns a float with limited precision.
+
+For large `n` (say, `n = 10^15`), `sqrt(n)` can be off by a
+tiny amount due to floating-point rounding. That tiny error,
+when used as a comparison threshold, can push the algorithm to
+the wrong side of the boundary and give a wrong answer by 1.
+
+`mid * mid` is exact in Python (arbitrary precision integers).
+The comparison `mid * mid <= n` is precise regardless of how
+large `n` is.
+
+In C++ or Java with fixed-width integers, `mid * mid` can
+**overflow** for very large `n`. In those languages, you have
+to be careful: compute `mid` as a `long`, or use the comparison
+`mid <= n / mid` (which avoids the multiplication).
+
+In Python, the overflow concern doesn't exist. Always use
+`mid * mid` and stay in integer-land for sqrt computations.
+''',
+            },
+            {
+                "question": "Why does the answer start at 0?",
+                "answer": r'''
+Because `sqrt(0) = 0` and `sqrt(1) = 1`, and for `n = 0` we
+return `0` directly via the early-exit `if n < 2: return n`.
+
+For `n >= 2`, the smallest candidate worth checking is `1` (since
+`0 * 0 = 0 <= n` for any non-negative `n`). The `ans = 0`
+initialization is the floor — even if the binary search
+somehow narrows to nothing, returning `0` is a safe default.
+
+In practice, the binary search always finds at least `ans = 1`
+for `n >= 1`, so the `ans = 0` initialization is overkill but
+defensive.
+''',
+            },
+            {
+                "question": "Could the algorithm overflow for very large n?",
+                "answer": r'''
+In Python, no. Integers are arbitrary precision.
+
+In C++ / Java with 32-bit or 64-bit integers, yes. For `n
+= 2^31 - 1` and `mid` near `sqrt(n) ≈ 46341`, `mid * mid` is
+about `2.15 * 10^9` — fits in a 32-bit unsigned int but
+overflows 32-bit signed. To be safe in C++, use `long long`
+for `mid * mid`, or rewrite the comparison as `mid <= n / mid`
+(which uses division to avoid the multiplication).
+
+The Python solution is fully overflow-proof. One of the small
+joys of working in Python — no overflow worry on sqrt
+problems.
+''',
+            },
+            {
+                "question": "How is this different from finding the n-th root?",
+                "answer": r'''
+The square root is `n^(1/2)`. The n-th root is `n^(1/k)` for
+arbitrary integer `k`. Same algorithm, different exponent in
+the feasibility check.
+
+For n-th root: feasibility is `mid^k <= n`. Computing `mid^k`
+takes `O(log k)` time via fast exponentiation. Binary search
+over candidates takes `O(log n)` iterations. Total: `O(log n
+* log k)`.
+
+The structure is identical: candidate range, monotonic predicate,
+binary search. Only the "compute power" step changes.
+
+We have a separate problem `nth-root` in this curriculum (Step
+4 Lecture 2) that walks through it. It's a great follow-up
+after you've mastered sqrt.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: binary search on the candidate `[0, n]` with
+predicate `mid * mid <= n`. The simplest possible BS-on-answer.
+
+**Lesson**: when the feasibility predicate is `O(1)` and the
+candidate range is `[low, high]`, binary search the range. This
+problem is the cleanest demonstration of the pattern.
+
+**Recognize next time**: any "find the largest integer `r`
+such that property P(r) holds and P is monotonic" problem. The
+recipe writes itself.
+''',
+    },
+    {
+        "id": "smallest-divisor-threshold",
+        "title": "Find the Smallest Divisor Given a Threshold",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "medium",
+        "tags": ["binary-search", "bs-on-answer"],
+        "what_this_teaches": (
+            "Another canonical BS-on-answer. The candidate is the "
+            "divisor; the feasibility predicate sums up ceiling-"
+            "divisions and compares against a threshold. Same recipe "
+            "as Koko, framed with arithmetic."
+        ),
+        "pattern": "Binary search divisor in [1, max(nums)]; check if ceiling-sum stays under threshold.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["koko-bananas", "sqrt-using-bs"],
+        "next_problems": [
+            "ship-packages-d-days",
+            "min-days-bouquets",
+            "aggressive-cows",
+            "book-allocation",
+        ],
+        "resources": [
+            _SHEET,
+            _lc(1283, "find-the-smallest-divisor-given-a-threshold"),
+        ],
+        "understanding": r'''
+You are given an array of positive integers `nums` and an
+integer `threshold`. Choose a positive integer divisor `d`,
+divide each number in `nums` by `d` (rounding up), and sum the
+results. Return the **smallest** `d` such that the sum is at
+most `threshold`.
+
+Example: `nums = [1, 2, 5, 9]`, `threshold = 6`.
+
+- `d = 1`: sum = `1 + 2 + 5 + 9 = 17`. Exceeds 6.
+- `d = 2`: sum = `ceil(1/2) + ceil(2/2) + ceil(5/2) + ceil(9/2)
+  = 1 + 1 + 3 + 5 = 10`. Exceeds.
+- `d = 3`: sum = `1 + 1 + 2 + 3 = 7`. Exceeds.
+- `d = 4`: sum = `1 + 1 + 2 + 3 = 7`. Wait, let me recompute:
+  `ceil(1/4) = 1, ceil(2/4) = 1, ceil(5/4) = 2, ceil(9/4) = 3`.
+  Sum = 7. Exceeds.
+- `d = 5`: sum = `1 + 1 + 1 + 2 = 5`. Within threshold!
+- `d = 4`: already computed as 7. Exceeds.
+
+So the smallest feasible `d` is 5.
+
+The brute force tries every `d` from 1 to `max(nums)` and
+returns the first feasible one. *O(max(nums) × n)* time. For
+large arrays with large values, too slow.
+
+The optimization is **binary search on the divisor**. Same
+recipe as Koko Eating Bananas (which we already covered): the
+candidate range is `[1, max(nums)]`, the feasibility checker
+computes the sum of ceiling-divisions, monotonicity is
+straightforward (larger divisor → smaller sum), and binary
+search picks the smallest feasible divisor.
+
+This is yet another example of the BS-on-answer family.
+Recognizing the pattern is the whole game.
+''',
+        "brute_force": {
+            "explanation": r'''
+Try every candidate divisor from 1 to `max(nums)`. Return the
+first one that satisfies the threshold.
+
+```python
+def smallest_divisor_linear(nums, threshold):
+    for d in range(1, max(nums) + 1):
+        s = sum((x + d - 1) // d for x in nums)
+        if s <= threshold:
+            return d
+    return -1  # should not happen if problem guarantees a solution
+```
+
+`O(max(nums) × n)`. For `nums` of size 50,000 with values up
+to a million, that's 5 * 10^10 operations — way too slow.
+
+The binary search version brings it to `O(n × log(max(nums)))`
+— about 30 * 50,000 = 1.5 * 10^6 operations. Manageable.
+''',
+            "code": r'''def smallest_divisor_linear(nums: list[int], threshold: int) -> int:
+    # Try every candidate divisor in increasing order.
+    for d in range(1, max(nums) + 1):
+        # Sum of ceiling divisions for this candidate.
+        s = sum((x + d - 1) // d for x in nums)
+        # First d for which the sum stays within threshold is the answer.
+        if s <= threshold:
+            return d
+    return -1
+''',
+            "complexity": (
+                "**Time**: *O(max(nums) × n)*. Slow for large value "
+                "ranges.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "thought_process": r'''
+The recipe is the same as Koko Eating Bananas. Let's apply it
+verbatim.
+
+**Step 1: Candidate range.** Divisor can be from 1 (no
+division) up to `max(nums)` (large enough that every number
+ceiling-divides to 1, giving sum = n which is the minimum
+possible).
+
+**Step 2: Feasibility checker.** Given a candidate `d`, compute
+`sum(ceil(x / d) for x in nums)` and compare with threshold.
+*O(n)* time. Use the standard ceiling-division trick
+`(x + d - 1) // d`.
+
+**Step 3: Monotonicity.** As `d` increases, each ceiling-
+division `ceil(x / d)` decreases (or stays the same). So the
+sum decreases monotonically with `d`. Feasibility is monotonic:
+if `d = D` works, every `d > D` also works.
+
+**Step 4: Binary search.** Find the smallest feasible `d`.
+Half-open lower-bound style.
+
+```python
+lo, hi = 1, max(nums)
+while lo < hi:
+    mid = (lo + hi) // 2
+    if sum_at(mid) <= threshold:
+        hi = mid    # mid feasible; try smaller
+    else:
+        lo = mid + 1
+return lo
+```
+
+Worked example on `nums = [1, 2, 5, 9]`, `threshold = 6`:
+
+- `lo = 1, hi = 9`. `mid = 5`. Sum = 1+1+1+2 = 5. ≤ 6. Feasible.
+  `hi = 5`.
+- `lo = 1, hi = 5`. `mid = 3`. Sum = 1+1+2+3 = 7. > 6. Infeasible.
+  `lo = 4`.
+- `lo = 4, hi = 5`. `mid = 4`. Sum = 1+1+2+3 = 7. > 6. Infeasible.
+  `lo = 5`.
+- `lo = 5, hi = 5`. Exit. Return 5.
+
+Three iterations on a four-element array. Correct.
+
+The algorithm is virtually identical to Koko's. Once you
+recognize the BS-on-answer pattern, these problems become
+formula-fill exercises.
+''',
+        "optimized": {
+            "explanation": r'''
+Binary search on the divisor candidate range. Feasibility
+checker is `O(n)` ceiling-division sum.
+''',
+            "code": r'''def smallest_divisor(nums: list[int], threshold: int) -> int:
+    def total_for(d: int) -> int:
+        # Sum of ceil(x / d) for x in nums.
+        # The ceiling-division trick: ceil(a / b) = (a + b - 1) // b
+        # for non-negative integers. We use it because integer ceiling
+        # is faster and exact compared to math.ceil(a / b) which would
+        # use floats.
+        return sum((x + d - 1) // d for x in nums)
+
+    # Candidate range: divisor in [1, max(nums)].
+    # Lower bound 1: any smaller divisor isn't well-defined.
+    # Upper bound max(nums): at this divisor, every number rounds up
+    # to 1, giving the minimum possible sum of n.
+    lo, hi = 1, max(nums)
+    # Half-open binary search for the smallest feasible divisor.
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if total_for(mid) <= threshold:
+            # mid is feasible. Try smaller divisors.
+            hi = mid
+        else:
+            # mid is infeasible. Need larger.
+            lo = mid + 1
+    return lo
+''',
+            "complexity": (
+                "**Time**: *O(n log(max(nums)))*. The binary search "
+                "has *O(log)* iterations, each doing an *O(n)* "
+                "feasibility check.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "deep_concept": r'''
+This problem confirms that the BS-on-answer recipe is **truly
+mechanical** once you recognize the pattern. The problem here
+is identical to Koko Eating Bananas in structure:
+
+- **Koko**: minimize the eating speed such that all piles
+  finish within `h` hours.
+- **Smallest divisor**: minimize the divisor such that the
+  ceiling-sum stays within `threshold`.
+
+Both have:
+- A monotonic "smaller candidate → harder feasibility" relation.
+- A polynomial-time feasibility checker.
+- The same half-open lower-bound binary search structure.
+
+The feasibility check in both uses ceiling division — which is
+not a coincidence. Many "rate" or "capacity" problems use
+ceiling-division accounting (you need to round up because you
+can't split a discrete unit of work).
+
+Memorize the ceiling-division idiom:
+
+> `ceil(a / b) = (a + b - 1) // b` for non-negative integers.
+
+It comes up constantly in BS-on-answer and many other contexts.
+
+The lesson: once you internalize the BS-on-answer recipe, an
+entire lecture's worth of "hard" problems collapses into
+mechanical work. The challenge is recognition, not
+implementation.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why ceiling division and not regular division?",
+                "answer": r'''
+Because the problem specifies "round up" — each number's
+contribution to the sum is `ceil(x / d)`, not `x / d`.
+
+Why "round up"? In problems about discrete work units (like
+"how many trips do I need to carry x items at d items per
+trip"), partial trips still count as a full trip. If you have
+5 items and a capacity of 3 per trip, you need 2 trips (not
+1.67).
+
+Floor division `x // d` would underestimate. Standard `/`
+returns a float, which we'd have to ceiling anyway.
+
+The integer trick `(x + d - 1) // d`:
+
+- For `x = 5, d = 3`: `(5 + 2) // 3 = 7 // 3 = 2`. Correct.
+- For `x = 6, d = 3`: `(6 + 2) // 3 = 8 // 3 = 2`. Correct
+  (exactly 2, no rounding needed).
+- For `x = 0, d = 3`: `(0 + 2) // 3 = 0`. Correct.
+
+The "+ d - 1" pushes the dividend up by enough to force the
+floor to round up when there's any remainder.
+
+Alternative: `math.ceil(x / d)` works but uses floats.
+
+For Python, the integer trick is preferred — exact, fast, no
+float pitfalls.
+''',
+            },
+            {
+                "question": "Why is the upper bound max(nums) and not something larger?",
+                "answer": r'''
+Because at `d = max(nums)`, every number divides to 1 (or 0,
+for a 0 in the array). The sum becomes exactly `n` (the number
+of elements). Going higher doesn't reduce the sum further.
+
+For example, `nums = [5, 7, 9]`. At `d = 9`, the ceiling-
+divisions are `ceil(5/9) = 1, ceil(7/9) = 1, ceil(9/9) = 1`.
+Sum = 3 = n. At `d = 10`, same result: 1 + 1 + 1 = 3. So `d >=
+max(nums)` all give the same minimum sum.
+
+If the threshold is at least `n` (the array size), the answer
+is at most `max(nums)`. If the threshold is less than `n`, the
+problem is infeasible (you can't get below `n` no matter what
+divisor you pick).
+
+Setting `hi = max(nums)` is the tight upper bound. You could
+set `hi` to any larger number and the binary search would still
+work; the tight choice just saves a couple of iterations.
+''',
+            },
+            {
+                "question": "Why is the lower bound 1 and not 0?",
+                "answer": r'''
+Because dividing by 0 is undefined (and Python raises
+`ZeroDivisionError`). So 0 is not a valid divisor.
+
+The problem statement also specifies positive divisors. So the
+smallest meaningful candidate is 1.
+
+A divisor of 1 means no division — each number contributes
+itself to the sum. So the sum at `d = 1` is `sum(nums)`. If
+`sum(nums) <= threshold`, the answer is 1.
+
+The binary search starts at `lo = 1` for safety. The first
+iteration's `mid = (1 + max(nums)) // 2`, which is well-defined.
+''',
+            },
+            {
+                "question": "What if no divisor satisfies the threshold?",
+                "answer": r'''
+The problem statement usually guarantees a solution exists
+(i.e., `threshold >= n` so the answer is at most `max(nums)`).
+
+If you wanted to handle infeasibility, you'd check after the
+binary search whether `total_for(lo) <= threshold`. If not,
+return -1 or raise an exception.
+
+```python
+result = ...  # binary search
+if total_for(result) > threshold:
+    return -1
+return result
+```
+
+In LeetCode 1283, the constraints guarantee feasibility, so
+this check isn't needed.
+
+A simpler way to think about it: the minimum possible sum is
+`n` (when `d` is large enough). If `threshold < n`, no
+candidate works. Check this upfront and return -1 if so.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: binary search the divisor in `[1, max(nums)]`;
+feasibility predicate is `sum(ceil(x / mid) for x in nums) <=
+threshold`.
+
+**Lesson**: yet another instance of the BS-on-answer family.
+The ceiling-division idiom `(x + d - 1) // d` is a small but
+critical detail.
+
+**Recognize next time**: any "minimize the divisor / rate /
+capacity so a sum stays under a threshold" problem. The recipe
+is mechanical.
+''',
+    },
+    {
+        "id": "ship-packages-d-days",
+        "title": "Capacity to Ship Packages Within D Days",
+        "step_id": 4,
+        "lecture_id": 2,
+        "difficulty": "medium",
+        "tags": ["binary-search", "bs-on-answer", "greedy"],
+        "what_this_teaches": (
+            "BS-on-answer with a contiguous-greedy feasibility "
+            "checker. The candidate is the ship capacity; the "
+            "checker walks the packages in order, packing each ship "
+            "greedily."
+        ),
+        "pattern": "Binary search capacity in [max(weights), sum(weights)]; greedy partition checks day count.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["book-allocation", "aggressive-cows", "koko-bananas"],
+        "next_problems": [
+            "min-days-bouquets",
+            "split-array-largest-sum",
+            "painters-partition",
+        ],
+        "resources": [
+            _SHEET,
+            _lc(1011, "capacity-to-ship-packages-within-d-days"),
+        ],
+        "understanding": r'''
+You have packages with weights `weights[0], weights[1], ...`
+that must be loaded onto a ship and delivered within `days`
+days. Packages must be loaded **in the given order** (no
+reordering allowed). Each day, the ship can carry packages up
+to its capacity (in total weight). Find the **minimum ship
+capacity** that allows all packages to be delivered within
+`days` days.
+
+Example: `weights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]`, `days =
+5`. We need to partition this into 5 contiguous days such that
+the maximum day's total is minimized.
+
+One partition: `[1, 2, 3, 4, 5] | [6, 7] | [8] | [9] | [10]`.
+Day totals: 15, 13, 8, 9, 10. Maximum is 15.
+
+Another: `[1, 2, 3, 4] | [5, 6] | [7] | [8, 9] | [10]`. Totals:
+10, 11, 7, 17, 10. Maximum 17. Worse.
+
+The minimum-maximum across all valid partitions is the answer.
+For this example, it's 15.
+
+This is **exactly** the book-allocation pattern, with "days"
+playing the role of "students" and "weights" of "books." The
+feasibility checker walks weights left-to-right, accumulating
+each day's load up to capacity; if the load would overflow,
+start a new day. Count days used.
+
+**Candidate range** for the capacity:
+
+- **Lower bound: `max(weights)`**. No single package can be
+  split; the ship must carry at least the heaviest package.
+- **Upper bound: `sum(weights)`**. With unlimited capacity (or
+  one day), one day takes everything.
+
+**Monotonicity**: larger capacity → fewer days needed. So
+feasibility is monotonic in capacity. We want the smallest
+feasible capacity.
+
+**Binary search**: half-open lower-bound; find the smallest
+capacity where `days_needed(capacity) <= days`.
+
+This is the same algorithm as book-allocation, frame-renamed.
+Both are foundational BS-on-answer exercises.
+''',
+        "brute_force": {
+            "explanation": r'''
+Try every capacity from `max(weights)` to `sum(weights)`.
+Return the first feasible one.
+
+```python
+def ship_capacity_linear(weights, days):
+    for cap in range(max(weights), sum(weights) + 1):
+        if days_needed(weights, cap) <= days:
+            return cap
+    return -1
+
+
+def days_needed(weights, cap):
+    d = 1
+    cur = 0
+    for w in weights:
+        if cur + w > cap:
+            d += 1
+            cur = 0
+        cur += w
+    return d
+```
+
+`O((sum - max) × n)` time. Slow for large weight ranges.
+
+The binary search version brings it to `O(n × log(sum - max))`,
+about 30 * 1000 = 30,000 operations for typical inputs.
+''',
+            "code": r'''def ship_capacity_linear(weights: list[int], days: int) -> int:
+    # Try each candidate capacity in increasing order.
+    for cap in range(max(weights), sum(weights) + 1):
+        if days_needed(weights, cap) <= days:
+            return cap
+    return -1
+
+
+def days_needed(weights, cap):
+    # Greedy: pack each day's load up to capacity.
+    d = 1
+    cur = 0
+    for w in weights:
+        if cur + w > cap:
+            d += 1
+            cur = 0
+        cur += w
+    return d
+''',
+            "complexity": "**Time**: *O((sum - max) × n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+Same BS-on-answer recipe as book-allocation.
+
+**Candidate range**: `[max(weights), sum(weights)]`.
+
+**Feasibility checker**: given capacity `cap`, compute days
+needed by greedy packing. Walk left-to-right; accumulate each
+day's load; start a new day when the next package would
+overflow.
+
+**Monotonicity**: larger capacity → fewer days. So feasibility
+is monotonic.
+
+**Binary search**: find the smallest capacity for which
+`days_needed(cap) <= days`.
+
+```python
+lo, hi = max(weights), sum(weights)
+while lo < hi:
+    mid = (lo + hi) // 2
+    if days_needed(weights, mid) <= days:
+        hi = mid
+    else:
+        lo = mid + 1
+return lo
+```
+
+Worked example on `weights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]`,
+`days = 5`:
+
+- `lo = max = 10, hi = sum = 55`.
+- `mid = 32`. Greedy: 1+2+3+4+5+6+7 = 28 (next would be 36 > 32).
+  Start day 2: 8+9 = 17 (next would be 27 > 32). Start day 3: 10.
+  Total: 3 ≤ 5. Feasible. `hi = 32`.
+- `lo = 10, hi = 32`. `mid = 21`. Greedy: 1+2+3+4+5 = 15 (next
+  6+15 = 21 = cap). 1+2+3+4+5+6 = 21. Next 7+21 = 28 > 21,
+  start day 2. Day 2: 7+8 = 15. Day 3: 9+10 = 19. Total: 3 days.
+  Feasible. `hi = 21`.
+
+  Wait, let me recount. weights = [1,2,3,4,5,6,7,8,9,10], cap =
+  21. Day 1: 1+2+3+4+5+6 = 21 (cap reached). Day 2: 7+8 = 15
+  (next 9 would make 24 > 21). Day 3: 9+10 = 19. Total: 3
+  days ≤ 5. Feasible.
+
+  `hi = 21`.
+- `lo = 10, hi = 21`. `mid = 15`. Day 1: 1+2+3+4+5 = 15. Day 2:
+  6+7 = 13 (next 8 > 15-13). Day 3: 8 (next 9 > 15-8). Day 4:
+  9 (next 10 > 15-9). Day 5: 10. Total 5 days. Feasible. `hi
+  = 15`.
+- `lo = 10, hi = 15`. `mid = 12`. Day 1: 1+2+3+4 = 10. Day 2:
+  5+6 = 11. Day 3: 7 (next 8 > 12-7). Day 4: 8 (next 9 > 12-8).
+  Day 5: 9 (next 10 > 12-9). Day 6: 10. Total 6 days. > 5.
+  Infeasible. `lo = 13`.
+- `lo = 13, hi = 15`. `mid = 14`. Day 1: 1+2+3+4 = 10 (next 5
+  > 14-10). Day 2: 5+6 = 11 (next 7 > 14-11). Day 3: 7 (next 8
+  > 14-7). Day 4: 8 (next 9 > 14-8). Day 5: 9 (next 10 > 14-9).
+  Day 6: 10. Total 6 days. > 5. Infeasible. `lo = 15`.
+- `lo = 15, hi = 15`. Exit. Return 15.
+
+Correct — 15 is the answer, matching our hand analysis.
+
+Five binary-search iterations on a ten-element array. `log2(45) ≈
+5.5` iterations, matching.
+''',
+        "optimized": {
+            "explanation": r'''
+Binary search the capacity with a greedy day-counting
+feasibility checker.
+''',
+            "code": r'''def ship_within_days(weights: list[int], days: int) -> int:
+    def days_needed(cap: int) -> int:
+        # Greedy packing: walk the packages in given order. Each day,
+        # accumulate weight up to cap; start a new day when the next
+        # package would overflow.
+        d = 1            # we always need at least one day
+        cur = 0          # weight loaded into the current day's ship
+        for w in weights:
+            # Sanity: a single package heavier than cap is impossible
+            # to ship. (The binary search's lower bound max(weights)
+            # prevents this for valid inputs, but we guard anyway.)
+            if w > cap:
+                return float('inf')
+            # If this package fits in the current ship, add it.
+            if cur + w <= cap:
+                cur += w
+            else:
+                # Otherwise, start a new day with this package.
+                d += 1
+                cur = w
+        return d
+
+    # Candidate range:
+    # - max(weights): no single package can be split.
+    # - sum(weights): with one day, the ship carries everything.
+    lo, hi = max(weights), sum(weights)
+    # Half-open lower-bound binary search. Find the smallest feasible
+    # capacity (smallest cap such that days_needed(cap) <= days).
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if days_needed(mid) <= days:
+            # Feasible at this capacity; try smaller.
+            hi = mid
+        else:
+            # Infeasible; need more capacity.
+            lo = mid + 1
+    return lo
+''',
+            "complexity": (
+                "**Time**: *O(n log(sum - max))*. Logarithmic binary "
+                "search with linear feasibility check.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "deep_concept": r'''
+This is the **canonical** "capacity / rate / size" version of
+BS-on-answer. The structure:
+
+> Find the smallest `X` such that some greedy procedure can
+> complete the task using `X` of some resource.
+
+Examples in this family:
+
+- **Ship packages in D days**: minimum capacity.
+- **Koko bananas**: minimum eating speed.
+- **Painter's partition**: minimum time.
+- **Split array largest sum**: minimum maximum subarray sum.
+- **Book allocation**: minimum maximum pages per student.
+- **Smallest divisor given a threshold**: minimum divisor.
+
+All are minimize-the-maximum or minimize-the-cost problems
+with greedy feasibility checkers and monotonic constraints.
+
+The only differences:
+
+1. What is the candidate (capacity? speed? cost?).
+2. What is the feasibility checker (greedy walk? cumulative
+   sum? ceiling-division?).
+3. What is the candidate range (problem-specific).
+
+Master one, master all. The hard work is recognition; the
+implementation is template.
+
+When you see a problem with "minimum X such that...", run the
+mental checklist:
+
+1. What is X? That's the BS candidate.
+2. What is the range of X?
+3. What is the feasibility predicate?
+4. Is feasibility monotonic in X?
+
+If all four answer cleanly, the algorithm is mechanical.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why must packages be loaded in the given order?",
+                "answer": r'''
+This is part of the problem constraint. We cannot reorder
+packages to make the loading more efficient.
+
+If we *could* reorder, the problem would be different — we'd
+solve it greedily by sorting and packing differently. With the
+"keep the original order" constraint, the algorithm must
+partition the *original sequence* into contiguous groups.
+
+This is what makes the greedy feasibility checker work: walking
+left-to-right and starting a new day on overflow gives the
+minimum number of days for a given capacity, *given the order
+constraint*.
+
+If reordering were allowed, the problem would essentially be
+"bin packing," which is NP-hard in general but has good
+approximation algorithms.
+
+So the order-preservation is critical to the problem's
+tractability via BS-on-answer.
+''',
+            },
+            {
+                "question": "Why max(weights) as the lower bound?",
+                "answer": r'''
+Because the heaviest single package must fit on the ship. We
+cannot split a package across days.
+
+If the heaviest package weighs `W` and capacity is less than
+`W`, that single package can never be shipped. Infeasible.
+
+So `max(weights)` is the tight lower bound: any smaller
+capacity is impossible.
+
+In practice, the feasibility checker has a guard: if any single
+weight exceeds the candidate cap, return infinity (or
+otherwise signal failure). With the `lo = max(weights)`
+initialization, this guard never actually fires during the
+binary search — but it's good defensive coding.
+''',
+            },
+            {
+                "question": "Why sum(weights) as the upper bound?",
+                "answer": r'''
+Because with capacity equal to the total weight, we can ship
+everything in **one day**. So `days_needed(sum) == 1 <= days`
+for any `days >= 1`. The answer is at most `sum(weights)`.
+
+In practice, the answer is often much smaller (when `days` is
+larger than 1, we can split the load across multiple days). The
+upper bound is loose but safe.
+
+A tighter upper bound: `max(max(weights), sum(weights) //
+days)` — the smallest capacity that *could possibly* work
+given the day count. But the loose `sum(weights)` works and
+the binary search converges in `log` iterations regardless.
+
+Setting tight bounds saves a few iterations but doesn't change
+asymptotics.
+''',
+            },
+            {
+                "question": "How does the greedy feasibility checker know it's optimal?",
+                "answer": r'''
+Same exchange argument as in book-allocation. Given any valid
+partition into `k` days with each day's load ≤ cap, you can
+transform it into the greedy partition by **merging adjacent
+day-boundaries** without exceeding cap:
+
+If the greedy puts package `i` on the previous day but the
+actual partition starts a new day at `i`, we can merge: the
+combined load is the previous day's load plus package `i`,
+which is ≤ cap (because the greedy was about to add it and the
+greedy never exceeds cap).
+
+By repeatedly merging, we reach the greedy partition. The
+greedy uses **at most as many days** as any valid partition.
+
+Therefore: if the greedy needs more than `days` days, no
+partition fits. The greedy is the tightest possible test.
+
+This justifies why greedy answers the feasibility question
+correctly. The same argument appears in book-allocation,
+painter's partition, split-array-largest-sum — all related
+problems.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: binary search the capacity in `[max(weights),
+sum(weights)]` with a greedy day-count feasibility checker.
+
+**Lesson**: identical to book-allocation, frame-renamed. The
+"minimize X such that greedy can complete" family is large.
+Recognize the pattern; implementation is mechanical.
+
+**Recognize next time**: any "minimum capacity / rate / size to
+finish within K time" problem.
+''',
+    },
+    {
         "id": "first-last-occurrence",
         "title": "First and Last Occurrence in a Sorted Array",
         "step_id": 4,

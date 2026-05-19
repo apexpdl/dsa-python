@@ -30,6 +30,7 @@ from . import (
     step12_greedy,
     step13_trees,
     step13_extras,
+    step14_bst,
     step15_graphs,
     step16_dp,
 )
@@ -62,6 +63,7 @@ def _build_registry() -> dict[str, dict]:
         step12_greedy,
         step13_trees,
         step13_extras,
+        step14_bst,
         step15_graphs,
         step16_dp,
     ):

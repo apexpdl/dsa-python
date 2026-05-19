@@ -34,6 +34,7 @@ from . import (
     step15_graphs,
     step15_extras,
     step16_dp,
+    step16_extras,
 )
 
 
@@ -68,6 +69,7 @@ def _build_registry() -> dict[str, dict]:
         step15_graphs,
         step15_extras,
         step16_dp,
+        step16_extras,
     ):
         for problem in getattr(module, "PROBLEMS", []):
             registry[problem["id"]] = problem

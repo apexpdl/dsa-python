@@ -1021,8 +1021,1075 @@ pattern.
 ''',
     },
     # =================================================================
-    # The remaining Step 4 problems will be added in subsequent commits,
-    # written at this same depth bar. For now, the two 2D-matrix problems
-    # serve as the exemplars matching the user's Search 2D Matrix example.
+    # Lecture 1 — BS on 1D arrays (the foundational variants)
     # =================================================================
+    {
+        "id": "upper-bound",
+        "title": "Upper Bound",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "easy",
+        "tags": ["binary-search", "fundamentals"],
+        "what_this_teaches": (
+            "The mirror of lower bound — find the first index whose "
+            "value is *strictly greater* than the target. Together "
+            "with lower bound, this is one of the two atomic "
+            "operations from which every other sorted-array query "
+            "is built."
+        ),
+        "pattern": (
+            "Half-open binary search; move `hi = mid` when arr[mid] > "
+            "target, `lo = mid + 1` otherwise."
+        ),
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["binary-search", "lower-bound"],
+        "next_problems": [
+            "search-insert-position",
+            "first-last-occurrence",
+            "count-occurrences",
+            "floor-ceil-sorted",
+        ],
+        "resources": [
+            _SHEET,
+            {
+                "label": "Python docs — bisect.bisect_right",
+                "url": "https://docs.python.org/3/library/bisect.html#bisect.bisect_right",
+            },
+        ],
+        "understanding": r'''
+Given a sorted array `arr` and a target `x`, the **upper bound**
+of `x` is the smallest index `i` such that `arr[i] > x`. In
+other words: it is the first position whose value is *strictly
+greater* than the target. If every element in the array is at
+most `x`, the upper bound is `len(arr)` — one past the last
+valid index, meaning "no such position exists."
+
+Examples on `arr = [1, 2, 3, 3, 5, 8]`:
+
+- `x = 3`: upper bound is index `4` (the first index with value
+  > 3). The value at that index is `5`.
+- `x = 2`: upper bound is index `2`. Value `3`.
+- `x = 0`: upper bound is index `0`. Value `1`.
+- `x = 10`: upper bound is index `6` (= `len(arr)`). No element
+  is greater than 10.
+
+Why do we care about this? Because upper bound is one of the
+two *atomic* operations of sorted-array work. The other is
+lower bound (first index with `arr[i] >= x`). Together they
+answer almost every interesting range query on a sorted array
+in `O(log n)`:
+
+- **Count of x**: `upper_bound(x) - lower_bound(x)`.
+- **Number of values strictly less than x**: `lower_bound(x)`.
+- **Number of values less than or equal to x**: `upper_bound(x)`.
+- **Index of the last occurrence of x**: `upper_bound(x) - 1`,
+  then verify `arr[result] == x`.
+- **Number of values in `[L, R]`**: `upper_bound(R) -
+  lower_bound(L)`.
+
+Master upper and lower bound, and you have the keys to a wide
+family of sorted-array problems.
+
+Python ships these as `bisect.bisect_left` (lower bound) and
+`bisect.bisect_right` (upper bound). In real code you should
+use them. For interview practice, you should be able to write
+both from memory.
+''',
+        "brute_force": {
+            "explanation": r'''
+Start with the slow, obvious idea. Walk through the array
+left-to-right. The moment you find an element strictly greater
+than the target, return its index. If you finish the array
+without ever finding such an element, return `len(arr)`.
+
+```python
+def upper_bound_linear(arr, x):
+    for i in range(len(arr)):
+        if arr[i] > x:
+            return i
+    return len(arr)
+```
+
+This is `O(n)` time. Correct on any array. It does not use the
+sortedness — exactly the same algorithm would work on an
+unsorted array (though for unsorted the "first index with value
+> x" question is weirdly defined).
+
+The brute force is useful as a baseline. If you have a test
+suite, run your binary-search version against the linear
+version on small inputs to verify correctness.
+
+In real code, on a small array (a few dozen elements), linear
+scan is sometimes faster than binary search because of cache
+effects and branch prediction. But for inputs above a few
+hundred elements, binary search dominates.
+''',
+            "code": r'''def upper_bound_linear(arr: list[int], x: int) -> int:
+    # Walk every index from 0 to len(arr) - 1.
+    for i in range(len(arr)):
+        # The first index whose value is strictly greater than x is
+        # the upper bound. Return immediately.
+        if arr[i] > x:
+            return i
+    # No element was strictly greater than x. By convention, return
+    # len(arr) — one past the end — to indicate "no such index."
+    return len(arr)
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The optimized algorithm is binary search using the **half-open**
+convention. Half-open here means: the search window is `[lo,
+hi)` — inclusive on the left, exclusive on the right. This is
+the cleanest style for "find the first index satisfying property
+P" problems because the answer can naturally be `len(arr)`
+(no index satisfies) and the half-open convention represents
+that gracefully.
+
+Why half-open instead of the inclusive `[lo, hi]` style we used
+in plain binary search? Because in plain binary search we are
+looking for an *exact match*, and a result of -1 (or "not found")
+is a special case. In upper/lower bound, there is no "not
+found" — the answer is always a valid index in `[0, len(arr)]`,
+where `len(arr)` is the convention for "all elements are at
+most x." The half-open convention makes that "one past the end"
+case natural.
+
+The mental model is this. The window `[lo, hi)` represents the
+range of indices that could *still* be the answer. We start
+with `lo = 0` and `hi = len(arr)` — every index from 0 up to
+len(arr) (inclusive of len(arr), to represent "no valid index"
+as the worst-case answer). We then halve the window each
+iteration.
+
+At each step, look at `mid = (lo + hi) // 2`. Compare
+`arr[mid]` with the target:
+
+- If `arr[mid] > x`: `mid` is a valid **candidate** for the
+  answer (it has the property "arr[mid] > x"). But there might
+  be an even earlier index also satisfying the property. So we
+  keep `mid` in the window and try smaller indices: `hi = mid`.
+- If `arr[mid] <= x`: `mid` is **disqualified** (its value is
+  not strictly greater than x). The answer must be at some
+  later index: `lo = mid + 1`.
+
+When `lo == hi`, the window has collapsed to a single point.
+That point is the answer.
+
+Notice the asymmetry: on the candidate branch we use `hi = mid`
+(keep mid in the window); on the disqualified branch we use
+`lo = mid + 1` (exclude mid). This asymmetry is what makes
+lower/upper bound work. Get it wrong and the algorithm either
+returns the wrong index or loops forever.
+
+The lower-bound version differs in exactly one place: the
+condition. Lower bound uses `arr[mid] >= x` for the candidate
+branch (because we want "first index with value at least x"),
+while upper bound uses `arr[mid] > x` (strict). Same skeleton,
+strict comparison flipped.
+
+Worked example on `arr = [1, 2, 3, 3, 5, 8]`, `x = 3`:
+
+- `lo = 0, hi = 6`. `mid = 3`. `arr[3] = 3`. Is `3 > 3`? No.
+  Disqualified: `lo = mid + 1 = 4`.
+- `lo = 4, hi = 6`. `mid = 5`. `arr[5] = 8`. Is `8 > 3`? Yes.
+  Candidate: `hi = mid = 5`.
+- `lo = 4, hi = 5`. `mid = 4`. `arr[4] = 5`. Is `5 > 3`? Yes.
+  Candidate: `hi = mid = 4`.
+- `lo = 4, hi = 4`. Loop exits.
+- Return `lo = 4`. Correct — the first index with value > 3 is
+  index 4 (value `5`).
+
+Three iterations on a six-element array. `log2(6) ≈ 2.6`, so the
+worst case is about 3 iterations. The math checks out.
+''',
+        "optimized": {
+            "explanation": r'''
+Half-open binary search with the "strict greater than" decision
+rule. `O(log n)` time, `O(1)` space.
+''',
+            "code": r'''def upper_bound(arr: list[int], x: int) -> int:
+    # Initialize the half-open window [lo, hi). The smallest possible
+    # answer is 0 (the very first index satisfies the property — i.e.,
+    # arr[0] > x). The largest possible answer is len(arr) (no index
+    # satisfies; the answer is "one past the end").
+    lo, hi = 0, len(arr)
+    # Continue while the window is non-empty. The half-open
+    # convention says the window is non-empty when lo < hi.
+    while lo < hi:
+        # Midpoint of the current window. Integer division rounds
+        # toward zero, giving a valid index in [lo, hi - 1].
+        mid = (lo + hi) // 2
+        # Read the value at the midpoint.
+        if arr[mid] > x:
+            # arr[mid] is strictly greater than x. So mid IS a valid
+            # candidate for the answer — it satisfies the "first index
+            # with value > x" requirement. But there might be an even
+            # earlier index that also satisfies. So we KEEP mid in the
+            # window and try the left half.
+            # Note the assignment: hi = mid, NOT mid - 1. This is the
+            # critical detail of half-open lower/upper bound. We are
+            # NOT excluding mid; we are still considering it.
+            hi = mid
+        else:
+            # arr[mid] <= x. So mid is DISQUALIFIED. The answer must
+            # be strictly to the right. We can safely exclude mid by
+            # setting lo = mid + 1.
+            lo = mid + 1
+    # The window has collapsed to lo == hi. That single index is the
+    # answer. It might be len(arr) if no element exceeds x.
+    return lo
+''',
+            "complexity": (
+                "**Time**: *O(log n)*. The window halves each "
+                "iteration.\n\n"
+                "**Space**: *O(1)*. Just three integer variables."
+            ),
+        },
+        "deep_concept": r'''
+Upper and lower bound are *the* atomic operations of sorted
+arrays. Every higher-level sorted-array query factors through
+one or both of them. Internalize the half-open convention and
+the asymmetric `hi = mid` / `lo = mid + 1` updates, and you
+have built a powerful primitive.
+
+The half-open style scales beautifully. The same algorithm with
+a different comparison handles:
+
+- **First index with value >= x**: change `arr[mid] > x` to
+  `arr[mid] >= x` (this is `lower_bound`).
+- **First index satisfying any monotonic predicate** `pred(i)`:
+  change the comparison to `pred(mid)`. This is the
+  "generalized binary search" template that solves "find the
+  smallest k such that property holds" problems.
+
+This generalization is the beautiful unifying view of binary
+search. You are not just searching arrays — you are searching
+any **monotonic decision space** for the threshold where the
+decision flips. Whether the decision is "is arr[mid] > x?",
+"can Koko eat this fast?", or "is this candidate divisor
+small enough?", the skeleton is identical.
+
+This is the doorway to **binary search on the answer**, which
+we covered in `koko-bananas` and which appears throughout Step
+4 Lecture 2.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why `hi = len(arr)` and not `hi = len(arr) - 1`?",
+                "answer": r'''
+Because the answer can legitimately be `len(arr)` — meaning
+"no index in the array satisfies the condition; the answer is
+one past the end." The half-open convention represents this as
+a real candidate value in the window.
+
+If we initialized `hi = len(arr) - 1` and used the inclusive
+convention, we would not be able to represent "no match" as
+a normal window collapse. We would need an external "not
+found" sentinel (like -1), and the boundary logic would become
+muddier.
+
+By starting `hi` at `len(arr)`, the search naturally returns
+`len(arr)` when no element satisfies the condition. The
+"no match" case is just a normal answer in the half-open
+universe.
+
+Walk through `arr = [1, 2, 3]`, `x = 5`:
+
+- `lo = 0, hi = 3`. `mid = 1`. `arr[1] = 2`. Is `2 > 5`? No.
+  `lo = 2`.
+- `lo = 2, hi = 3`. `mid = 2`. `arr[2] = 3`. Is `3 > 5`? No.
+  `lo = 3`.
+- `lo = 3, hi = 3`. Loop exits.
+- Return `3` = `len(arr)`. Correct: "no element is greater than
+  5; the upper bound would be just past the end."
+
+If `hi` had started at `len(arr) - 1 = 2`, we would lose this
+case.
+''',
+            },
+            {
+                "question": "When would I use upper bound instead of lower bound?",
+                "answer": r'''
+Use **upper bound** when you want "strictly greater than" or
+"first position past the duplicates" semantics.
+
+Use **lower bound** when you want "at least" or "first position
+of x or where x would be inserted before duplicates" semantics.
+
+Concrete distinctions:
+
+- **Lower bound** of x: first index with value ≥ x.
+- **Upper bound** of x: first index with value > x.
+
+When inserting `x` to keep the array sorted:
+
+- If you want `x` inserted *before* any existing copies of `x`
+  → use lower bound as the insertion position.
+- If you want `x` inserted *after* any existing copies of `x`
+  → use upper bound.
+
+When counting occurrences of `x`:
+
+- `count_of_x = upper_bound(x) - lower_bound(x)`.
+
+When finding the *last* occurrence of `x`:
+
+- `last_index = upper_bound(x) - 1`, then verify `arr[last_index]
+  == x`.
+
+So the choice depends entirely on the question you're asking.
+For "where does x belong (before duplicates)?", lower bound.
+For "where does x end (after duplicates)?", upper bound.
+''',
+            },
+            {
+                "question": "What if there are no elements equal to x in the array?",
+                "answer": r'''
+Both upper and lower bound still return meaningful values —
+specifically, the **insertion position** that would keep the
+array sorted.
+
+For `arr = [1, 3, 5, 7]` and `x = 4`:
+
+- `lower_bound(arr, 4) = 2` (first index with value ≥ 4 is
+  index 2, value 5).
+- `upper_bound(arr, 4) = 2` (first index with value > 4 is also
+  index 2).
+
+Notice that when `x` is *not* in the array, `lower_bound(x) ==
+upper_bound(x)`. The count of `x` is `0`, which is exactly
+`upper_bound - lower_bound`.
+
+This is the elegance of the lower/upper bound abstraction. They
+work uniformly whether `x` is present, absent, present once,
+or present many times. No special cases.
+
+For your test code, check both presence and position:
+
+```python
+def find_exact(arr, x):
+    i = lower_bound(arr, x)
+    if i < len(arr) and arr[i] == x:
+        return i           # x is present at index i
+    return -1              # x is not present
+```
+
+This composition — lower bound plus a presence check — is the
+cleanest way to implement "find x exactly" using the half-open
+style.
+''',
+            },
+            {
+                "question": "Why not just use `bisect.bisect_right` from the standard library?",
+                "answer": r'''
+You absolutely should, in production code. `bisect.bisect_right`
+is `upper_bound`, written in optimized C, and well-tested.
+Same for `bisect.bisect_left` (which is `lower_bound`).
+
+```python
+import bisect
+
+upper = bisect.bisect_right(arr, x)
+lower = bisect.bisect_left(arr, x)
+```
+
+For real code, these are the right answers.
+
+For interview practice, you should still write the algorithm by
+hand. The interview is testing whether you understand binary
+search, not whether you know the standard library. The
+hand-rolled version proves the understanding.
+
+A balanced answer in an interview: "I'd use `bisect.bisect_right`
+in production. Here's how I'd implement it by hand to show
+I understand what's happening underneath." Then write the
+function. Best of both worlds.
+
+A subtle point: `bisect.insort` exists for "insert x in sorted
+order." It uses `bisect_left` internally and then `list.insert`,
+making the total cost `O(n)` (the insert shifts elements). For
+truly fast sorted insertion, you'd need a tree or skip list,
+which is rare in Python interview contexts.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: half-open binary search with `hi = mid` on the
+candidate branch, `lo = mid + 1` otherwise. Comparison: `arr[
+mid] > x` (strict).
+
+**Lesson**: upper bound and lower bound are the atomic
+operations of sorted-array work. Master them and a whole family
+of range queries becomes one-liners.
+
+**Recognize next time**: "where does this value fit (after
+duplicates)?", "count of values ≤ x", "last occurrence of x" —
+all upper bound. For "where does this value fit (before
+duplicates)?" and "count of values < x", use lower bound.
+''',
+    },
+    {
+        "id": "search-insert-position",
+        "title": "Search Insert Position",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "easy",
+        "tags": ["binary-search", "fundamentals"],
+        "what_this_teaches": (
+            "How lower bound is the SAME as 'where would I insert "
+            "this value to keep the array sorted?'. The two questions "
+            "are different costumes on the same algorithm."
+        ),
+        "pattern": "Lower bound on the sorted array gives the insert position.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["binary-search", "lower-bound", "upper-bound"],
+        "next_problems": ["first-last-occurrence", "floor-ceil-sorted"],
+        "resources": [
+            _SHEET,
+            _lc(35, "search-insert-position"),
+        ],
+        "understanding": r'''
+You are given a sorted array of distinct integers and a target
+value. Return the index where the target would be **inserted to
+keep the array sorted**. If the target already exists, return
+its index.
+
+Examples on `arr = [1, 3, 5, 6]`:
+
+- `target = 5`: return `2` (target already at index 2).
+- `target = 2`: return `1` (would be inserted between 1 and 3).
+- `target = 7`: return `4` (would go at the end).
+- `target = 0`: return `0` (would go at the start).
+
+At first glance this looks different from "binary search for
+target." But it is the **same operation** wearing a different
+costume. The answer is literally the **lower bound** of the
+target.
+
+Why? Because "insert position to keep sorted" means "the first
+index whose existing value is at least the target." If we
+insert there, every existing element greater-or-equal stays to
+the right; every smaller element stays to the left; sortedness
+is preserved.
+
+Recognizing this equivalence is one of the small but important
+moments in DSA practice. "Search insert position" is just the
+search for the target's lower bound, with a slight
+re-interpretation of the return value: "this is where the
+target lives now, or where it would be inserted."
+
+This is also why Python's `bisect.bisect_left` is called
+"bisect" — it's the bisection (binary search) that splits the
+sorted array into elements `< target` and elements `≥ target`,
+returning the split point.
+''',
+        "brute_force": {
+            "explanation": r'''
+The naive idea: walk the array left to right; return the first
+index whose value is at least the target. If you finish without
+finding such an index, return `len(arr)`.
+
+```python
+def search_insert_linear(arr, target):
+    for i in range(len(arr)):
+        if arr[i] >= target:
+            return i
+    return len(arr)
+```
+
+`O(n)` time. Correct on any array. Uses sortedness implicitly —
+if the array weren't sorted, the answer wouldn't make sense.
+
+Useful as a baseline and for very small arrays. For anything
+larger, binary search wins.
+''',
+            "code": r'''def search_insert_linear(arr: list[int], target: int) -> int:
+    # Walk the array from left to right.
+    for i in range(len(arr)):
+        # The first index where the existing value is >= target is
+        # where we would insert.
+        if arr[i] >= target:
+            return i
+    # Every element was smaller than target. Insert at the end.
+    return len(arr)
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The optimized algorithm is **lower bound** — exactly the
+algorithm from the previous problem, no modifications. The
+"insert position" is just another name for lower bound.
+
+The recognition is the key. When you read the problem and notice
+"keep the array sorted," your brain should immediately translate
+to "lower bound." Then the rest is mechanical.
+
+Same half-open binary search. Same `hi = mid` on the candidate
+branch. Same `lo = mid + 1` on the disqualified branch. The
+only change is the comparison: lower bound uses `>=` (we want
+the first index whose value is at least the target).
+
+Worked example on `arr = [1, 3, 5, 6]`, `target = 5`:
+
+- `lo = 0, hi = 4`. `mid = 2`. `arr[2] = 5`. Is `5 >= 5`? Yes.
+  Candidate: `hi = 2`.
+- `lo = 0, hi = 2`. `mid = 1`. `arr[1] = 3`. Is `3 >= 5`? No.
+  `lo = 2`.
+- `lo = 2, hi = 2`. Loop exits.
+- Return `2`. Correct.
+
+Another example, `target = 2`:
+
+- `lo = 0, hi = 4`. `mid = 2`. `arr[2] = 5`. Is `5 >= 2`? Yes.
+  `hi = 2`.
+- `lo = 0, hi = 2`. `mid = 1`. `arr[1] = 3`. Is `3 >= 2`? Yes.
+  `hi = 1`.
+- `lo = 0, hi = 1`. `mid = 0`. `arr[0] = 1`. Is `1 >= 2`? No.
+  `lo = 1`.
+- `lo = 1, hi = 1`. Loop exits.
+- Return `1`. Correct (between 1 and 3).
+
+About 2-3 iterations on a four-element array. Logarithmic
+scaling.
+''',
+        "optimized": {
+            "explanation": r'''
+Lower bound, by another name. Half-open binary search.
+''',
+            "code": r'''def search_insert(arr: list[int], target: int) -> int:
+    # Initialize the half-open window [lo, hi). The answer ranges
+    # from 0 to len(arr) inclusive.
+    lo, hi = 0, len(arr)
+    while lo < hi:
+        # Midpoint of the current window.
+        mid = (lo + hi) // 2
+        if arr[mid] >= target:
+            # mid IS a candidate — its value is at least target. There
+            # might be an earlier candidate, so keep mid in the window
+            # and try smaller indices.
+            hi = mid
+        else:
+            # arr[mid] is strictly less than target. mid is NOT a
+            # candidate. The answer is strictly to the right.
+            lo = mid + 1
+    # Window has collapsed to a single point. That is the answer.
+    return lo
+''',
+            "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
+        },
+        "deep_concept": r'''
+The deep observation: a sorted array has many "queries" that
+*look* different but all reduce to lower bound or upper bound
+with small variations. Memorize the mapping:
+
+- "find x (or -1)" → lower bound + presence check.
+- "where does x belong?" → lower bound (insert position).
+- "first occurrence of x" → lower bound + presence check.
+- "last occurrence of x" → upper bound - 1 + presence check.
+- "count of x" → upper bound - lower bound.
+- "floor of x" (largest value ≤ x) → lower bound - 1 (with
+  guards).
+- "ceil of x" (smallest value ≥ x) → lower bound.
+- "number of values < x" → lower bound.
+- "number of values ≤ x" → upper bound.
+- "number of values in [L, R]" → upper bound(R) - lower
+  bound(L).
+
+Twelve different questions, two underlying operations. Once you
+have lower bound and upper bound, every other query is a small
+adjustment.
+
+This is why investing time in mastering these two operations
+pays off so much: they are the foundation of an entire
+problem family.
+''',
+        "confusion_notes": [
+            {
+                "question": "How is this different from plain binary search?",
+                "answer": r'''
+Plain binary search returns -1 (or some "not found" sentinel)
+when the target is absent. Search insert position returns the
+position where the target *would be* if inserted to keep the
+array sorted.
+
+They overlap when the target *is* present: both return the
+index of the target.
+
+The difference is in the "not found" case:
+
+- **Plain binary search** on `[1, 3, 5, 6]` with target `2`:
+  returns `-1`.
+- **Search insert position** on the same: returns `1` (between
+  1 and 3).
+
+Lower bound (and therefore search insert position) is the more
+general operation. It handles both "present" and "absent" cases
+with the same return value semantics. Plain binary search needs
+the extra "not found" sentinel.
+
+In practice, when interviewers ask "find x in a sorted array,"
+you can solve it with lower bound + a presence check:
+
+```python
+i = lower_bound(arr, x)
+return i if i < len(arr) and arr[i] == x else -1
+```
+
+That's cleaner than rolling your own binary search with -1
+return.
+''',
+            },
+            {
+                "question": "Does this work if the array has duplicates?",
+                "answer": r'''
+The problem statement usually says "distinct integers," but the
+algorithm works on arrays with duplicates too.
+
+For `arr = [1, 3, 3, 5]` and `target = 3`:
+
+- Lower bound returns `1` (first index with value ≥ 3).
+- Upper bound returns `3` (first index with value > 3).
+
+So if the problem asks "where would I insert target?" with
+duplicates allowed, the answer depends on convention:
+
+- Insert **before** any existing duplicates → use lower bound.
+- Insert **after** any existing duplicates → use upper bound.
+
+The LeetCode 35 problem assumes distinct elements, so both
+interpretations give the same answer. But if you encounter a
+variant with duplicates, the choice between lower/upper bound
+encodes the desired insert position.
+
+Internalize: lower bound is "insert before equals"; upper bound
+is "insert after equals." That single distinction handles
+every duplicate-handling decision in sorted-array problems.
+''',
+            },
+            {
+                "question": "What if I get an empty array as input?",
+                "answer": r'''
+The algorithm handles it gracefully. With `arr = []` and any
+target:
+
+- `lo = 0, hi = 0`. The window is empty (lo == hi).
+- The loop body never executes.
+- Return `lo = 0`.
+
+Which is correct: an empty array has only one possible insert
+position — index 0 (the start, which is also the end).
+
+This is one of those edge cases that the algorithm handles
+without special-casing. The half-open convention is robust to
+empty inputs because "the window is empty" naturally
+corresponds to "the answer is exactly where lo started."
+
+This is a small but real advantage of the half-open style over
+the inclusive style for this kind of problem.
+''',
+            },
+            {
+                "question": "Why is the time complexity O(log n) and not O(log n + k) for some constant k?",
+                "answer": r'''
+Because the loop terminates as soon as `lo == hi`, and the
+window strictly shrinks by at least half each iteration.
+
+To be precise: at each iteration, the window size is at most
+`(hi - lo + 1) / 2 + 1`. Starting at size `n`, after `k`
+iterations the size is at most `n / 2^k`. The loop exits when
+the size is 1, which happens when `k ≈ log2(n)`.
+
+Plus or minus a few constants for the boundary cases, the total
+iteration count is `floor(log2(n)) + 1`. For `n = 10⁶`, that's
+about 20.
+
+In terms of actual operations per iteration: a comparison, an
+arithmetic operation (the midpoint), and a single bound update.
+All `O(1)`. So total time is `O(log n)`.
+
+No hidden `+ k` term. The algorithm is asymptotically tight at
+`O(log n)`.
+
+For very small `n` (say, n < 10), linear search can be faster
+than binary search because of cache and branch-prediction
+constants. But for any non-trivial `n`, binary search wins by
+orders of magnitude.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: lower bound — half-open binary search with `arr[
+mid] >= target` as the candidate condition.
+
+**Lesson**: "where would I insert x?" is the same question as
+"first index with value ≥ x." Recognize the equivalence and the
+problem becomes lower bound with a different name.
+
+**Recognize next time**: any "insert position," "place in sorted
+order," or "where would x go" problem reduces to lower (or upper)
+bound. Choose based on duplicate-handling semantics.
+''',
+    },
+    {
+        "id": "first-last-occurrence",
+        "title": "First and Last Occurrence in a Sorted Array",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "easy",
+        "tags": ["binary-search", "fundamentals"],
+        "what_this_teaches": (
+            "Two binary searches in sequence — lower bound for first "
+            "occurrence, upper bound minus one for last. The "
+            "canonical example of composing the atomic operations."
+        ),
+        "pattern": "first = lower_bound(x); last = upper_bound(x) - 1.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["lower-bound", "upper-bound", "search-insert-position"],
+        "next_problems": ["count-occurrences", "search-rotated-i"],
+        "resources": [
+            _SHEET,
+            _lc(34, "find-first-and-last-position-of-element-in-sorted-array"),
+        ],
+        "understanding": r'''
+Given a sorted array `arr` and a target `x`, return the first
+and last positions where `x` appears. If `x` is not in the
+array, return `[-1, -1]`.
+
+The LeetCode 34 version requires `O(log n)` time. So a brute
+linear scan, while correct, is not the optimal solution we
+want to study.
+
+Examples on `arr = [5, 7, 7, 8, 8, 10]`:
+
+- `target = 8`: return `[3, 4]`.
+- `target = 6`: return `[-1, -1]` (not present).
+- `target = 10`: return `[5, 5]` (single occurrence).
+- `target = 7`: return `[1, 2]`.
+
+The natural approach: two binary searches. One finds the first
+occurrence; the other finds the last.
+
+For the **first occurrence**, the right tool is **lower bound**.
+Lower bound returns the first index whose value is *at least*
+the target. If `arr[lower_bound]` equals the target, that
+index is the first occurrence. If it equals something else (or
+lower bound is past the end), the target is absent.
+
+For the **last occurrence**, the right tool is **upper bound
+minus one**. Upper bound returns the first index whose value is
+*strictly greater* than the target. Subtracting one gives the
+last index whose value is at most the target. If that value
+equals the target, it's the last occurrence; otherwise the
+target is absent.
+
+Two `O(log n)` searches gives a total of `O(log n)`. Optimal.
+
+This problem is the canonical demonstration of "compose lower
+and upper bound to answer richer queries." Internalize it.
+''',
+        "brute_force": {
+            "explanation": r'''
+Linear scan twice (or once with two variables). Find the first
+index where `arr[i] == x`, find the last.
+
+```python
+def first_last_linear(arr, x):
+    first = last = -1
+    for i, v in enumerate(arr):
+        if v == x:
+            if first == -1:
+                first = i
+            last = i
+    return [first, last]
+```
+
+`O(n)` time. Correct on any array, sorted or not.
+
+The interview challenge requires `O(log n)`, so this brute force
+is below the bar. But it's worth writing first to confirm
+correctness — your `O(log n)` binary-search version can be
+validated against it on small inputs.
+''',
+            "code": r'''def first_last_linear(arr: list[int], x: int) -> list[int]:
+    # Track the first and last indices where x appears. Initialize
+    # to -1 to signal "not yet seen."
+    first = -1
+    last = -1
+    # Walk the array once.
+    for i, v in enumerate(arr):
+        if v == x:
+            # First time we see x, record its index.
+            if first == -1:
+                first = i
+            # Every time we see x, update the last-seen index. By
+            # the end of the loop, this is the actual last occurrence.
+            last = i
+    # Return as a list, matching the LeetCode 34 signature.
+    return [first, last]
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The optimal approach uses two binary searches.
+
+**First occurrence**: lower bound. Lower bound on `arr` for the
+target returns the first index whose value is at least the
+target. If that value is exactly the target, it's the first
+occurrence. If it's something else (e.g., 9 when we wanted 8),
+the target is absent — return -1 for both first and last.
+
+**Last occurrence**: upper bound minus 1. Upper bound returns
+the first index whose value is *strictly greater* than the
+target. So `upper_bound - 1` is the last index whose value is
+at most the target. If `arr[upper_bound - 1]` equals the
+target, it's the last occurrence.
+
+A nice property: if lower bound found the target, upper bound is
+guaranteed to be greater than lower bound (because the target
+appears at least once between them). So the subtraction is
+safe.
+
+Conversely, if lower bound did not find the target (i.e.,
+`arr[lower_bound] != target`), there's no need to compute upper
+bound — we already know the answer is `[-1, -1]`. This is a
+small optimization but it doesn't change the asymptotic
+complexity.
+
+Worked example on `arr = [5, 7, 7, 8, 8, 10]`, `target = 8`:
+
+- `lower_bound(arr, 8)`:
+  - `lo = 0, hi = 6, mid = 3, arr[3] = 8`. `8 >= 8`? Yes.
+    `hi = 3`.
+  - `lo = 0, hi = 3, mid = 1, arr[1] = 7`. `7 >= 8`? No.
+    `lo = 2`.
+  - `lo = 2, hi = 3, mid = 2, arr[2] = 7`. `7 >= 8`? No.
+    `lo = 3`.
+  - `lo = 3, hi = 3`. Exit. Return `3`.
+- `upper_bound(arr, 8)`:
+  - `lo = 0, hi = 6, mid = 3, arr[3] = 8`. `8 > 8`? No.
+    `lo = 4`.
+  - `lo = 4, hi = 6, mid = 5, arr[5] = 10`. `10 > 8`? Yes.
+    `hi = 5`.
+  - `lo = 4, hi = 5, mid = 4, arr[4] = 8`. `8 > 8`? No.
+    `lo = 5`.
+  - `lo = 5, hi = 5`. Exit. Return `5`.
+- `arr[3] == 8` ✓, so first = 3.
+- last = `upper_bound - 1 = 4`.
+- Return `[3, 4]`.
+
+For absent targets, the lower bound check fails and we return
+`[-1, -1]`.
+''',
+        "optimized": {
+            "explanation": r'''
+Two half-open binary searches. The first finds the lower bound
+of the target; the second finds the upper bound. Return based
+on whether the lower bound actually points to the target.
+''',
+            "code": r'''def search_range(arr: list[int], target: int) -> list[int]:
+    # Helper: lower bound. First index with arr[i] >= target.
+    def lower_bound(target):
+        lo, hi = 0, len(arr)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if arr[mid] >= target:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
+
+    # Helper: upper bound. First index with arr[i] > target.
+    def upper_bound(target):
+        lo, hi = 0, len(arr)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if arr[mid] > target:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
+
+    # Compute the first candidate for the first occurrence.
+    first = lower_bound(target)
+    # If first is past the end, or the value at first isn't the
+    # target, then the target isn't in the array at all. Return
+    # the not-found sentinel.
+    if first == len(arr) or arr[first] != target:
+        return [-1, -1]
+    # The target is present. The last occurrence is upper_bound - 1.
+    last = upper_bound(target) - 1
+    # Return both as a list, matching the LeetCode signature.
+    return [first, last]
+''',
+            "complexity": (
+                "**Time**: *O(log n)*. Two binary searches, each "
+                "*O(log n)*; the sum is *O(log n)*.\n\n"
+                "**Space**: *O(1)*. Just a few integer variables."
+            ),
+        },
+        "deep_concept": r'''
+This problem is the cleanest demonstration of "compose atomic
+operations to answer richer queries." Lower bound finds the
+first occurrence. Upper bound finds one past the last. Together
+they bracket the run of duplicates.
+
+The number of occurrences of x is `upper_bound(x) -
+lower_bound(x)`. That single formula answers a third common
+query for free.
+
+A nice property emerges from this composition: **the run of
+duplicates of `x` in a sorted array is exactly the range
+`[lower_bound(x), upper_bound(x))`**. The range is half-open,
+so `upper_bound(x)` is one past the last copy. The count is the
+range length, which is `upper_bound - lower_bound`.
+
+Half-open ranges are the natural format for "groups of
+duplicates." They behave nicely with arithmetic (you can
+subtract endpoints to get the count) and they avoid the
+"off-by-one for the closing boundary" trap.
+
+Once you internalize "first occurrence is lower bound; last
+occurrence is upper bound minus one; count is the difference,"
+you have unlocked an entire family of sorted-array queries with
+two underlying binary searches.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why two separate binary searches? Can't I do one?",
+                "answer": r'''
+You can — but it's harder to write correctly and saves only a
+constant factor.
+
+The "one binary search" version finds *any* occurrence first,
+then expands outward to find the boundaries:
+
+```python
+def search_range_one(arr, target):
+    lo, hi = 0, len(arr) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if arr[mid] == target:
+            # Expand outward.
+            l, r = mid, mid
+            while l > 0 and arr[l - 1] == target:
+                l -= 1
+            while r < len(arr) - 1 and arr[r + 1] == target:
+                r += 1
+            return [l, r]
+        elif arr[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return [-1, -1]
+```
+
+The expansion can be linear in the worst case (when the target
+fills most of the array), so this version is `O(n)` in the
+worst case. Worse than the two-binary-search version.
+
+To make the one-search version `O(log n)`, you'd have to
+binary-search the boundaries — and that's exactly what two
+separate binary searches do.
+
+So two `O(log n)` searches is the cleanest implementation. The
+"one search" version is either incorrect-on-complexity or
+syntactically equivalent to two searches.
+
+For interview clarity, write the two-search version. It's
+shorter, easier to reason about, and demonstrably `O(log n)`.
+''',
+            },
+            {
+                "question": "What if the array has only the target value, like `[3, 3, 3, 3]`?",
+                "answer": r'''
+The algorithm handles it correctly.
+
+For `arr = [3, 3, 3, 3]` and `target = 3`:
+
+- `lower_bound(3)`: returns 0 (first index where value ≥ 3 is
+  index 0).
+- `upper_bound(3)`: returns 4 (first index where value > 3 is
+  past the end).
+- first = 0; check `arr[0] == 3`. ✓
+- last = `upper_bound - 1 = 3`.
+- Return `[0, 3]`.
+
+The full range. Correct.
+
+This is the case where lower bound and upper bound are at
+opposite ends of the array — the longest possible run of
+duplicates. The algorithm is robust to it because the half-open
+representation handles "one past the end" naturally.
+''',
+            },
+            {
+                "question": "What does the answer look like when the target is present exactly once?",
+                "answer": r'''
+First and last are the same index.
+
+For `arr = [1, 2, 5, 7]` and `target = 5`:
+
+- `lower_bound(5)`: returns 2.
+- `arr[2] == 5` ✓, so first = 2.
+- `upper_bound(5)`: returns 3 (first index with value > 5).
+- last = `upper_bound - 1 = 2`.
+- Return `[2, 2]`.
+
+This is the same index repeated. The general formula handles
+unique elements and duplicates uniformly.
+
+This is one of the prettiest properties of the lower/upper
+bound abstraction: no special cases for "how many copies of x
+are there?" The formulas work whether x has 0, 1, or many
+copies.
+''',
+            },
+            {
+                "question": "Could I use bisect_left and bisect_right from Python?",
+                "answer": r'''
+Yes, and it's the cleanest production solution:
+
+```python
+import bisect
+
+def search_range(arr, target):
+    first = bisect.bisect_left(arr, target)
+    if first == len(arr) or arr[first] != target:
+        return [-1, -1]
+    last = bisect.bisect_right(arr, target) - 1
+    return [first, last]
+```
+
+`bisect.bisect_left` is lower bound (`O(log n)`,
+optimized C). `bisect.bisect_right` is upper bound. The structure
+is identical to our hand-rolled version.
+
+In an interview, write the hand-rolled version to demonstrate
+binary-search understanding. Then mention `bisect` as the
+production answer. Some interviewers explicitly ask "without
+using built-ins," in which case the hand-rolled version is
+mandatory.
+
+The hand-rolled version is also a great place to confirm you
+have lower/upper bound truly memorized. The asymmetric
+`hi = mid` vs `lo = mid + 1` updates are notorious for
+off-by-one bugs. Practice writing them until it's automatic.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: first = lower_bound(target); last = upper_bound(
+target) - 1. Return [-1, -1] if the lower bound doesn't point
+to the target.
+
+**Lesson**: a run of duplicates in a sorted array is exactly
+the half-open range `[lower_bound, upper_bound)`. Two
+*O(log n)* searches answer first, last, and count in unison.
+
+**Recognize next time**: any "first / last / count of x in a
+sorted array" problem. The composition of lower and upper
+bound is the canonical answer.
+''',
+    },
 ]

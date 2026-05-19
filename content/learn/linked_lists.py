@@ -5,54 +5,75 @@ LESSON = {
     "title": "Linked Lists — Boxes Connected by Arrows",
     "tags": ["linked-list", "pointers"],
     "summary": (
-        "A linked list is a chain of nodes where each node points to "
-        "the next. Mastering it builds the pointer intuition you need "
-        "for trees, graphs, and everything that comes after."
+        "A full beginner chapter. A linked list is a chain of nodes "
+        "where each node points to the next. Mastering it builds the "
+        "pointer intuition you need for trees, graphs, and everything "
+        "else that follows."
     ),
     "body": r'''
-## The treasure hunt analogy
+## 0. What this chapter teaches
 
-Picture a treasure hunt. You find a slip of paper at the start. It
-says: *"Walk to the big oak tree."* You walk there. There you find
-another slip: *"Walk to the red bench."* And so on. To get to the
-end, you must follow every step in order. You cannot teleport to the
-fifth slip — you do not even know where it is.
+Linked lists are the first **pointer-based** data structure most
+beginners meet. They look strange at first — you cannot index
+them, you have to chase pointers everywhere — and a beginner's
+biggest hurdle is learning to *think* in pointers instead of
+indices.
 
-A linked list is exactly that. Each "node" carries a value and a
-pointer to the next node. To get to the fifth element, you start at
-the head and follow next pointers four times. Random access is
-*O(n)*. But inserting at the front, or right after a known node, is
-*O(1)* — you just rewire two pointers.
+Once you have it, trees, graphs, tries, and many other structures
+suddenly feel familiar. They are all "pointer-based" too.
 
-That trade-off is the whole personality of a linked list:
+This chapter is the slow walk through linked-list mechanics: the
+node, the head, the dummy-head trick, the three-pointer reversal
+dance, the tortoise-and-hare cycle trick, and the common pitfalls.
+By the end, "linked list" should feel like just another array
+with a different access pattern.
 
-- **Array**: instant random access, expensive insertion at front.
+## 1. The treasure hunt analogy
+
+Picture a treasure hunt. You find a slip of paper at the start.
+It says *"Walk to the big oak tree."* You walk. There you find
+another slip: *"Walk to the red bench."* And so on. To get to
+the end, you must follow every step in order. You cannot
+teleport to the fifth slip — you do not even know where it
+physically lives.
+
+A linked list is exactly that. Each **node** carries a value and
+a pointer to the next node. To get to the fifth element, you
+start at the head and follow `next` pointers four times.
+
+So random access is *O(n)* — you walk. But inserting at the
+front, or right after a known node, is *O(1)* — you just rewire
+two pointers without moving anything.
+
+That trade-off — slow access, fast splicing — is the whole
+personality of a linked list:
+
+- **Array**: instant random access, expensive insertion at
+  front.
 - **Linked list**: linear-time access, instant front insertion.
 
-## The node
+## 2. The node
 
-A linked list node in Python is usually just a tiny class. Some
-problem statements give you a `ListNode` class for free; here is the
-canonical one.
+A linked list node in Python is just a tiny class:
 
 ```python
 class ListNode:
-    def __init__(self, val: int = 0, next: "ListNode | None" = None) -> None:
+    def __init__(self, val=0, next=None):
         self.val = val
         self.next = next
 ```
 
-That is it. A value, and a pointer to the next node. The pointer is
-`None` for the last node — that is how we recognize the end.
+A value, and a pointer to the next node. The pointer is `None`
+for the last node — that is how we recognize the end.
 
-## Building a linked list
+Building a short list:
 
 ```python
-# Build the list 1 -> 2 -> 3 -> None
+# Build 1 -> 2 -> 3 -> None
 head = ListNode(1, ListNode(2, ListNode(3)))
 ```
 
-To walk it, follow the chain:
+Walking the list:
 
 ```python
 node = head
@@ -61,34 +82,86 @@ while node is not None:
     node = node.next
 ```
 
-This walking pattern is the single most reused snippet in linked-list
-problems. Stop and write it five times until your fingers know it.
+This walking pattern is the most reused snippet in linked-list
+problems. Write it five times until your fingers know it.
 
-## The dummy node trick
+## 3. The dummy-head trick
 
-Beginners get burned over and over by edge cases involving the head.
-"What if I am deleting the head node?" "What if the new node should
-be inserted before everything?" The seasoned move is a **dummy node**
-that sits before the real head.
+Beginners get burned over and over by edge cases involving the
+head. "What if I am deleting the head node?" "What if the new
+node should be inserted before everything?"
+
+The seasoned move: plant a **dummy node** (sometimes called a
+sentinel) just before the real head. The dummy never holds a
+real value — its only job is to be a stable anchor that
+simplifies edge cases.
 
 ```python
 dummy = ListNode(0)
 dummy.next = head
-# ... now the head is just "dummy.next", which has no special case.
-# At the end, return dummy.next.
+# ... do whatever, treating the head as just "dummy.next" ...
+# At the end, return dummy.next as the new head.
 ```
 
-Whenever you find yourself writing two versions of the code — one for
-"the head" and one for "everyone else" — try the dummy trick. The
-code halves in size.
+With the dummy in place, the "head" becomes "the node after
+dummy," and you no longer special-case head insertions or
+deletions. The code shrinks dramatically.
 
-## Pattern: two pointers (fast and slow)
+Whenever you find yourself writing two versions of the same
+logic ("one for the head, one for everyone else"), try the dummy
+trick. The code usually halves in size.
 
-The cleverest linked-list tricks come from running two pointers at
-different speeds. Two famous uses:
+## 4. The three-pointer reversal
 
-**1. Find the middle.** Slow moves one step at a time; fast moves
-two. When fast reaches the end, slow is exactly at the middle.
+The canonical linked-list problem: reverse a linked list in
+place. You flip every `next` pointer to point backwards.
+
+The trick: at each step, you need **three** pointers — the
+previous node (the new "tail"), the current node (whose pointer
+we're flipping), and the next node (where we were about to go,
+which we need to save before flipping).
+
+```python
+def reverse(head):
+    prev = None
+    curr = head
+    while curr is not None:
+        nxt = curr.next      # save where we were heading
+        curr.next = prev     # flip the arrow backwards
+        prev = curr          # advance prev
+        curr = nxt           # advance curr
+    return prev              # prev is the new head
+```
+
+Read it as: *"remember where I was going; flip the arrow; step
+forward."* Each iteration moves the dance one node to the right.
+
+This three-pointer pattern (`prev / curr / nxt`) is the
+**bread-and-butter** of linked-list problems. Reverse k-group,
+palindrome detection, reorder list — they all use variations of
+this dance.
+
+The recursive version is shorter but uses *O(n)* stack space:
+
+```python
+def reverse(head):
+    if head is None or head.next is None:
+        return head
+    new_head = reverse(head.next)
+    head.next.next = head
+    head.next = None
+    return new_head
+```
+
+Learn both, prefer iterative in real code (no recursion limit).
+
+## 5. The fast-and-slow trick (Floyd's tortoise and hare)
+
+Two pointers, one moving 1 step per iteration, one moving 2.
+Famous uses:
+
+**Find the middle of a list.** Slow ends at the middle when
+fast hits the end.
 
 ```python
 def middle(head):
@@ -99,11 +172,11 @@ def middle(head):
     return slow
 ```
 
-**2. Detect a cycle.** If there is a cycle, fast and slow eventually
-meet inside it. If there is no cycle, fast falls off the end.
+**Detect a cycle.** If a cycle exists, fast eventually laps slow
+and they meet. If no cycle, fast walks off the end.
 
 ```python
-def has_cycle(head) -> bool:
+def has_cycle(head):
     slow = fast = head
     while fast and fast.next:
         slow = slow.next
@@ -113,52 +186,22 @@ def has_cycle(head) -> bool:
     return False
 ```
 
-This is Floyd's tortoise-and-hare algorithm, and it is one of those
-results that feels like real magic the first time. The reason it
-works is gentle modular arithmetic: in a cycle of length `c`, fast
-gains one step per iteration on slow, so within `c` iterations after
-both are in the cycle, they must coincide.
+**Find the start of the cycle.** After collision, reset one
+pointer to head and advance both by 1 step at a time. They meet
+at the cycle entry. (See the `ll-detect-loop` problem write-up
+for the arithmetic proof.)
 
-## Pattern: reverse a linked list
+This algorithm — Floyd's tortoise and hare — is one of the
+prettiest ideas in beginner DSA. It uses constant memory to
+detect periodicity in any deterministic step function, not just
+linked lists.
 
-The classic. We need to flip every pointer to point backward.
+## 6. Doubly linked lists
 
-```python
-def reverse(head):
-    prev = None
-    curr = head
-    while curr is not None:
-        nxt = curr.next       # remember where we were heading
-        curr.next = prev      # flip the arrow backward
-        prev = curr           # advance prev
-        curr = nxt            # advance curr
-    return prev               # prev is the new head
-```
-
-Read it as: *"At each step, pry one arrow off, flip it backward, and
-shift both pointers forward."* That sentence is the algorithm.
-
-There is also a recursive version that some find more elegant:
-
-```python
-def reverse(head):
-    if head is None or head.next is None:
-        return head
-    new_head = reverse(head.next)
-    head.next.next = head     # the node after head now points back to head
-    head.next = None          # head becomes the last node
-    return new_head
-```
-
-It is shorter, but it uses *O(n)* stack space. For very long lists
-the iterative version wins.
-
-## Doubly linked lists
-
-A doubly linked list adds a `prev` pointer to each node. The big
-advantage is *O(1)* deletion when you have a pointer to a node —
-because you have both neighbours and can rewire both sides. The cost
-is more pointers to maintain and more bugs to introduce.
+A **doubly linked list** adds a `prev` pointer to each node. You
+can walk in both directions, and you can splice out a node in
+*O(1)* if you have a pointer to it (because you have both
+neighbors).
 
 ```python
 class DListNode:
@@ -168,40 +211,98 @@ class DListNode:
         self.next = next
 ```
 
-Doubly linked lists are the building block of LRU caches: you keep
-the items in a doubly linked list (so promotion to the front is
-*O(1)*) and a dict mapping keys to nodes (so lookup is *O(1)*).
+Doubly linked lists are the foundation of:
 
-## Common beginner mistakes
+- **LRU cache**: doubly linked list of access order plus a hash
+  map for *O(1)* lookup. Move-to-front in *O(1)*.
+- **Browser history**: walk back and forward.
+- **Implementing deque** at a low level.
 
-**Mistake 1: losing the reference.** When you rewire pointers, if
-you reassign `node.next` before stashing the old value, you lose
-access to the rest of the list. Always grab a temporary first.
+The cost is more pointers to maintain. Twice the bookkeeping,
+twice the chance of bugs.
 
-**Mistake 2: forgetting that the head changes.** Any operation that
-might modify or replace the head should return the new head. Use a
-dummy node if you want to avoid special-casing.
+## 7. Walking discipline — the pointer dance
 
-**Mistake 3: infinite loops in cycle problems.** A `while node:` loop
-on a cyclic list runs forever. Detect cycles or use a node count
-limit during testing.
+Linked-list bugs are almost always one of these:
 
-**Mistake 4: comparing nodes with `==` when you mean `is`.** Two
-different node objects with the same value are different nodes. Use
-`is` for identity, `==` only when the class defines `__eq__`.
+1. **NullPointerException** style: accessing `.next` on `None`.
+2. **Lost reference**: overwriting a pointer before stashing the
+   old value.
+3. **Infinite loop**: introducing a cycle accidentally by
+   forgetting to set `.next = None` somewhere.
 
-**Mistake 5: forgetting to `None`-out the previous node's `next` when
-splitting.** Half-cut linked lists are a famous source of subtle bugs
-in problems like "sort a linked list" or "reorder list".
+The cures:
 
-## The mental model
+- Always check `if node and node.next` before `node.next.next`.
+- Always stash `next_node = curr.next` before mutating
+  `curr.next`.
+- After splitting a list, always set the boundary `.next = None`.
 
-A linked list is a chain of boxes connected by arrows. To do anything
-to a node, you usually need its previous node. The two big weapons
-are **two pointers at different speeds** and **the dummy head**. Most
-of the famous linked-list problems are some combination of those.
+These three habits, drilled, eliminate most linked-list bugs.
 
-Trees are linked lists with two children. Graphs are linked lists with
-many children. So everything you learn here, you reuse forever.
+## 8. Recursive thinking on linked lists
+
+Many linked-list problems have elegant recursive solutions
+because the structure is itself recursive: a node plus a tail
+(which is itself a list).
+
+```python
+def length(head):
+    if head is None:
+        return 0
+    return 1 + length(head.next)
+```
+
+The leap of faith from the Recursion chapter applies: trust that
+`length(head.next)` returns the right count for the tail; add 1
+for the current node.
+
+Recursive linked-list code is concise and beautiful, but uses
+*O(n)* stack space. For very long lists, prefer iteration.
+
+## 9. Common beginner mistakes
+
+**Mistake 1: losing the reference.** Always stash before
+mutating. `next_node = curr.next` is mandatory in reversal.
+
+**Mistake 2: forgetting that the head changes.** When you
+modify the list near the head, the original `head` variable
+might no longer point to the right node. Use a dummy head, or
+return the new head explicitly.
+
+**Mistake 3: infinite loops in cycle problems.** A `while node:`
+loop on a cyclic list runs forever. Cycle detection or a node
+limit during testing is mandatory.
+
+**Mistake 4: comparing with `==` when you mean `is`.** Two
+different `ListNode` objects with the same value are still
+different nodes. Use `is` for identity comparisons.
+
+**Mistake 5: forgetting to None-out the tail of a split.** A
+half-cut list is a classic source of subtle bugs in problems
+like "sort a linked list" or "reorder list."
+
+## 10. End-of-chapter exercise
+
+1. **Reverse a linked list.** Already covered. LeetCode 206.
+2. **Middle of a linked list.** Fast/slow pointers. LeetCode 876.
+3. **Linked list cycle detection.** Already covered. LeetCode
+   141.
+4. **Merge two sorted lists.** Dummy head + two pointers.
+   LeetCode 21.
+5. **Reverse nodes in K-Group.** Hard. Combines reversal with
+   carefully splicing the boundaries. LeetCode 25.
+
+Do all five. The last one is the payoff — it forces you to
+combine reversal, head replacement, and dummy-head all at once.
+
+## 11. Where to go next
+
+- **Step 6** — the dedicated linked-list curriculum step.
+- **Step 13** — trees, which are linked lists with two children.
+- **Step 15** — graphs, where every node has many children.
+
+Linked lists are the gateway to all pointer-based structures.
+The mental discipline you build here pays off for years.
 ''',
 }

@@ -1732,6 +1732,1069 @@ bound. Choose based on duplicate-handling semantics.
 ''',
     },
     {
+        "id": "count-occurrences",
+        "title": "Count Occurrences of a Number in a Sorted Array",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "easy",
+        "tags": ["binary-search", "fundamentals"],
+        "what_this_teaches": (
+            "How upper bound and lower bound, subtracted, give the "
+            "count of a value in *O(log n)* — far better than a "
+            "linear scan even though the linear version is much "
+            "easier to write."
+        ),
+        "pattern": "count = upper_bound(x) - lower_bound(x).",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["lower-bound", "upper-bound", "first-last-occurrence"],
+        "next_problems": ["search-rotated-i", "search-rotated-ii"],
+        "resources": [_SHEET],
+        "understanding": r'''
+Given a sorted array and a target, return the number of
+occurrences of the target.
+
+For `arr = [1, 2, 2, 2, 3, 4, 5]` and `target = 2`, the answer
+is 3.
+
+The brute force is *O(n)* — walk the array, count matches.
+Simple, correct, and totally adequate for small arrays:
+
+```python
+def count_brute(arr, x):
+    return arr.count(x)
+```
+
+But the problem specifically lists this in Striver's "BS on 1D
+arrays" lecture because there is an *O(log n)* solution using
+the lower-bound / upper-bound composition we already mastered
+in `first-last-occurrence`.
+
+The formula is one line:
+
+> **count = upper_bound(target) - lower_bound(target).**
+
+The reasoning: the run of duplicates of `target` in the sorted
+array occupies the half-open range `[lower_bound, upper_bound)`.
+The length of that range — that is, the count of duplicates —
+is `upper_bound - lower_bound`. If the target is absent, both
+bounds are equal and the count is zero.
+
+Worked example on `arr = [1, 2, 2, 2, 3, 4, 5]`, `target = 2`:
+
+- `lower_bound(2)` = 1 (first index with value ≥ 2).
+- `upper_bound(2)` = 4 (first index with value > 2).
+- count = 4 - 1 = 3. Correct.
+
+For an absent target: `arr`, `target = 6`.
+
+- `lower_bound(6)` = 7 (past the end).
+- `upper_bound(6)` = 7.
+- count = 0. Correct.
+
+For target equal to the maximum: `target = 5`.
+
+- `lower_bound(5)` = 6 (the last index, where 5 sits).
+- `upper_bound(5)` = 7 (past the end).
+- count = 1. Correct.
+
+The formula handles every case — present once, present many
+times, absent, at the edges — uniformly.
+''',
+        "brute_force": {
+            "explanation": r'''
+Linear scan. Walk and count. *O(n)*.
+
+This is the answer most beginners reach for, and it's correct.
+The optimal *O(log n)* exists only because the array is sorted,
+but if you didn't notice that detail, the brute force still
+works.
+
+```python
+return arr.count(x)
+```
+
+One line via Python's built-in. Or write it yourself:
+
+```python
+count = 0
+for v in arr:
+    if v == x:
+        count += 1
+return count
+```
+
+For arrays up to ~10,000 elements, the linear version is often
+fast enough that the *O(log n)* improvement is not worth the
+extra code. For large datasets — say, querying a million-element
+array many times — the binary-search version is essential.
+''',
+            "code": r'''def count_brute(arr: list[int], x: int) -> int:
+    # Python's list has a built-in .count() that walks the list and
+    # counts equality matches. O(n).
+    return arr.count(x)
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The optimal algorithm is two binary searches — one for lower
+bound, one for upper bound. The composition is so clean that
+the entire function is three lines:
+
+```python
+def count(arr, x):
+    return upper_bound(arr, x) - lower_bound(arr, x)
+```
+
+Why does this work? The values equal to `x` in a sorted array
+form a contiguous block. Lower bound is the first index of that
+block (or the insertion position if x is absent). Upper bound
+is one past the last index of the block. The block length is
+the difference.
+
+Even better: the formula handles the "x is absent" case
+automatically. When x is absent, lower bound and upper bound
+coincide (both pointing at the insertion position). The
+difference is 0.
+
+This is the same composition we used in `first-last-occurrence`.
+There we returned `[first, last]`; here we return `last - first
++ 1` (equivalently, `upper - lower`). Same two searches; different
+interpretation of the result.
+
+For an array of size 10 million, this counts in about 50
+operations total. The linear scan would do 10 million.
+''',
+        "optimized": {
+            "explanation": r'''
+Two half-open binary searches; difference of their results.
+''',
+            "code": r'''def count_occurrences(arr: list[int], x: int) -> int:
+    # Helper: find the first index whose value is >= x.
+    def lower_bound(target):
+        lo, hi = 0, len(arr)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if arr[mid] >= target:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
+
+    # Helper: find the first index whose value is > x.
+    def upper_bound(target):
+        lo, hi = 0, len(arr)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if arr[mid] > target:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
+
+    # The count is the length of the half-open range
+    # [lower_bound, upper_bound). If x is absent, lower == upper
+    # and the count is zero.
+    return upper_bound(x) - lower_bound(x)
+''',
+            "complexity": (
+                "**Time**: *O(log n)*. Two binary searches of *O(log n)* "
+                "each.\n\n"
+                "**Space**: *O(1)*."
+            ),
+        },
+        "deep_concept": r'''
+The count formula `upper_bound(x) - lower_bound(x)` is the
+canonical example of "compose two atomic operations to answer
+a richer query in the same complexity class."
+
+This composition generalizes:
+
+- **Count of values in `[L, R]`** (range count): `upper_bound(R)
+  - lower_bound(L)`. Two binary searches, *O(log n)*.
+- **Count of values strictly less than x**: `lower_bound(x)`.
+- **Count of values strictly greater than x**: `len(arr) -
+  upper_bound(x)`.
+
+All of these reduce to one or two lower/upper bound calls.
+Master the primitives; the queries become one-liners.
+
+For very many queries on the same array, you can preprocess
+(sort once) and then answer each query in *O(log n)*. This is
+the **offline-query** pattern that powers many problems
+involving repeated range queries.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why is this in the binary search lecture if Python has `arr.count()`?",
+                "answer": r'''
+Because Python's `arr.count()` is `O(n)` — it walks the entire
+list, comparing each element. The interview challenge is to
+beat that by exploiting the sortedness.
+
+For sorted data, you should never need a linear scan to count.
+The bisect functions get you to `O(log n)`, which for a million-
+element array means about 40 operations versus a million.
+
+If your data isn't sorted, you'd sort first (*O(n log n)*) and
+then count (*O(log n)*) for a total of *O(n log n)*. For a
+one-shot count, that's worse than just `arr.count(x)`. The
+trade-off is worthwhile only when you'll do many counts on the
+same array.
+
+The interview question tests two things:
+1. Did you notice the sortedness?
+2. Can you reduce the problem to lower bound / upper bound?
+
+If both yes, you write the *O(log n)* solution. If you reach
+for `arr.count(x)`, you've passed up the harder lesson.
+''',
+            },
+            {
+                "question": "What if I want to count occurrences in a range `[L, R]` of values?",
+                "answer": r'''
+Same idea, slightly different bounds.
+
+```python
+def count_in_range(arr, low, high):
+    # Count values v with low <= v <= high.
+    # That's lower_bound(low) ... upper_bound(high) - 1 (inclusive).
+    # Equivalently, upper_bound(high) - lower_bound(low).
+    return upper_bound(arr, high) - lower_bound(arr, low)
+```
+
+Two binary searches, *O(log n)*. Beautiful.
+
+This is the engine behind many problems involving "how many
+elements satisfy a range condition?". For 2D ranges, you'd
+need a 2D indexing structure (k-d tree, BIT), but for 1D
+this is enough.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: count = upper_bound(x) - lower_bound(x).
+
+**Lesson**: a single formula composing two binary searches
+counts the occurrences of any value in a sorted array in
+*O(log n)*. The same composition handles range counts.
+
+**Recognize next time**: "how many ___ in sorted array" → reach
+for upper - lower.
+''',
+    },
+    {
+        "id": "min-in-rotated",
+        "title": "Find Minimum in Rotated Sorted Array",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "medium",
+        "tags": ["binary-search", "rotated"],
+        "what_this_teaches": (
+            "The 'one half is sorted' insight applied to finding the "
+            "pivot point in a rotated array. Binary search adapts by "
+            "comparing the midpoint to the right endpoint."
+        ),
+        "pattern": "Compare arr[mid] with arr[hi]; one side is sorted, the other contains the pivot.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["binary-search", "search-rotated-i"],
+        "next_problems": ["rotations-count", "single-element-sorted"],
+        "resources": [
+            _SHEET,
+            _lc(153, "find-minimum-in-rotated-sorted-array"),
+        ],
+        "understanding": r'''
+A sorted array has been rotated some unknown number of times.
+Find its minimum element.
+
+`[4, 5, 6, 7, 0, 1, 2]` was originally `[0, 1, 2, 4, 5, 6, 7]`
+rotated four positions to the left. The minimum is `0`, at
+index 4 in the rotated array.
+
+If the array were not rotated, the minimum would be at index 0
+— trivial. But because of the rotation, the minimum is at some
+unknown "pivot" point where the original sequence wraps around.
+
+Brute force is *O(n)* — scan and track the minimum. The
+optimal is *O(log n)* using a clever binary search that
+exploits the partial sortedness.
+
+The key insight: at every midpoint of the rotated array, **one
+of the two halves is fully sorted**. The minimum lives either in
+the *unsorted* half (which contains the wrap-around point) or
+at the very start of the sorted half (the smallest element of
+that half, which equals the leftmost element of the sorted
+half).
+
+Concretely, at any `mid`, compare `arr[mid]` with `arr[hi]`
+(the right endpoint of the current window):
+
+- If `arr[mid] < arr[hi]`: the right half (from `mid` to `hi`)
+  is sorted, because values rise smoothly from mid to hi. The
+  minimum is either at `mid` itself or somewhere strictly to
+  its left. So set `hi = mid` (keeping mid as a candidate).
+- If `arr[mid] > arr[hi]`: the right half is NOT sorted. The
+  pivot lies somewhere in `(mid, hi]`. So set `lo = mid + 1`.
+
+When the loop terminates, `lo == hi` is the index of the
+minimum.
+
+Why compare with `arr[hi]` and not `arr[lo]`? Because the
+comparison with the right endpoint cleanly distinguishes "the
+right half is sorted" (then mid could be the min) from "the
+right half contains the pivot" (then min is past mid). The
+left-endpoint comparison is muddier because the left half is
+*always* sorted if there is no rotation — it doesn't help us
+locate the pivot.
+
+This problem assumes the array has **no duplicates**. With
+duplicates, the comparison `arr[mid] vs arr[hi]` can be
+ambiguous (they might be equal), and the worst-case complexity
+degrades to *O(n)*. That variant is "Find Minimum in Rotated
+Sorted Array II" (LC 154).
+''',
+        "brute_force": {
+            "explanation": r'''
+Walk the array; track the minimum.
+
+```python
+def find_min_linear(arr):
+    return min(arr)
+```
+
+`O(n)` time. Correct on any array, rotated or not. For small
+arrays, this is faster than the binary search version because
+of branch prediction and cache effects.
+
+The interview challenge is to do it in *O(log n)*. The binary
+search version exploits the partial sortedness.
+''',
+            "code": r'''def find_min_linear(arr: list[int]) -> int:
+    # Python's min() walks the iterable once. O(n).
+    return min(arr)
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The *O(log n)* algorithm uses binary search with the comparison
+`arr[mid] vs arr[hi]`. This comparison detects whether the right
+half is fully sorted (no wrap-around) or contains the pivot.
+
+Walk through `arr = [4, 5, 6, 7, 0, 1, 2]`:
+
+- `lo = 0, hi = 6`. `mid = 3`, `arr[3] = 7`, `arr[6] = 2`.
+  `7 > 2`, so the right half is NOT sorted — the pivot is to
+  the right of mid. Set `lo = 4`.
+- `lo = 4, hi = 6`. `mid = 5`, `arr[5] = 1`, `arr[6] = 2`.
+  `1 < 2`, so the right half IS sorted. The minimum could be at
+  mid (= 5) or to its left. Set `hi = 5`.
+- `lo = 4, hi = 5`. `mid = 4`, `arr[4] = 0`, `arr[5] = 1`.
+  `0 < 1`, right half is sorted. Set `hi = 4`.
+- `lo = 4, hi = 4`. Loop exits.
+- Return `arr[4] = 0`. Correct.
+
+Three iterations on a seven-element array. `log2(7) ≈ 2.8`, so
+the math checks out.
+
+Why does comparing `arr[mid]` with `arr[hi]` work? Because in a
+rotated sorted array, exactly one place has a "drop" (where the
+original maximum is followed by the original minimum). If
+`arr[mid] < arr[hi]`, there is no drop between mid and hi — that
+half is sorted. If `arr[mid] > arr[hi]`, the drop is somewhere
+in `(mid, hi]`, meaning the minimum is in the right half.
+
+The candidate / disqualified asymmetry in the bound update
+matters: on the sorted-right-half branch, we set `hi = mid`
+(keeping mid as a candidate, because mid could be the minimum
+of that sorted right half). On the other branch, we set `lo =
+mid + 1` (excluding mid, because the actual minimum is strictly
+past it).
+
+This same "one half is sorted" insight powers `search-rotated-
+i` (search for an arbitrary target in a rotated array). The two
+problems are siblings.
+''',
+        "optimized": {
+            "explanation": r'''
+Binary search comparing midpoint to the right endpoint. The
+half-open / inclusive convention is mixed here because we use
+`hi = mid` (keep mid as candidate) and `lo = mid + 1` (exclude).
+''',
+            "code": r'''def find_min(arr: list[int]) -> int:
+    # Initialize the search window as inclusive endpoints.
+    lo, hi = 0, len(arr) - 1
+    # Continue while the window has more than one element. When
+    # lo == hi, that single index is the minimum's location.
+    while lo < hi:
+        # Midpoint of the current window.
+        mid = (lo + hi) // 2
+        # Compare the midpoint with the RIGHT endpoint. This is the
+        # key. The right half [mid, hi] is fully sorted iff
+        # arr[mid] < arr[hi]. If sorted, the minimum of that half
+        # is at mid itself (the leftmost). So mid is a candidate.
+        if arr[mid] < arr[hi]:
+            # mid IS a candidate. Keep it in the window and try
+            # smaller indices.
+            hi = mid
+        else:
+            # arr[mid] > arr[hi]. The right half is not sorted; the
+            # pivot (and thus the minimum) is strictly past mid.
+            lo = mid + 1
+    # Loop exits with lo == hi. That index holds the minimum.
+    return arr[lo]
+''',
+            "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
+        },
+        "deep_concept": r'''
+The `arr[mid] vs arr[hi]` comparison is the heart of every
+rotated-array binary search. It lets us answer "which half is
+sorted?" in *O(1)*, and from that we can decide which half to
+keep.
+
+The reason we compare with `arr[hi]` instead of `arr[lo]` is
+subtle and worth understanding. The left endpoint is **always**
+the same value (the start of the window doesn't necessarily
+have any sortedness signal), so `arr[lo] vs arr[mid]` doesn't
+distinguish "left half is sorted" from "left half has the
+pivot" cleanly. The right endpoint, by contrast, sits at the
+end of the unrotated tail (or at the rotated minimum's
+neighbor), so it gives a reliable signal.
+
+A symmetric algorithm exists comparing with `arr[lo]`, but the
+boundary updates are slightly trickier. The `arr[mid] vs arr[
+hi]` style is the cleanest.
+
+For **rotated array with duplicates** (LC 154), this algorithm
+breaks down when `arr[mid] == arr[hi]`. We can't tell which
+half is sorted. The fix is to decrement `hi` by 1 in that case
+(skip past the duplicate). The worst case degrades to *O(n)*
+when the array is mostly duplicates, but the average case stays
+*O(log n)*.
+
+The related problem "search for a target in a rotated sorted
+array" (LC 33) uses the same "one half is sorted" insight, but
+with two comparisons per iteration: first identify the sorted
+half, then check if the target lies in that half's range.
+''',
+        "confusion_notes": [
+            {
+                "question": "Why not compare with the left endpoint?",
+                "answer": r'''
+Because the left-endpoint comparison is ambiguous about where
+the pivot lives.
+
+If `arr[mid] > arr[lo]`: the left half is sorted (no drop
+between lo and mid). The pivot is somewhere in `[mid+1, hi]`.
+But the minimum of the whole array could be either at the start
+of the sorted left half (`arr[lo]`) or in the right half. We
+can't tell which.
+
+If `arr[mid] < arr[lo]`: the left half contains the pivot. The
+minimum is in `[lo+1, mid]`.
+
+So we can use the left-endpoint comparison to drive a binary
+search, but it requires comparing the global minimum candidate
+to `arr[lo]` at each step. Messier.
+
+The right-endpoint comparison is cleaner: `arr[mid] < arr[hi]`
+unambiguously means "right half is sorted, mid could be the
+minimum." `arr[mid] > arr[hi]` unambiguously means "the
+minimum is strictly past mid."
+
+So we go with `arr[hi]`. The algorithm has a beautiful single
+comparison per iteration.
+''',
+            },
+            {
+                "question": "Does this work if the array is not actually rotated?",
+                "answer": r'''
+Yes. An unrotated array is trivially a "rotation by 0," and
+the algorithm finds index 0 as the minimum.
+
+Walk through `arr = [1, 2, 3, 4, 5]`:
+
+- `lo = 0, hi = 4`. `mid = 2`, `arr[2] = 3`, `arr[4] = 5`. `3 <
+  5`, so right half is sorted. `hi = 2`.
+- `lo = 0, hi = 2`. `mid = 1`, `arr[1] = 2`, `arr[2] = 3`. `2 <
+  3`, right half is sorted. `hi = 1`.
+- `lo = 0, hi = 1`. `mid = 0`, `arr[0] = 1`, `arr[1] = 2`. `1 <
+  2`, right half is sorted. `hi = 0`.
+- `lo = 0, hi = 0`. Loop exits.
+- Return `arr[0] = 1`. Correct.
+
+The algorithm is robust to the "no rotation" edge case.
+''',
+            },
+            {
+                "question": "What if the array has a single element?",
+                "answer": r'''
+The loop doesn't execute (since `lo == hi == 0`), and we
+return `arr[0]`. The single element is trivially the minimum.
+
+What about two elements?
+
+`arr = [2, 1]`:
+
+- `lo = 0, hi = 1`. `mid = 0`, `arr[0] = 2`, `arr[1] = 1`. `2 >
+  1`, right half is NOT sorted. `lo = 1`.
+- `lo = 1, hi = 1`. Loop exits.
+- Return `arr[1] = 1`. Correct.
+
+`arr = [1, 2]`:
+
+- `lo = 0, hi = 1`. `mid = 0`, `arr[0] = 1`, `arr[1] = 2`. `1 <
+  2`, right half IS sorted. `hi = 0`.
+- `lo = 0, hi = 0`. Loop exits.
+- Return `arr[0] = 1`. Correct.
+
+The algorithm handles all small cases correctly.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: binary search with `arr[mid] vs arr[hi]`
+comparison; the right-endpoint comparison detects which half is
+sorted and hence where the minimum lives.
+
+**Lesson**: rotated arrays preserve enough sortedness for
+*O(log n)* search. The trick is comparing with the right
+endpoint, which gives the cleanest sorted-half signal.
+
+**Recognize next time**: rotated-sorted-array problems —
+finding the minimum, the rotation count, or any specific value.
+They all hinge on "one half is always sorted."
+''',
+    },
+    {
+        "id": "rotations-count",
+        "title": "Number of Times a Sorted Array Has Been Rotated",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "easy",
+        "tags": ["binary-search", "rotated"],
+        "what_this_teaches": (
+            "Same algorithm as find-minimum-in-rotated, but return "
+            "the *index* of the minimum instead of the value. The "
+            "index *is* the rotation count."
+        ),
+        "pattern": "Find the index of the minimum; that index is the rotation count.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["min-in-rotated"],
+        "next_problems": ["single-element-sorted"],
+        "resources": [_SHEET],
+        "understanding": r'''
+A sorted array has been rotated some unknown number of times.
+Find the **rotation count** — the number of left rotations
+that would produce the array from the original sorted version.
+
+For `arr = [4, 5, 6, 7, 0, 1, 2]`: the original sorted array
+was `[0, 1, 2, 4, 5, 6, 7]`, rotated 4 times to the left. The
+minimum (`0`) is now at index 4. So the rotation count is 4.
+
+The key insight: **the index of the minimum element in the
+rotated array IS the rotation count**. Why? Because rotating
+the sorted array `k` times to the left moves the original
+minimum (which was at index 0) to index `n - k` (mod n)…
+wait, actually a left rotation by 1 moves arr[0] to arr[n-1],
+so a left rotation by k moves arr[0] to arr[n-k]. Equivalently,
+the original index 0 (the minimum) lands at index `n - k mod
+n`. Hmm.
+
+Let me re-examine: actually, a left rotation by `k` shifts
+every element `k` positions to the left, with wrapping. So
+`arr[i]` ends up at position `(i - k) mod n`. The original
+index 0 (the minimum) lands at `(0 - k) mod n = -k mod n = n - k`.
+
+For `n = 7`, `k = 4`: original index 0 lands at `n - k = 3`.
+But our example has the minimum at index 4, not 3.
+
+Let me reconsider. In the example `[4, 5, 6, 7, 0, 1, 2]`,
+the minimum `0` is at index 4. To get this from the sorted
+`[0, 1, 2, 4, 5, 6, 7]`, we left-rotate by 4 positions:
+
+- After 1 left rotation: `[1, 2, 4, 5, 6, 7, 0]`. Min at index 6.
+- After 2: `[2, 4, 5, 6, 7, 0, 1]`. Min at index 5.
+- After 3: `[4, 5, 6, 7, 0, 1, 2]`. Min at index 4.
+
+So actually 3 rotations, not 4. Looking at this carefully, the
+formula is: **the rotation count equals the index of the
+minimum** (if we count rotations toward the right) or **n minus
+the index of the minimum** (if we count left rotations).
+
+The convention varies by problem. LeetCode and Striver usually
+use "the position of the minimum is the answer," which is the
+right-rotation count.
+
+The algorithm: find the index of the minimum using the
+`min-in-rotated` algorithm. Return that index (not the value).
+This is *O(log n)*.
+
+The brute force is *O(n)* — scan to find the minimum's index.
+''',
+        "brute_force": {
+            "explanation": r'''
+Linear scan; find the index of the minimum.
+
+```python
+def rotation_count_linear(arr):
+    return arr.index(min(arr))
+```
+
+Two passes (one for `min`, one for `index`), but both *O(n)*.
+Combined, the function is *O(n)* time.
+
+A single-pass version walks once tracking the min and its
+index:
+
+```python
+def rotation_count_one_pass(arr):
+    min_val = arr[0]
+    min_idx = 0
+    for i, v in enumerate(arr):
+        if v < min_val:
+            min_val = v
+            min_idx = i
+    return min_idx
+```
+
+Same complexity, slightly more efficient on big arrays. Both
+correct.
+''',
+            "code": r'''def rotation_count_linear(arr: list[int]) -> int:
+    # The Python idiom: index of the minimum value.
+    # arr.index(x) is O(n) and finds the first occurrence of x.
+    # min(arr) is O(n).
+    # Total: O(n).
+    return arr.index(min(arr))
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The optimal *O(log n)* algorithm is identical to
+`find-minimum-in-rotated-sorted-array`, but instead of returning
+`arr[lo]` at the end, we return `lo` itself.
+
+This is one of those wonderful moments where two different
+problems share the same algorithm — they just disagree on what
+to return. The algorithm finds where the minimum lives; one
+problem cares about the value, the other about the index. The
+binary search code is identical.
+
+Walking through `arr = [4, 5, 6, 7, 0, 1, 2]` produces (as we
+saw in `min-in-rotated`):
+
+- After three iterations, `lo = hi = 4`.
+- Return `4`. That's the rotation count.
+
+The rotation count is 4 (the answer matches our earlier
+analysis, modulo whether we count "right" rotations or "left"
+rotations).
+''',
+        "optimized": {
+            "explanation": r'''
+Identical to `min-in-rotated`'s algorithm; return the index
+instead of the value.
+''',
+            "code": r'''def rotation_count(arr: list[int]) -> int:
+    # Same binary search as find-minimum-in-rotated. The loop
+    # converges to the index of the minimum.
+    lo, hi = 0, len(arr) - 1
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if arr[mid] < arr[hi]:
+            # Right half is sorted; minimum is at mid or to its left.
+            hi = mid
+        else:
+            # Right half is not sorted; minimum is past mid.
+            lo = mid + 1
+    # lo == hi at this point. That is the index of the minimum,
+    # which is also the rotation count.
+    return lo
+''',
+            "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
+        },
+        "deep_concept": r'''
+The lesson: **the index of the minimum in a rotated sorted array
+is a useful piece of information by itself**. It tells you the
+rotation count, which lets you "unrotate" the array mentally
+or via slicing if needed.
+
+If you wanted to actually unrotate the array (restore it to the
+original sorted order), you'd find the minimum's index `k` and
+then `arr = arr[k:] + arr[:k]`. *O(n)* but no extra storage
+beyond the slicing.
+
+Knowing the rotation count also unlocks other algorithms. For
+example, "search in a rotated sorted array" (LC 33) can be
+solved by first finding the rotation count, then doing a normal
+binary search on the unrotated logical view. That's the "two
+phases" version of the algorithm we saw in `search-rotated-i`.
+
+The shared algorithm with `min-in-rotated` is the meta-lesson:
+**many problems share an underlying algorithm and differ only in
+what they report**. Recognizing this lets you batch your
+learning.
+''',
+        "confusion_notes": [
+            {
+                "question": "Is this counting left rotations or right rotations?",
+                "answer": r'''
+By the convention used here (the minimum's index = the rotation
+count), it counts **how many positions the array has been
+rotated to the right** to produce the current state — or
+equivalently, how many positions to the left of the original
+minimum the current minimum sits.
+
+For `[4, 5, 6, 7, 0, 1, 2]` (n = 7), the minimum is at index 4.
+This means the array has been rotated 4 positions to the right
+from the sorted state (or 3 positions to the left, which is
+`n - 4 = 3`).
+
+Different problems use different conventions. Read the problem
+statement carefully. The most common convention in LeetCode /
+Striver is "the minimum's index is the rotation count."
+
+If a problem instead asks "how many left rotations would
+produce this from the sorted version?", the answer is `n -
+index_of_min` (for n > 0).
+''',
+            },
+            {
+                "question": "What if the array is not rotated (already sorted)?",
+                "answer": r'''
+The algorithm correctly returns 0 — the rotation count is zero.
+
+For `arr = [1, 2, 3, 4, 5]`:
+
+- The minimum is at index 0.
+- The algorithm finds it: at every iteration, `arr[mid] < arr[
+  hi]` (the right half is fully sorted), so `hi = mid` until
+  `lo == hi == 0`.
+- Return 0.
+
+This makes sense: the array hasn't been rotated, so the count
+is zero.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: same as min-in-rotated; return the index instead
+of the value.
+
+**Lesson**: the rotation count of a rotated sorted array is the
+index of its minimum element.
+
+**Recognize next time**: any problem about "how rotated is this
+array?" reduces to finding the minimum's index.
+''',
+    },
+    {
+        "id": "single-element-sorted",
+        "title": "Single Element in a Sorted Array (Pairs Otherwise)",
+        "step_id": 4,
+        "lecture_id": 1,
+        "difficulty": "medium",
+        "tags": ["binary-search", "parity"],
+        "what_this_teaches": (
+            "How to binary-search using a *parity-of-index* signal. "
+            "Every element appears twice except one; we use the "
+            "index pattern of the pairs to decide which half "
+            "contains the loner."
+        ),
+        "pattern": "Compare arr[mid] with its pair partner; the half where the pair pattern is broken contains the loner.",
+        "prerequisite_lessons": ["arrays", "searching"],
+        "prerequisite_problems": ["binary-search", "single-number"],
+        "next_problems": ["find-peak-element"],
+        "resources": [
+            _SHEET,
+            _lc(540, "single-element-in-a-sorted-array"),
+        ],
+        "understanding": r'''
+You are given a **sorted** array in which every element appears
+exactly twice except for one element that appears once. Find
+the single element.
+
+Examples:
+
+- `[1, 1, 2, 3, 3, 4, 4, 8, 8]` → `2`.
+- `[3, 3, 7, 7, 10, 11, 11]` → `10`.
+
+The brute force is *O(n)* — scan the array, return the first
+element that isn't followed by its duplicate. Or use XOR on the
+entire array (every duplicate cancels, the loner remains).
+
+But the array is sorted, and the LeetCode problem asks for
+*O(log n)* time and *O(1)* space. That requires exploiting the
+sortedness in a clever way.
+
+The key observation: **before the loner**, pairs occupy adjacent
+indices `(0, 1), (2, 3), (4, 5), ...` — the first element of
+each pair is at an **even** index. **After the loner**, pairs
+shift by one and occupy `(odd, odd+1)` — the first element of
+each pair is at an **odd** index.
+
+So we can binary search: at each midpoint, check whether the
+midpoint is part of a pair whose first index is even (before-
+loner pattern) or odd (after-loner pattern).
+
+If `mid` is **even** and `arr[mid] == arr[mid + 1]`, then `mid`
+is the first element of an unbroken pair — we are still in the
+before-loner region. The loner is to the right. Set `lo = mid +
+2`.
+
+If `mid` is **even** and `arr[mid] != arr[mid + 1]`, the pair
+pattern is broken — the loner is at or before `mid`. Set `hi =
+mid`.
+
+Similar logic for odd `mid`: check pair with `mid - 1`.
+
+A cleaner version uses bitwise XOR: `mid ^ 1` gives the partner
+of `mid` (flips the last bit). If `mid` is even, partner is
+`mid + 1`; if odd, partner is `mid - 1`.
+
+```python
+if arr[mid] == arr[mid ^ 1]:
+    # pair is unbroken; loner is to the right
+    lo = mid + 1
+else:
+    # pair is broken; loner is at or before mid
+    hi = mid
+```
+
+This is one of the most elegant binary-search variants. It uses
+**parity** as the decision signal instead of value comparison.
+''',
+        "brute_force": {
+            "explanation": r'''
+Linear scan, comparing adjacent pairs. Or XOR all values.
+
+```python
+def single_linear(arr):
+    for i in range(0, len(arr) - 1, 2):
+        if arr[i] != arr[i + 1]:
+            return arr[i]
+    return arr[-1]      # the loner is the last element
+```
+
+`O(n)` time, `O(1)` space. Correct on any "sorted array with
+one loner" input.
+
+The XOR version:
+
+```python
+def single_xor(arr):
+    result = 0
+    for v in arr:
+        result ^= v
+    return result
+```
+
+Also `O(n)`, but doesn't use the sortedness. Either is fine
+for a baseline.
+
+The challenge is the *O(log n)* solution that exploits
+sortedness. The parity trick gets us there.
+''',
+            "code": r'''def single_linear(arr: list[int]) -> int:
+    # Walk in steps of 2. Compare adjacent pairs.
+    for i in range(0, len(arr) - 1, 2):
+        # If a pair is broken, the loner is the first element of the
+        # broken pair.
+        if arr[i] != arr[i + 1]:
+            return arr[i]
+    # No pair was broken. The loner is the last (unpaired) element.
+    return arr[-1]
+''',
+            "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
+        },
+        "thought_process": r'''
+The *O(log n)* algorithm exploits the parity insight.
+
+**Before the loner**, pairs are at `(even, even + 1)` indices.
+That is, `arr[i] == arr[i + 1]` when `i` is even.
+
+**After the loner**, pairs are at `(odd, odd + 1)` indices.
+That is, `arr[i] == arr[i + 1]` when `i` is odd, but `arr[i]
+!= arr[i + 1]` when `i` is even.
+
+So the question "is `mid` before or after the loner?" reduces
+to checking the pair-parity at `mid`.
+
+The XOR trick `mid ^ 1` is elegant: it flips the last bit,
+giving the "partner" of `mid`. If `mid` is even (binary ends
+in 0), `mid ^ 1` is `mid + 1`. If `mid` is odd (ends in 1),
+`mid ^ 1` is `mid - 1`. So `arr[mid ^ 1]` is the value that
+should equal `arr[mid]` if `mid` is part of an unbroken pair.
+
+```python
+if arr[mid] == arr[mid ^ 1]:
+    # Pair is unbroken; we're still before the loner. Loner is right.
+    lo = mid + 1
+else:
+    # Pair is broken; loner is at or before mid.
+    hi = mid
+```
+
+When the loop terminates with `lo == hi`, that index is the
+loner.
+
+Worked example on `arr = [1, 1, 2, 3, 3, 4, 4, 8, 8]`:
+
+- `lo = 0, hi = 8`. `mid = 4`, `mid ^ 1 = 5`. `arr[4] = 3,
+  arr[5] = 4`. `3 != 4`, pair broken. Loner at or before mid.
+  `hi = 4`.
+- `lo = 0, hi = 4`. `mid = 2`, `mid ^ 1 = 3`. `arr[2] = 2,
+  arr[3] = 3`. Different. Pair broken. `hi = 2`.
+- `lo = 0, hi = 2`. `mid = 1`, `mid ^ 1 = 0`. `arr[1] = 1,
+  arr[0] = 1`. Equal! Pair unbroken. `lo = 2`.
+- `lo = 2, hi = 2`. Loop exits.
+- Return `arr[2] = 2`. Correct.
+
+Three iterations on a nine-element array. Logarithmic.
+''',
+        "optimized": {
+            "explanation": r'''
+Half-open binary search with the parity-based decision rule
+using XOR.
+''',
+            "code": r'''def single_non_duplicate(arr: list[int]) -> int:
+    # Half-open binary search. The window [lo, hi] is inclusive
+    # on both ends, but we use < as the loop condition to converge
+    # when lo == hi.
+    lo, hi = 0, len(arr) - 1
+    while lo < hi:
+        # Midpoint of the current window. Integer division.
+        mid = (lo + hi) // 2
+        # The "partner" of mid in its pair. If mid is even, partner
+        # is mid + 1. If mid is odd, partner is mid - 1. The XOR
+        # with 1 flips the last bit, giving the partner cleanly.
+        partner = mid ^ 1
+        # Check whether the pair is intact.
+        if arr[mid] == arr[partner]:
+            # Pair is unbroken. We're still in the before-loner region.
+            # The loner is strictly to the right of this pair.
+            # If mid is even, the pair is (mid, mid+1); we can safely
+            # jump to mid + 2. If mid is odd, partner = mid - 1 and
+            # the pair is (mid - 1, mid); we can jump to mid + 1.
+            # Both reduce to lo = mid + 1 (for odd mid) or lo = mid + 2
+            # (for even mid). The simplest unified update is lo = mid + 1.
+            lo = mid + 1
+        else:
+            # Pair is broken. The loner is at or before mid.
+            # If mid is even and arr[mid] != arr[mid + 1], the loner
+            # could be at mid itself.
+            # If mid is odd and arr[mid] != arr[mid - 1], the loner
+            # could be at mid - 1.
+            # The safe update is hi = mid (keeping mid as a candidate).
+            hi = mid
+    # Loop exits with lo == hi. That index holds the loner.
+    return arr[lo]
+''',
+            "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
+        },
+        "deep_concept": r'''
+This problem teaches a beautiful generalization of binary search:
+**the decision rule does not have to be a value comparison**.
+Any monotonic property over the index space lets us halve the
+search.
+
+Here, the property is "is `mid` in the before-loner half?",
+detected by the parity of the pair partner. The property is
+monotonic: if `mid` is before the loner, every smaller index is
+also before; if `mid` is at or after the loner, every larger
+index is also at or after.
+
+This kind of "predicate binary search" is the foundation of
+**binary search on the answer** (covered in Step 4 Lecture 2).
+The same skeleton — half-open window, monotonic predicate,
+asymmetric bound updates — applies whether the predicate is
+"value < x," "pair is unbroken," "Koko can finish at this
+speed," or "this many books per painter." Recognize the shape
+and the algorithm writes itself.
+
+The `mid ^ 1` trick is also delightful in its own right. XOR
+with 1 toggles parity in one operation. This shows up
+constantly in algorithms involving index pairs.
+''',
+        "confusion_notes": [
+            {
+                "question": "What does `mid ^ 1` actually compute?",
+                "answer": r'''
+`mid ^ 1` (XOR with 1) flips the last bit of `mid`.
+
+If `mid` is even, its last bit is 0. XOR with 1 makes it 1, so
+`mid ^ 1 = mid + 1`.
+
+If `mid` is odd, its last bit is 1. XOR with 1 makes it 0, so
+`mid ^ 1 = mid - 1`.
+
+So `mid ^ 1` is the **other** index in the pair containing
+`mid`. The pairs are `(0, 1), (2, 3), (4, 5), ...`, so the
+partner of any index is found by flipping the last bit.
+
+The equivalent without XOR: `mid - 1 if mid % 2 else mid + 1`.
+More verbose; XOR is the clean version.
+
+This kind of bit trick is one of the prettiest small details in
+binary search. Memorize it.
+''',
+            },
+            {
+                "question": "Why `hi = mid` instead of `hi = mid - 1` on the broken-pair branch?",
+                "answer": r'''
+Because `mid` itself could be the loner.
+
+If `mid` is even and the pair is broken (`arr[mid] != arr[mid +
+1]`), then either `arr[mid]` is the loner (and `arr[mid + 1]`
+is the first of a new pair) OR `arr[mid]` is the second of the
+previous pair shifted by one (meaning the loner is before mid).
+Both cases say the loner is at or before mid.
+
+If `mid` is odd and the pair is broken (`arr[mid] != arr[mid -
+1]`), similar reasoning.
+
+In both cases, `mid` is a candidate. Setting `hi = mid - 1`
+would exclude it.
+
+This is the asymmetric "candidate" branch we see in lower-
+bound style. Setting `hi = mid` keeps `mid` in the window;
+the binary search will eventually converge to it (or to an
+earlier candidate).
+''',
+            },
+            {
+                "question": "What if the array has only one element?",
+                "answer": r'''
+The loop doesn't execute (`lo == hi == 0`), and we return
+`arr[0]`. The single element is the loner by definition.
+
+What about two elements? The problem statement says every
+element appears twice except one, so a valid two-element input
+would have one repeated and one unique. But that violates the
+"every other element appears twice" constraint. The valid
+inputs all have odd length.
+
+For testing, you can use the algorithm on any odd-length input
+where elements are sorted and exactly one element appears once.
+The algorithm makes no assumption that all other elements
+must be in pairs — it just uses the parity-of-pairs signal to
+locate the loner.
+''',
+            },
+        ],
+        "summary": r'''
+**Pattern**: half-open binary search using parity as the
+decision signal. `mid ^ 1` is the pair partner.
+
+**Lesson**: binary search works on any monotonic predicate
+over the index space, not just value comparisons. The parity-
+of-pairs predicate is monotonic and shifts at the loner.
+
+**Recognize next time**: any "find the odd one in a sorted
+array with a regular pattern" problem. The parity / pair-pattern
+trick generalizes.
+''',
+    },
+    {
         "id": "first-last-occurrence",
         "title": "First and Last Occurrence in a Sorted Array",
         "step_id": 4,

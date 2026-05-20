@@ -96,6 +96,121 @@ def all_subseqs_bitmask(arr: list[int]) -> list[list[int]]:
         out.append(subset)
     return out
 ''',
+            "walkthrough": r'''
+Two complete approaches: recursive take-or-skip (the
+canonical backtracking pattern) and bitmask enumeration (a
+clever iterative alternative).
+
+**Version 1: Take-or-skip recursion**
+
+This is the **most important recursion shape** in all of DSA.
+Learn it cold.
+
+**`def all_subseqs(arr: list[int]) -> list[list[int]]:`** —
+Returns a list of all 2^n subsequences (subsets) of the input.
+
+**`out: list[list[int]] = []`** — Will accumulate all
+subsequences as we discover them.
+
+**`current: list[int] = []`** — A "scratch pad" that holds
+the subsequence we're currently building. Will be modified
+throughout — appended to when we include, popped when we
+backtrack.
+
+**`def go(i: int) -> None:`** — Nested recursive helper. `i`
+is the current index we're considering. At each step we
+decide: include `arr[i]` or skip it.
+
+**`if i == len(arr): out.append(current[:]); return`** — The
+**base case**. We've made a decision for every index. The
+`current` list now represents one full subsequence. **Snapshot
+it with `current[:]`** (or equivalently `list(current)`) — we
+**must** make a copy, otherwise all snapshots in `out` would
+share a reference to the same list, which gets mutated as
+recursion continues.
+
+**`go(i + 1)`** — **Choice 1: skip.** Recurse to the next
+index without modifying `current`. This explores all
+subsequences that don't include `arr[i]`.
+
+**`current.append(arr[i])`** — **Choice 2: include.** Add
+`arr[i]` to the current subsequence.
+
+**`go(i + 1)`** — Recurse to the next index with the include
+decision committed.
+
+**`current.pop()`** — **The undo.** After the recursive call
+returns, we must remove `arr[i]` from `current` to leave the
+scratch pad in the same state it was when we entered. This
+is the heart of backtracking.
+
+Forget the `current.pop()` and your algorithm will produce
+wrong answers — the include decisions will "leak" into
+sibling branches.
+
+**`go(0)`** — Kick off recursion at index 0.
+
+**`return out`** — Hand back all 2^n subsequences.
+
+**Trace it on `arr = [1, 2]`:**
+
+```
+go(0): current=[]
+  go(1): current=[]                              ← skip 1
+    go(2): current=[] → snapshot []. Return.
+    Pop nothing (didn't append in this branch).
+  go(1) returns.
+  Append 1. current=[1]                          ← include 1
+  go(1): current=[1]
+    go(2): current=[1] → snapshot [1]. Return.
+    (Recursive include below)
+    Append 2. current=[1, 2]
+    go(2): current=[1, 2] → snapshot [1, 2]. Return.
+    Pop 2. current=[1].
+  Pop 1. current=[].
+go(0) returns. out = [[], [2], [1], [1, 2]].
+```
+
+Wait that doesn't quite match — let me reread. Yes, the
+algorithm explores "skip first, then include" at each step.
+The order of subsequences in `out` depends on this choice
+order. Different orders produce the same set, just different
+arrangement.
+
+**Version 2: Bitmask enumeration**
+
+A different formulation. We iterate `2^n` integers; each one
+encodes a subset via its binary representation.
+
+**`for mask in range(1 << n):`** — `1 << n` is `2^n` (1
+shifted left by n positions). For n = 3, this is 8. We
+iterate masks 0, 1, 2, ..., 7 — that's exactly 2^n subsets.
+
+**`subset = [arr[i] for i in range(n) if mask & (1 << i)]`** —
+For each mask, build the subset. The bit-test `mask & (1 << i)`
+checks whether bit `i` is set in the mask. If yes, include
+`arr[i]`.
+
+For example, mask = 5 = binary 101: bits 0 and 2 are set. The
+subset is `[arr[0], arr[2]]`.
+
+**`out.append(subset)`** — Record this subset.
+
+This version is **iterative** — no recursion, no implicit
+stack. It uses *O(n)* extra memory (the subset being built
+and the mask), plus *O(output size)* for the final list. The
+trade-off vs. the recursive version: iteration is faster in
+practice (no function call overhead), but only works when
+n ≤ 30 or so (otherwise `2^n` doesn't fit in standard ints).
+
+Both approaches generate **all** 2^n subsets in *O(2^n × n)*
+total time — the lower bound for this problem since the
+output itself has *O(2^n × n)* size.
+
+The take-or-skip recursive pattern generalizes to subset-sum,
+partition-equal, combination-sum, target-sum, and dozens of
+"explore all decisions" problems.
+''',
             "complexity": (
                 "**Time**: *O(2^n × n)* — exponentially many subsets, "
                 "each of size up to n. **Space**: *O(n)* recursion "

@@ -417,22 +417,581 @@ first-missing-positive, and other clever array problems. It will
 feel like a magic trick the first time you see it; after the
 fifth time, it becomes part of your normal toolbox.
 
-## 10. The promise, kept
+## 10. The price list of array operations
 
-If you read this chapter carefully, you now have:
+Before we move on, let me hand you a small price list. Print it,
+tape it above your desk, look at it every time you write array
+code. This is the **cost** of each thing you might want to do, in
+big-O terms. If you internalize these numbers, you will stop
+choosing bad data structures by accident.
 
-- A mental picture of an array as a row of numbered, fixed-size
-  slots in memory.
-- An understanding of why indexing is *O(1)* and why front
-  insertion is *O(n)*.
-- A clean way to think about zero-indexing using the fence-post
-  model.
-- The four basic moves: walk forward, walk and carry the best,
-  two pointers from the ends, and two pointers in the same
-  direction.
-- A checklist of questions to ask of every array problem.
-- An awareness of the five most common beginner bugs and how to
-  prevent them.
+| Operation | Cost | Why |
+| --- | --- | --- |
+| `nums[i]` | *O(1)* | Direct address arithmetic |
+| `len(nums)` | *O(1)* | The list stores its own length |
+| `nums.append(x)` | *O(1) amortized* | Mostly free; occasional resize |
+| `nums.pop()` (from end) | *O(1)* | Just decrement length |
+| `nums.insert(0, x)` | *O(n)* | Every element shifts right by one |
+| `nums.pop(0)` | *O(n)* | Every element shifts left by one |
+| `nums.insert(i, x)` | *O(n-i)* | Elements after `i` shift right |
+| `nums.pop(i)` | *O(n-i)* | Elements after `i` shift left |
+| `x in nums` | *O(n)* | Linear scan |
+| `nums.index(x)` | *O(n)* | Linear scan |
+| `nums.count(x)` | *O(n)* | Scan and count |
+| `nums.sort()` | *O(n log n)* | Timsort |
+| `sorted(nums)` | *O(n log n)* | Same but returns a new list |
+| `nums.reverse()` | *O(n)* | Swap from both ends |
+| `nums[a:b]` | *O(b-a)* | Slice **copies** |
+| `nums + other` | *O(n+m)* | Concatenation copies both |
+| `nums * k` | *O(n·k)* | Repetition copies n times |
+| `nums == other` | *O(n)* | Element-by-element compare |
+| `min(nums)` / `max(nums)` | *O(n)* | Linear scan |
+| `sum(nums)` | *O(n)* | Linear scan |
+
+A few of these deserve more conversation, because their costs
+**surprise people**. The big surprise is that `nums[1:]` is *O(n)*,
+not *O(1)*. Many beginners write code like this:
+
+```python
+def sum_recursive(nums):
+    if not nums:
+        return 0
+    return nums[0] + sum_recursive(nums[1:])
+```
+
+This looks like it does *n* recursive calls, each doing constant
+work — so *O(n)* total, right? Wrong. Each `nums[1:]` builds a
+brand-new list of size `n-1`. The total work to build all those
+slices is `n + (n-1) + (n-2) + ... + 1`, which is *O(n²)*. The
+moral: when you are inside a loop or recursion, prefer **index
+variables** over slicing. Slices are wonderful at the top level;
+they are deadly in the inner loop.
+
+The second surprise is `x in nums`. People who learned dicts
+first sometimes assume `in` is fast on every Python container. It
+is *O(1) average* on a `set` or `dict` key, but *O(n)* on a list,
+because the list has to scan. If your algorithm does many `in`
+checks, you almost certainly want to convert to a set first.
+
+The third surprise is **list concatenation in a loop**. The classic
+trap:
+
+```python
+result = []
+for x in some_iter:
+    result = result + [x]    # creates a brand-new list every time
+```
+
+That inner statement copies the whole current `result` plus one
+new element, every loop iteration. The total work is *O(n²)*. The
+fix is `result.append(x)`, which is amortized *O(1)*. Or use a
+list comprehension. Anything except `result = result + [x]`.
+
+## 11. Prefix sums — the calculator your array secretly contains
+
+Now we enter the first "real" technique that goes beyond the
+beginner basics. **Prefix sums** are the technique that turns
+"sum of any range" from an *O(n)* operation into an *O(1)*
+operation, at the cost of one extra *O(n)* pass to build them.
+It is one of the highest-value tricks in the whole DSA toolbox.
+
+Picture a long line of mailboxes, each containing some number of
+letters. Suppose someone phones you and asks, "How many letters
+total in mailboxes 5 through 8?" The naive answer: walk down the
+line, open mailboxes 5, 6, 7, and 8, count their letters, sum
+them up, report. That is fine for one question. But what if your
+boss is going to ask you fifty range questions today? Now you are
+walking the line fifty times. Each walk takes time.
+
+The clever clerk takes a different approach. On day one, the
+clerk walks down the line **once** and writes down, on a fresh
+sheet of paper, a running total: "After mailbox 0, total letters
+= 3. After mailbox 1, total = 7. After mailbox 2, total = 10. ..."
+Now, for any range question, the clerk just subtracts two numbers
+from that sheet. "Mailboxes 5 to 8 inclusive" becomes "total after
+mailbox 8 minus total after mailbox 4." One subtraction. Constant
+time. The walk down the line only happens once.
+
+That sheet is the **prefix sum array**. In code:
+
+```python
+def build_prefix(nums):
+    # prefix[i] = nums[0] + nums[1] + ... + nums[i-1].
+    # Length is n+1 so that prefix[0] is the empty-sum (zero).
+    prefix = [0] * (len(nums) + 1)
+    for i, x in enumerate(nums):
+        prefix[i + 1] = prefix[i] + x
+    return prefix
+
+def range_sum(prefix, lo, hi):
+    # Sum of nums[lo..hi] inclusive.
+    return prefix[hi + 1] - prefix[lo]
+```
+
+Trace it on `nums = [3, 1, 4, 1, 5, 9, 2, 6]`:
+
+```
+indices:  0  1  2  3  4  5  6  7
+values:   3  1  4  1  5  9  2  6
+prefix:  0  3  4  8  9 14 23 25 31    (length 9)
+```
+
+To get the sum of `nums[2..5]`, take `prefix[6] - prefix[2]` =
+`23 - 4` = `19`. Verify: `4 + 1 + 5 + 9 = 19`. ✓
+
+Notice the **+1 offset** in the prefix array — we make it length
+`n + 1` and shift all indices up by one. Why? Because we need an
+"empty sum at the left" so that `prefix[hi + 1] - prefix[lo]`
+works for `lo = 0` without a special case. The empty sum is zero
+and lives at `prefix[0]`. This is the fence-post model again, in
+disguise.
+
+**Where prefix sums show up.** Range-sum-query problems, "find
+subarray with sum K" (combined with a hash map), "subarray sum
+divisible by K," moving averages, problems with "how many ranges
+satisfy ..." When you see *any* problem asking about sums (or
+counts, products, XORs — same idea with different operator) over
+arbitrary ranges, your first thought should be: *prefix sums*.
+
+### Difference arrays — the dual of prefix sums
+
+While we're here, let me show you the **difference array**, which
+is prefix sums upside down. It is what you reach for when the
+problem says "add `v` to every element in range `[lo, hi]`" and
+asks the result *after many such updates*.
+
+A difference array `diff` stores, at index `i`, the **change**
+from `nums[i-1]` to `nums[i]`. To "add `v` to range `[lo, hi]`,"
+you do `diff[lo] += v` and `diff[hi+1] -= v`. Both *O(1)*. After
+all updates, you take the prefix sum of `diff` to recover the
+final `nums`. That's *O(n)* once, no matter how many updates.
+
+```python
+def apply_updates(n, updates):
+    diff = [0] * (n + 1)
+    for lo, hi, v in updates:
+        diff[lo] += v
+        diff[hi + 1] -= v
+    # prefix sum reconstructs the final array
+    result = [0] * n
+    running = 0
+    for i in range(n):
+        running += diff[i]
+        result[i] = running
+    return result
+```
+
+The difference array turns "k range updates, then read all" from
+*O(k·n)* into *O(k + n)*. Magical when k is huge.
+
+## 12. The "scan once, remember the best" pattern in depth
+
+I want to dwell on this pattern more, because it is the soul of
+many easy and medium array problems. The pattern is:
+
+> Walk the array left to right. At each step, you can compute
+> the answer-so-far using the new element and a small constant
+> amount of remembered information. Update both the
+> answer-so-far and the remembered information. At the end of
+> the walk, the answer-so-far *is* the answer.
+
+This is a state machine, even though it doesn't look like one.
+The "state" is whatever you remember from the past. Different
+problems need different remembered state:
+
+- **Maximum element**: remember the best value seen so far.
+- **Best stock profit (Buy/Sell I)**: remember the cheapest
+  price seen so far.
+- **Maximum subarray sum (Kadane)**: remember the best subarray
+  *ending here*.
+- **Longest streak of 1s**: remember the current streak length.
+- **First missing positive (with caveats)**: remember which
+  values have been "marked."
+
+Let me show Kadane in detail because it is the most famous example.
+The problem: given an array of integers (positive and negative),
+find the maximum sum of any contiguous subarray.
+
+The naive *O(n²)* approach tries every (left, right) pair. Kadane
+realizes that as we walk left to right, the best subarray
+**ending at position `i`** is one of two things: either it is
+just `nums[i]` itself (starting fresh), or it is the best subarray
+ending at `i - 1` plus `nums[i]` (extending). So we keep one
+variable `cur` = best sum ending at the current index, and one
+variable `best` = best sum seen anywhere yet.
+
+```python
+def kadane(nums):
+    cur = best = nums[0]                 # best ending here, best ever
+    for x in nums[1:]:
+        cur = max(x, cur + x)            # extend or restart
+        best = max(best, cur)
+    return best
+```
+
+Trace on `[-2, 1, -3, 4, -1, 2, 1, -5, 4]`:
+
+```
+x:   -2   1   -3   4   -1   2   1   -5   4
+cur: -2   1   -2   4    3   5   6    1   5
+best:-2   1   -2   4    4   5   6    6   6
+```
+
+Answer: 6, from subarray `[4, -1, 2, 1]`. Verify by brute force if
+you don't believe it.
+
+The insight that turned *O(n²)* into *O(n)* was just **one extra
+variable**. The whole "scan once, carry state" pattern is exactly
+this: the right state turns an expensive nested loop into a single
+linear walk. When you face an array problem, before writing the
+double loop, ask yourself: *what could I remember from the past
+that would let this be a single walk?*
+
+## 13. Two-dimensional arrays (matrices)
+
+Up to now we have talked about one-dimensional arrays. Many DSA
+problems involve **2D arrays**, also called matrices: grids of
+values arranged in rows and columns. In Python, these are usually
+represented as a "list of lists":
+
+```python
+grid = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9],
+]
+```
+
+`grid[r][c]` is the value at row `r`, column `c`. Convention: row
+first, column second. The number of rows is `len(grid)`. The
+number of columns is `len(grid[0])` (assuming all rows are the
+same length, which they should be).
+
+To walk every cell of a matrix, you nest two loops:
+
+```python
+m, n = len(grid), len(grid[0])           # m rows, n columns
+for r in range(m):
+    for c in range(n):
+        # do something with grid[r][c]
+        ...
+```
+
+The cost is *O(m·n)*. Notice that I named the dimensions `m` and
+`n` — this is a near-universal convention in DSA. Stick to it.
+
+**Moving in four directions.** For grid problems (flood fill,
+islands, shortest path on a grid), you often need to look at the
+four neighbors of a cell. The standard idiom uses **direction
+vectors**:
+
+```python
+DIRS = [(-1, 0), (1, 0), (0, -1), (0, 1)]   # up, down, left, right
+
+for dr, dc in DIRS:
+    nr, nc = r + dr, c + dc
+    if 0 <= nr < m and 0 <= nc < n:
+        # nr, nc is a valid neighbor
+        ...
+```
+
+The boundary check `0 <= nr < m` says "nr is a valid row index";
+similarly for `nc`. Skip cells that fall off the grid.
+
+**Walking diagonally.** Two diagonals: from top-left to
+bottom-right, and from top-right to bottom-left. The diagonal
+walking trick: cells `(r, c)` on the same top-left-to-bottom-right
+diagonal share `r - c` (constant). Cells on the same
+top-right-to-bottom-left diagonal share `r + c` (constant). This
+fact powers many matrix problems (Pascal's triangle, anti-diagonal
+sums, N-Queens conflict tests).
+
+**Be careful constructing a matrix.** This snippet looks innocent
+but is a famous bug:
+
+```python
+grid = [[0] * 3] * 3        # WRONG — all three rows are the SAME list
+```
+
+`[0] * 3` creates one list. `[...] * 3` creates a list of **three
+references to the same inner list**. Mutating `grid[0][0]` also
+mutates `grid[1][0]` and `grid[2][0]`, because they all point at
+the same memory. The fix is a comprehension:
+
+```python
+grid = [[0] * 3 for _ in range(3)]   # three independent rows
+```
+
+This builds a fresh inner list each iteration. Memorize this idiom;
+you will need it constantly in DP and grid problems.
+
+## 14. The values-as-indices super-trick
+
+I sketched this in section 9. Let me dwell on it because it is
+the move that separates "I can do easy array problems" from "I can
+do clever array problems."
+
+The trick: when your array contains values from a known small range,
+those values can be used as **indices** into the same array (or
+a side array of the same size). This often lets you mark, count,
+or transform without allocating any new memory.
+
+**Example: find the first missing positive.** Given an unsorted
+array of length `n`, find the smallest positive integer that does
+not appear in it. The trick: the answer must be in the range
+`[1, n + 1]`. (Why? Because if all of `1` through `n` appear, the
+answer is `n + 1`; otherwise, some integer in `1..n` is missing.)
+
+So we can do two passes:
+
+```python
+def first_missing_positive(nums):
+    n = len(nums)
+    # pass 1: put each value v at index v - 1 if 1 <= v <= n
+    i = 0
+    while i < n:
+        v = nums[i]
+        if 1 <= v <= n and nums[v - 1] != v:
+            nums[v - 1], nums[i] = nums[i], nums[v - 1]
+        else:
+            i += 1
+    # pass 2: scan for the first slot where the wrong value sits
+    for i in range(n):
+        if nums[i] != i + 1:
+            return i + 1
+    return n + 1
+```
+
+After pass 1, position `i` holds value `i + 1` if and only if that
+value appeared in the original array. Pass 2 finds the first
+violation, which gives the missing value. *O(n)* time, *O(1)*
+extra memory.
+
+The mental key: *we cycled values into their "correct" slots, using
+the array itself as the marking surface*. No extra hash set. No
+extra count array. Just clever use of what we already had.
+
+**Other classic uses:**
+- **Find the duplicate number** (each value 1..n appears exactly
+  once except one that appears twice) — same cycling trick.
+- **Set matrix zeroes** — use the first row and first column as
+  flags, then fix them up in a final pass.
+- **Rotate array by k** — three reverses, no extra memory.
+
+The reason these tricks feel like magic is that you are using
+*one piece of memory in two different ways* — both as data and as
+bookkeeping. They reward people who think structurally about what
+the array could be made to do.
+
+## 15. Common bugs (extended catalog)
+
+I gave you five common mistakes in section 7. Here is the longer
+catalog. Each one I have personally seen in interviews, in code
+reviews, and (embarrassingly) in my own code at three in the
+morning.
+
+**Aliasing.** `b = a` does not copy. After `b.append(99)`, the
+list `a` also has `99` at the end. `a` and `b` are two names for
+the same list. To copy: `b = a.copy()` or `b = list(a)` or
+`b = a[:]`. All three give you an independent copy. Beware
+nested lists — those need `copy.deepcopy(a)` if the inner lists
+should also be independent.
+
+**Off-by-one in range.** `range(1, n)` runs from `1` to `n - 1`
+inclusive. If you want to include `n`, write `range(1, n + 1)`.
+The exclusive end is consistent with slicing; once you internalize
+it, the "+1" inconsistencies vanish.
+
+**Forgetting to bound-check a 2D access.** `grid[r][c]` will
+crash with an `IndexError` if `r` or `c` is out of range. Either
+guard with `0 <= r < m and 0 <= c < n`, or write a small helper:
+
+```python
+def in_bounds(r, c, m, n):
+    return 0 <= r < m and 0 <= c < n
+```
+
+and use it.
+
+**Comparing floats for equality.** `0.1 + 0.2 == 0.3` is False
+in Python because floats are binary approximations. If you need
+to check equality of floats, allow a small epsilon:
+`abs(a - b) < 1e-9`. Or just avoid floats entirely; many DSA
+problems are happier with integers.
+
+**Misusing `list.index`.** `nums.index(x)` returns the index of
+the *first* occurrence of `x`. Many algorithms that "find" a value
+secretly do this in a loop, leading to *O(n²)* surprises. Prefer
+explicit `for i, v in enumerate(nums):` when you need fine control.
+
+**Empty arrays.** `nums[0]` on `[]` raises `IndexError`.
+`max([])` raises `ValueError`. Many algorithms assume a
+non-empty array; if the problem says "the array may be empty,"
+handle that case first.
+
+**Strides in slices.** `nums[::-1]` reverses. `nums[::2]` takes
+every other element. `nums[1::2]` takes every other element
+starting at index 1. These are powerful but easy to misread.
+When in doubt, write a normal loop.
+
+**Mutating inside a comprehension.** Comprehensions are for
+*building* new lists, not for side effects. Don't do
+`[print(x) for x in nums]`; just write `for x in nums: print(x)`.
+The comprehension creates a useless list and obscures intent.
+
+**Forgetting that `min` and `max` need a key sometimes.** To find
+the longest string in a list, you want `max(strings, key=len)`,
+not `max(strings)`. The default `max` compares values directly,
+which on strings means lexicographic order.
+
+**The "remove all occurrences" foot-gun.**
+
+```python
+for x in nums:
+    if x == target:
+        nums.remove(x)                  # BUG: skips elements
+```
+
+Removing during iteration is the classical bug. The cure is one
+of:
+
+```python
+nums = [x for x in nums if x != target]      # build new
+# or
+nums[:] = [x for x in nums if x != target]   # in place
+```
+
+The `nums[:] = ...` form is sometimes wanted when other code holds
+a reference to the same list. Otherwise, plain reassignment is
+fine.
+
+## 16. A practical reference card
+
+Print this out. Tape it next to the price list from section 10.
+
+**To do this . . .                                . . . reach for this.**
+- Walk every element ...................... `for x in nums:`
+- Walk with index ......................... `for i, x in enumerate(nums):`
+- Walk in reverse ......................... `for x in reversed(nums):`
+- Walk pairs (i, i+1) ..................... `for i in range(len(nums) - 1):`
+- Walk pairs (i, j) where i < j ........... nested loops, *O(n²)*
+- Build with arithmetic ................... list comprehension
+- Filter ................................... `[x for x in nums if cond(x)]`
+- Map ...................................... `[f(x) for x in nums]`
+- Sum ...................................... `sum(nums)`
+- Min / max ................................ `min(nums)` / `max(nums)`
+- Count ................................... `nums.count(x)`
+- Find index .............................. `nums.index(x)` (raises if missing)
+- Membership .............................. `x in nums` (O(n) on list)
+- Sort ascending .......................... `nums.sort()` (in place)
+- Sort descending ......................... `nums.sort(reverse=True)`
+- Sort by key .............................. `nums.sort(key=lambda x: ...)`
+- Reverse in place ........................ `nums.reverse()`
+- Reverse as a new list ................... `nums[::-1]`
+- Copy list ................................ `nums.copy()` or `list(nums)`
+- Concatenate .............................. `a + b` (creates new)
+- Extend in place .......................... `a.extend(b)`
+- Find max-by-key .......................... `max(nums, key=...)`
+- Group by key ............................. dict from key to list
+- Top-K elements ........................... `heapq.nlargest(k, nums)`
+- Unique elements .......................... `set(nums)` or `list(dict.fromkeys(nums))`
+
+If you don't know one of these by heart, that's fine — but try
+to reach for the idiom rather than re-deriving it from scratch.
+Idioms are fast both to write and to read.
+
+## 17. Mental practice exercises (no code)
+
+I want to leave you with a few mental exercises. Don't write code.
+Just sit with each one for a minute and visualize.
+
+1. *On the array `[5, 2, 8, 1, 9, 3]`, where do the left and
+   right pointers point after the first iteration of the
+   reverse-in-place algorithm? After the second? When does the
+   loop end?*
+
+2. *On the same array, walk Kadane's algorithm in your head. What
+   are the values of `cur` and `best` after each element?*
+
+3. *If `nums = [3, 1, 4, 1, 5]`, what is the prefix sum array?
+   What does `prefix[4] - prefix[1]` equal, and which elements
+   does it sum?*
+
+4. *I want to add `5` to `nums[2..5]` and `-2` to `nums[1..3]` on
+   an array of length 8. Using a difference array, what entries
+   do I touch? What does the difference array look like before
+   the final prefix-sum reconstruction?*
+
+5. *Why is the "values as indices" trick possible only when the
+   values are in a bounded range? What goes wrong if the array
+   contains the number `10⁹`?*
+
+If you can answer all five without writing code, you have
+internalized this chapter. If any feel uncertain, scroll back to
+the relevant section and re-read. There is no rush.
+
+## 18. Looking ahead — where this lesson lands in the curriculum
+
+Every problem in Step 1, Step 2, and Step 3 is some recombination
+of the moves and patterns in this chapter. Let me name a few so
+you know where you are headed.
+
+- **Step 1 problems** (Largest Element, Second Largest, Sorted
+  Check, Rotate Array, Move Zeros, Union of Sorted Arrays,
+  Missing Number, Single Number) all use the basic walk + carry
+  + two-pointer moves you just learned.
+- **Step 3 Easy** (Largest, Second Largest, Sorted Check, Rotate,
+  Move Zeros, Remove Duplicates, Find Missing, Maximum
+  Consecutive Ones, Single Number, Longest Subarray Sum K) is
+  the gym — these problems are designed to make the patterns
+  reflexive.
+- **Step 3 Medium** (Two Sum, Sort 0s 1s 2s, Majority Element,
+  Maximum Subarray, Best Time to Buy and Sell Stock, Rearrange
+  +/-, Next Permutation, Leaders, Longest Consecutive Sequence,
+  Set Matrix Zeros, Rotate Image, Spiral Matrix, Pascal Triangle,
+  Subarray with Sum K) brings in slightly more state. Kadane,
+  prefix sum, two pointers, the values-as-indices trick — all
+  applied to slightly twistier setups.
+- **Step 3 Hard** (Pascal Triangle II, Majority N/3, 3-Sum,
+  4-Sum, Largest Subarray Zero Sum, Subarray with XOR K, Merge
+  Intervals, Merge Two Sorted Arrays In Place, Find Repeating
+  and Missing, Reverse Pairs, Maximum Product Subarray, Count
+  Inversions) extends prefix sum, sliding window, and merge
+  sort into harder territory.
+
+When you start a problem in any of these, your first instinct
+should be: *which of the moves from this chapter applies here?*
+Don't reinvent. Recognize.
+
+## 19. The promise, kept (finally)
+
+If you have read this far, you have done more thinking about
+arrays than 90% of self-taught programmers ever do. That is not
+hyperbole — most people skim the basics, hit a wall on a medium
+problem, and never figure out that the wall was made of beginner
+material they accidentally skipped.
+
+You should now have:
+
+- A picture in your head of how an array sits in memory — slots
+  in a row, fixed size, no gaps.
+- An understanding of **why** indexing is *O(1)* and front
+  operations are *O(n)*. (It is purely about layout, not
+  cleverness.)
+- A confident handle on zero-indexing using the fence-post
+  model, which generalizes to slicing, `range`, and every other
+  half-open Python convention.
+- The four basic moves — left-to-right, scan-and-carry,
+  two-pointer-from-ends, two-pointer-same-direction — that
+  underlie most array algorithms.
+- The prefix-sum and difference-array techniques for fast range
+  queries and bulk updates.
+- A working knowledge of 2D arrays, direction vectors, and the
+  classic mutable-default bug `[[0]*n]*m`.
+- The "values as indices" super-trick for in-place algorithms.
+- A long list of common bugs with concrete fixes.
+- A checklist of questions to ask before writing any array code.
+- A reference card of idioms to reach for.
 
 That is a real foundation. Almost every problem in Step 3 of the
 curriculum is a recombination of these moves with a clever twist.
@@ -442,8 +1001,9 @@ a brand-new algorithm — it is to recognize which of the moves
 above apply, and to add the small problem-specific decoration on
 top.
 
-Take a breath. Read the chapter again if anything felt fast. Then
-move on to the practice problems in Step 3, Lecture 1. They are
-designed to give your new array intuition somewhere to land.
+Take a breath. Read the chapter again if anything felt fast. Re-do
+the mental exercises in section 17. Then move on to the practice
+problems in Step 3, Lecture 1. They are designed to give your new
+array intuition somewhere to land.
 ''',
 }

@@ -357,7 +357,251 @@ sliding window, or canonical-form grouping?"
 These five hit four different patterns. After all five, string
 DSA should feel mechanical.
 
-## 14. Where to go next
+## 14. The Unicode story — and why it sometimes bites
+
+Most beginners never think about Unicode. Then one day they
+process a username that contains an emoji, and `len()` returns
+something they didn't expect. Let me sketch the story.
+
+A **character** is what you see on the screen — the letter `A`,
+the digit `7`, the punctuation `?`, the emoji 😀. A **code point**
+is the numeric ID that Unicode assigns to a character — `A` is
+65, `?` is 63, 😀 is 128512. Python strings are sequences of
+**code points** (in CPython, abstractly). `ord(c)` gives you the
+code point of a one-character string; `chr(n)` gives you the
+character for a code point.
+
+For ASCII characters (codes 0–127), one character = one code
+point = one byte when encoded as UTF-8. For accented Latin
+characters, Greek, Cyrillic, etc., one character = one code point
+= 2 bytes in UTF-8. For Chinese, Japanese, Korean, most code
+points take 3 bytes in UTF-8. Emojis often take 4 bytes.
+
+When you call `len("hello")` in Python 3, you get `5`. When you
+call `len("😀")` you get `1` — because Python counts code points,
+not bytes. The byte length is recoverable via `len("😀".encode())`,
+which returns `4`. The encoded bytes-string and the original
+string are two different views of the same characters.
+
+For DSA problems you can usually pretend strings are ASCII and
+not worry about Unicode at all. Striver's A-Z sheet does this.
+But know that the story is real, and that one day you will read
+a username or file name that breaks your assumptions, and now
+you'll know where to look.
+
+## 15. Hashing strings — looking ahead
+
+Strings can be **hashed** for fast comparison. The simplest hash
+is the built-in `hash(s)` in Python, which assigns a (probably
+unique) integer to each string. Equality on strings is *O(n)* in
+the worst case — Python has to compare every character. But
+checking if a string is in a `set` or used as a `dict` key is
+*O(1) average* — because Python hashes the string once and uses
+that hash to jump to the right bucket. (The hash itself takes
+*O(n)* on the first computation; CPython caches it on the string
+object, so subsequent operations on the same string are *O(1)*.)
+
+For polynomial **rolling hashes** — used in Rabin-Karp,
+duplicate-substring detection, and many other algorithms — we
+compute the hash of a substring `s[i..j]` as a polynomial in
+some base, modulo some large prime. As the window slides, we can
+update the hash in *O(1)* by subtracting the old front character's
+contribution and adding the new back character's contribution.
+The full story is in Step 18 (Advanced Strings), but file the
+preview away — rolling hashes are one of the most beautiful
+techniques in DSA.
+
+## 16. String-DP intuition — looking ahead
+
+A whole family of DP problems lives on pairs of strings: longest
+common subsequence (LCS), edit distance, shortest common
+supersequence, distinct subsequences, regex/wildcard matching.
+The common pattern: `dp[i][j]` summarizes some answer for the
+prefix `s1[0..i-1]` paired against the prefix `s2[0..j-1]`, and
+the transition is "if `s1[i-1] == s2[j-1]`, do X; else do Y."
+
+You will meet these problems in Step 16 (Dynamic Programming).
+The reason I mention them here is to plant a seed: when you see
+a string-pair problem and the answer involves "matching letters
+in order," reach for 2D string DP. The Cartesian grid `(i, j)`
+of prefix-pair states is the canonical state space for these
+problems.
+
+Another string-DP family is **palindromic** — longest palindromic
+substring, longest palindromic subsequence, minimum cuts to
+partition into palindromes. These can usually be solved by
+either (a) the LCS-of-string-and-its-reverse trick, or (b)
+expanding around each center, or (c) Manacher's algorithm
+(advanced).
+
+## 17. Tries — looking further ahead
+
+When you have **many** strings and want to ask prefix-related
+questions ("which words start with `app`?", "is `apple` stored?",
+"what is the longest stored prefix of `applejuice`?"), the right
+data structure is a **trie**. A trie is a tree where each path
+from the root spells a string and shared prefixes share branches.
+It is the natural structure behind autocomplete, spell-checkers,
+IP routing tables, and the longest-common-prefix family of
+problems.
+
+We will spend a whole chapter on tries in Step 17. Until then,
+keep this in mind: any time a problem talks about prefixes,
+shared starts, or "many strings, look up fast," the trie is
+likely your friend.
+
+## 18. The full string toolbox — reference card
+
+A reference card of the string idioms you will use most. Tape
+this somewhere you can see it.
+
+**Building a string fast** — never use `+=` in a loop. Use
+`''.join(parts)`.
+
+**Reversing** — `s[::-1]`.
+
+**Lowercasing for case-insensitive compare** — `s.lower()`. Or
+`s.casefold()` for locale-aware comparison.
+
+**Checking character classes** — `c.isdigit()`, `c.isalpha()`,
+`c.isalnum()`, `c.isspace()`. All return booleans.
+
+**Numeric conversion of a digit char** — `ord(c) - ord('0')`.
+Returns 0..9 for chars '0'..'9'.
+
+**Lowercase letter as index 0..25** — `ord(c) - ord('a')`. Useful
+for fixed-size frequency arrays.
+
+**Counting characters** — `Counter(s)` from `collections`. Or
+`s.count(ch)` for a single character.
+
+**Two strings are anagrams** — `Counter(s1) == Counter(s2)` (or
+`sorted(s1) == sorted(s2)`, which is *O(n log n)*).
+
+**Splitting a sentence into words** — `s.split()` (with no
+argument splits on any whitespace; preferred for free-form text).
+
+**Joining words back** — `' '.join(words)`. The separator can
+be any string.
+
+**Stripping whitespace** — `s.strip()`, `s.lstrip()`, `s.rstrip()`.
+Pass an argument to strip specific characters: `s.strip(',.?!')`.
+
+**Substring search** — `s.find(sub)` returns the index or `-1`.
+`s.index(sub)` raises if missing. `sub in s` returns boolean.
+
+**Substring count (non-overlapping)** — `s.count(sub)`.
+
+**Replace** — `s.replace(a, b)`. Pass a count to limit replacements.
+
+**Check prefix/suffix** — `s.startswith(p)`, `s.endswith(p)`.
+Both can take tuples: `s.startswith(('a', 'b'))`.
+
+**Padding** — `s.zfill(5)` pads with leading zeros to length 5.
+`s.ljust(10)`, `s.rjust(10)`, `s.center(10)` pad with spaces.
+
+**Format numbers** — `f"{value:.2f}"`, `f"{value:,}"`,
+`f"{value:>10}"`. f-strings are powerful, learn them.
+
+If you don't know one of these by heart, look it up *once* and
+then drill it into reflex. Idioms speed up both writing and
+reading.
+
+## 19. Common bugs — extended catalog
+
+I gave you confusion notes earlier. Here is the longer catalog of
+string-specific bugs.
+
+**Mutating attempts.** `s[0] = 'H'` raises `TypeError`. Strings
+are immutable. Build a new string or use a list of characters.
+
+**The `is` vs `==` trap.** `s1 == s2` checks equality. `s1 is s2`
+checks identity (same object in memory). Python interns short
+strings, so sometimes `is` accidentally works — but it is not
+reliable. Always use `==` for value comparison.
+
+**Forgetting that string slices copy.** `s[a:b]` builds a new
+string of length `b - a`. Inside a loop this becomes *O(n²)*
+total. For tight loops, use indices directly.
+
+**Using `+=` for string building.** In Python this is *O(n²)*
+total in a loop. Use a list and `join` at the end:
+
+```python
+# bad
+result = ""
+for x in things:
+    result += str(x)
+# good
+parts = []
+for x in things:
+    parts.append(str(x))
+result = "".join(parts)
+```
+
+**Index out of range on empty strings.** `s[0]` on `""` raises
+`IndexError`. Always check `if not s:` first if your algorithm
+might see empty input.
+
+**Locale-dependent case folding.** `'I'.lower()` returns `'i'`
+in most locales, but Turkish `'I'.lower()` is `'ı'` (dotless i).
+For pure-ASCII problems this doesn't matter; for international
+text, use `casefold()` rather than `lower()`.
+
+**Splitting on whitespace vs a single space.** `'a  b'.split(' ')`
+gives `['a', '', 'b']` (note the empty string between two
+spaces). `'a  b'.split()` (no argument) gives `['a', 'b']`
+(splits on any run of whitespace). Different behaviors;
+choose deliberately.
+
+**The "stripchars are a set" surprise.** `s.strip("abc")` strips
+*any* of `a`, `b`, or `c` from each end — not the literal
+substring `"abc"`. People misread this constantly.
+
+**Off-by-one in palindrome bounds.** Two-pointer palindrome
+checks: the loop condition is `while left < right`. Stop when
+they meet or cross; do not double-check the middle element.
+
+**Forgetting that `replace` does *all* occurrences.** Pass a
+count if you only want to replace the first few.
+
+**Mixing bytes and strings.** In Python 3, `b'hello'` and
+`'hello'` are different types. Concatenating them raises a
+`TypeError`. Encode/decode explicitly when crossing the boundary.
+
+## 20. Mental practice exercises (no code)
+
+Before you close this chapter, work these in your head.
+
+1. *Take `s = "racecar"`. Walk the two-pointer palindrome check.
+   What positions do `left` and `right` visit, and when does the
+   loop end?*
+
+2. *Why is `"aab" == "aab"` always `True` in Python, even though
+   they are technically two different string objects? (Hint:
+   interning.)*
+
+3. *On `s = "abcabcbb"`, walk the sliding-window "longest
+   substring without repeating characters" algorithm in your
+   head. When does the left pointer move? What is the answer?*
+
+4. *Given `words = ["bat", "tab", "cat", "atc"]`, what is the
+   canonical form for grouping anagrams? Which words end up in
+   which groups?*
+
+5. *Why does `"".join(["a", "b", "c"])` cost *O(n)* total, but
+   `result = ""; for x in ["a", "b", "c"]: result += x` cost
+   *O(n²)* total? Where does the difference come from?*
+
+6. *Construct two strings of length 10⁶ that differ only at the
+   last character. Comparing them with `==` is *O(n)*. Hashing
+   them is also *O(n)*. So when does hashing help? (Hint: think
+   about doing many comparisons against the same target.)*
+
+If all six feel comfortable, you have absorbed this chapter. If
+not, scroll back to the matching section.
+
+## 21. Where to go next
 
 - **Step 5 (strings)** — easy and medium string problems.
 - **Step 7 (recursion)** — recursive parsing, palindrome
@@ -368,5 +612,20 @@ DSA should feel mechanical.
 
 Strings are the lingua franca of programming interviews. Spend
 the practice time — the muscle pays off everywhere else.
+
+## 22. The closing pep talk
+
+You have just absorbed more about strings than most working
+programmers ever think about. The reward is that *all* your
+future string work — interview problems, log parsers, ORMs,
+templating engines, JSON handling, search indexes — will feel
+less mysterious. Strings are not "just text." They are arrays of
+code points with immutable storage and rich library support. Now
+you know what's under the hood, and you can reach for the right
+tool by reflex.
+
+Take a break. When you come back, work through the practice
+problems in Step 5. Your string intuition has somewhere to land
+now.
 ''',
 }

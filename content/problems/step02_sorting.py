@@ -81,6 +81,83 @@ this *is* the algorithm.
         # there (min_idx == i), the swap is a harmless no-op.
         arr[i], arr[min_idx] = arr[min_idx], arr[i]
 ''',
+            "walkthrough": r'''
+Selection sort. The simplest sort to *understand* — find the
+smallest, put it first, repeat with the rest. Slow but
+educational.
+
+**`def selection_sort(arr: list[int]) -> None:`** — Takes
+the array, returns nothing. We modify in place (notice the
+return type is `None`).
+
+**`n = len(arr)`** — Cache length.
+
+**`for i in range(n):`** — Outer loop. After iteration `i`,
+the first `i + 1` slots of the array (`arr[0..i]`) are
+final-sorted — they hold the smallest `i + 1` values in their
+correct positions.
+
+The "selection" idea: at each step, we **select** the smallest
+remaining value and put it where it belongs.
+
+**`min_idx = i`** — Initial guess: the smallest in the
+remaining portion is at position `i` itself. We'll update if
+we find something smaller.
+
+**`for j in range(i + 1, n):`** — Inner loop scans the
+remaining unsorted portion (positions `i + 1` onward) looking
+for the actual minimum.
+
+**`if arr[j] < arr[min_idx]:`** — Challenger comparison. If
+`arr[j]` is smaller than our current best, dethrone it.
+
+**`min_idx = j`** — Remember the new champion's index.
+
+**`arr[i], arr[min_idx] = arr[min_idx], arr[i]`** — After the
+inner loop completes, `min_idx` is the position of the
+smallest remaining value. Swap it into position `i`.
+
+If `min_idx == i`, the swap is a no-op (swapping with self).
+Some implementations check for this to skip the wasted swap;
+the version above doesn't bother because the cost is trivial.
+
+**Why is it O(n²)?**
+
+The inner loop runs `n - 1`, `n - 2`, ..., `1`, `0` times for
+successive outer iterations. That's `n × (n - 1) / 2` total
+comparisons — *O(n²)*.
+
+Crucially, **selection sort doesn't benefit from being given
+sorted input.** It scans the entire remaining portion every
+time, regardless of whether the data is sorted. Even on
+already-sorted input, the cost is *O(n²)*. This is in
+contrast to insertion sort (which is *O(n)* on sorted input)
+and Timsort.
+
+**Trace on `[64, 25, 12, 22, 11]`:**
+```
+Iter 0: scan [64,25,12,22,11], min at index 4 (val 11). Swap.
+        arr = [11, 25, 12, 22, 64]
+Iter 1: scan [25,12,22,64], min at index 2 (val 12). Swap.
+        arr = [11, 12, 25, 22, 64]
+Iter 2: scan [25,22,64], min at index 3 (val 22). Swap.
+        arr = [11, 12, 22, 25, 64]
+Iter 3: scan [25,64], min at index 3 (val 25, already there). Swap (no-op).
+Iter 4: scan [], no work. Swap (no-op).
+Result: [11, 12, 22, 25, 64].
+```
+
+**Properties:**
+- **Time**: *O(n²)* always (best, average, worst).
+- **Space**: *O(1)*.
+- **Stable**: No. The swap can rearrange equal elements.
+- **Adaptive**: No. Already-sorted input doesn't speed it up.
+
+Selection sort is **rarely** used in practice — insertion
+sort is faster on small inputs, Timsort on larger ones. But
+it's pedagogically valuable: the algorithm is so simple you
+can write it from scratch with no notes.
+''',
             "complexity": (
                 "**Time**: *O(n²)*. Two nested loops; the work does "
                 "not depend on the input being sorted or not.\n\n"
@@ -351,6 +428,89 @@ swaps**, the array is already sorted and we can stop early.
         if not swapped:
             return
 ''',
+            "walkthrough": r'''
+Bubble sort. Compare neighbors, swap if out of order, repeat
+until no swaps happen. Famous for being slow but simple.
+
+**`def bubble_sort(arr: list[int]) -> None:`** — In-place sort,
+returns nothing.
+
+**`n = len(arr)`** — Cache length.
+
+**`for end in range(n - 1, 0, -1):`** — Outer loop. `end`
+counts **down** from `n - 1` to `1`. Why? Because after each
+pass, the **largest unsorted element bubbles up to position
+`end`** and stays there. So next pass only needs to handle
+elements before that position.
+
+`range(n - 1, 0, -1)` gives the sequence `n-1, n-2, ..., 1`.
+The third argument `-1` makes it decrement; the second
+argument `0` is the exclusive stop, so `0` itself is not
+included (good — we never need to do a "pass" with `end = 0`
+because the array would have only one unsorted element left,
+which is trivially in place).
+
+**`swapped = False`** — Track whether we did any swap this
+pass. If we didn't, the array is already sorted — early exit.
+
+**`for j in range(end):`** — Inner loop: scan from position
+`0` up to position `end - 1`. We compare `arr[j]` with
+`arr[j + 1]`, so the last `j` we want to use is `end - 1`
+(so `j + 1 = end`). `range(end)` is `0, 1, ..., end - 1` —
+exactly what we want.
+
+**`if arr[j] > arr[j + 1]:`** — Out of order: the smaller
+element should come first.
+
+**`arr[j], arr[j + 1] = arr[j + 1], arr[j]`** — Swap them.
+
+**`swapped = True`** — Record that we did work.
+
+**`if not swapped: return`** — **Early exit optimization.**
+If no swap occurred during the whole inner loop, the array is
+already sorted; no point in further passes. This makes bubble
+sort *O(n)* on already-sorted input.
+
+**Why "bubble"?**
+
+Watch the largest element. On any pass, when we compare it to
+its right neighbor, it's strictly larger; so we swap, and the
+big element moves one step right. Next comparison: it's
+again the larger, so it swaps right again. The big element
+"bubbles" to the right end of the unsorted region in a single
+pass.
+
+Smaller elements bubble too, but more slowly — they only
+move one position per pass (each pass, they may or may not
+get swapped depending on their neighbor). A small element at
+the far right of the array can take up to `n` passes to drift
+to the front. **That's why bubble sort is slow.**
+
+**Trace on `[5, 1, 4, 2, 8]`:**
+```
+Pass 1 (end=4): compare (5,1)→swap, (5,4)→swap, (5,2)→swap, (5,8)→no.
+                arr = [1, 4, 2, 5, 8]. swapped=True. (8 bubbled to end.)
+Pass 2 (end=3): (1,4)→no, (4,2)→swap, (4,5)→no.
+                arr = [1, 2, 4, 5, 8]. swapped=True. (4 bubbled.)
+Pass 3 (end=2): (1,2)→no, (2,4)→no.
+                arr unchanged. swapped=False. → Early exit.
+```
+
+Three passes instead of four. Already-sorted input would exit
+after one pass.
+
+**Properties:**
+- **Time**: *O(n²)* worst; *O(n)* best with the early-exit.
+- **Space**: *O(1)*.
+- **Stable**: Yes (we use `>` not `>=`, so equal elements
+  don't swap).
+- **Adaptive**: Yes — already-sorted input runs in *O(n)*.
+
+Bubble sort is the **canonical bad sort**. It's covered for
+pedagogical reasons; you'd never ship it. But its "if no
+work, stop" pattern reappears in algorithms like the
+Bellman-Ford shortest path.
+''',
             "complexity": (
                 "**Time**: *O(n²)* worst case, *O(n)* best case if "
                 "input is already sorted (the early-exit triggers).\n\n"
@@ -616,6 +776,94 @@ shift form.
             j -= 1
         # Drop current into the empty slot we just opened.
         arr[j + 1] = current
+''',
+            "walkthrough": r'''
+Insertion sort. The way humans naturally sort playing cards
+in their hand: pick up each new card and slide it into its
+proper position among the already-sorted ones.
+
+**`def insertion_sort(arr: list[int]) -> None:`** — In-place
+sort.
+
+**`n = len(arr)`** — Cache length.
+
+**`for i in range(1, n):`** — Outer loop. Start at `i = 1`
+because `arr[0..0]` (single element) is trivially sorted.
+After each iteration, `arr[0..i]` is sorted.
+
+The invariant: at the start of each iteration, `arr[0..i-1]`
+is sorted. We extend this by inserting `arr[i]` into its
+correct position.
+
+**`current = arr[i]`** — **Save the value to be inserted.**
+This is critical. We're about to shift elements rightward,
+which will overwrite `arr[i]`. We need a separate copy.
+
+**`j = i - 1`** — Start scanning leftward from just before
+the current insertion point.
+
+**`while j >= 0 and arr[j] > current:`** — Continue while:
+1. We haven't fallen off the left edge (`j >= 0`).
+2. The element at position `j` is larger than what we want to
+   insert. Larger elements must move right to make room.
+
+Note Python's short-circuit evaluation: `j >= 0` is checked
+first. If `j` is `-1`, we don't try to read `arr[-1]` (which
+in Python would wrap around to the last element — wrong!).
+
+**`arr[j + 1] = arr[j]`** — Slide the larger element one
+position to the right. Now position `j + 1` holds what used
+to be at `j`; position `j` is still occupied by the same
+value (we just copied it forward, not moved it).
+
+**`j -= 1`** — Move the scanner one step left, looking at
+the next-leftward element.
+
+**`arr[j + 1] = current`** — After the loop exits, either
+`j < 0` (we hit the left edge — `current` is the smallest so
+far and goes at position 0) or `arr[j] <= current` (we found
+the right spot — `current` goes just to the right of `arr[j]`).
+Either way, `arr[j + 1]` is the empty slot.
+
+**Why is this O(n²) worst case?**
+
+For each `i`, the inner while loop can shift up to `i`
+elements. Summing: `1 + 2 + ... + (n-1) = O(n²)`.
+
+But notice the early-exit: if `arr[j] <= current`, we stop.
+On **already-sorted** input, this triggers immediately on
+every iteration — the inner loop does **zero** work. Total
+time: *O(n)*. This is the best of all *O(n²)* sorts.
+
+**Trace on `[5, 2, 4, 6, 1]`:**
+```
+i=1, current=2, j=0: arr[0]=5 > 2 → shift, j=-1. Stop.
+                     Place at arr[0]. arr = [2, 5, 4, 6, 1].
+i=2, current=4, j=1: arr[1]=5 > 4 → shift, j=0. arr[0]=2 ≤ 4 → stop.
+                     Place at arr[1]. arr = [2, 4, 5, 6, 1].
+i=3, current=6, j=2: arr[2]=5 ≤ 6 → don't enter loop.
+                     Place at arr[3] (no change). arr = [2, 4, 5, 6, 1].
+i=4, current=1, j=3: arr[3]=6 > 1 → shift. j=2. arr[2]=5 > 1 → shift.
+                     j=1. arr[1]=4 > 1 → shift. j=0. arr[0]=2 > 1 → shift.
+                     j=-1. Stop. Place at arr[0]. arr = [1, 2, 4, 5, 6].
+```
+
+**Properties:**
+- **Time**: *O(n²)* worst, *O(n)* best (sorted input).
+- **Space**: *O(1)*.
+- **Stable**: Yes (we use `>` not `>=`, so equal elements
+  preserve order).
+- **Adaptive**: Yes — partially-sorted input runs much faster.
+
+**When is insertion sort actually used?**
+- For **small arrays** (n ≤ 10-30), insertion sort is faster
+  than any *O(n log n)* sort due to lower constants.
+- Python's `Timsort` uses insertion sort on small runs and
+  merge sort to combine them.
+- For **nearly-sorted** data (the common real-world case),
+  insertion sort approaches *O(n)*.
+
+Insertion sort is genuinely useful, not just pedagogical.
 ''',
             "complexity": (
                 "**Time**: *O(n²)* worst and average, *O(n)* on "

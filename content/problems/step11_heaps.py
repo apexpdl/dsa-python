@@ -57,6 +57,39 @@ Sort, then index. *O(n log n)*. Simple and often acceptable.
             "code": r'''def kth_largest_sort(arr: list[int], k: int) -> int:
     return sorted(arr, reverse=True)[k - 1]
 ''',
+            "walkthrough": r'''
+The brute force is a one-liner: just sort and pick. Correct
+but uses *O(n log n)* time and *O(n)* memory.
+
+**`def kth_largest_sort(arr: list[int], k: int) -> int:`** —
+Takes an array and integer k. Returns the kth largest element.
+
+**`return sorted(arr, reverse=True)[k - 1]`** — One expression
+packed with three operations:
+
+1. **`sorted(arr, reverse=True)`** — Build a new list,
+   ascending sorted but reversed (so it's descending). For
+   `arr = [3, 1, 4, 1, 5]`, this gives `[5, 4, 3, 1, 1]`.
+
+2. **`[k - 1]`** — Index into the sorted list. The largest is
+   at index 0, second-largest at index 1, etc. So the kth
+   largest is at index `k - 1`.
+
+For k = 2 on `[5, 4, 3, 1, 1]`, this returns 4.
+
+The `k - 1` is the **fence-post** detail — convert 1-based
+"kth largest" to 0-based array index.
+
+The cost: `sorted` is *O(n log n)* time and *O(n)* memory
+(builds a new list). For small inputs, this is fine. For
+huge arrays where k is small (say k = 5 out of n = 10^9), it's
+wasteful — we only need the top 5 but we're sorting the
+entire array.
+
+The optimized version uses a **min-heap of size k**:
+*O(n log k)* time and *O(k)* memory. For small k this is
+dramatically faster.
+''',
             "complexity": "**Time**: *O(n log n)*. **Space**: *O(n)*.",
         },
         "thought_process": r'''
@@ -99,6 +132,84 @@ def kth_largest(arr: list[int], k: int) -> int:
     # The heap now holds the k largest values. The smallest of them
     # (top of the min-heap) is the k-th largest.
     return heap[0]
+''',
+            "walkthrough": r'''
+The "**min-heap of size k**" trick. One of the most important
+patterns for top-K problems. Let me explain why it works.
+
+**`import heapq`** — Python's heap module. Implements a
+**min-heap**: the smallest item is always at `heap[0]`, and
+`heappush` / `heappop` maintain the heap property in *O(log n)*.
+
+**`def kth_largest(arr: list[int], k: int) -> int:`** — Same
+signature.
+
+**`heap: list[int] = []`** — Our running container of the
+"largest k values seen so far."
+
+**`for x in arr:`** — Walk every element.
+
+**`heapq.heappush(heap, x)`** — Push the new value into the
+heap. *O(log k)* operation (the heap has at most k+1 elements
+at this point).
+
+**`if len(heap) > k: heapq.heappop(heap)`** — If the heap is
+now bigger than k, pop the **smallest** element. We don't want
+to keep more than k items because we only care about the top k.
+
+The popped item is the **smallest** in the heap. Since we want
+the **k largest** values overall, removing the smallest is
+correct: it can't possibly be one of the top k from the entire
+array.
+
+**Invariant**: At the end of each iteration, the heap contains
+exactly the **k largest values** seen so far (or all values if
+we've seen fewer than k).
+
+**`return heap[0]`** — After processing every element, the
+heap holds the k largest values. The **smallest** of them
+(the top of the min-heap) is exactly the **k-th largest** of
+the whole array.
+
+This is a beautiful inversion of perspective. We want the kth
+**largest**, so we use a **min-heap**. Why? Because in a
+collection of k items, the kth-largest *overall* equals the
+smallest *within those k items*. And a min-heap gives us the
+smallest in *O(1)*.
+
+**Why is this O(n log k)?**
+
+We do `n` heap operations, each *O(log k)* (because the heap
+has at most k items). Total *O(n log k)*. Memory is *O(k)*.
+
+For large `n` and small `k` (say `k = 10, n = 10⁹`), this is
+dramatically faster than the brute-force sort:
+- Brute: *O(n log n)* ≈ 10⁹ × 30 = 3 × 10¹⁰
+- Heap: *O(n log k)* ≈ 10⁹ × 3 = 3 × 10⁹
+
+A 10x speedup. Both produce the same answer.
+
+**Worked trace on `arr = [3, 2, 1, 5, 6, 4], k = 2`:**
+
+```
+x  heap before push  push  heap after push  pop?  heap
+3  []                +3    [3]              No    [3]
+2  [3]               +2    [2, 3]           No    [2, 3]
+1  [2, 3]            +1    [1, 2, 3]        Yes   [2, 3]
+5  [2, 3]            +5    [2, 3, 5]        Yes   [3, 5]
+6  [3, 5]            +6    [3, 5, 6]        Yes   [5, 6]
+4  [5, 6]            +4    [4, 5, 6]        Yes   [5, 6]
+End: heap = [5, 6]. The kth (2nd) largest is heap[0] = 5. ✓
+```
+
+The pattern generalizes:
+- **Top K frequent elements**: heap of `(frequency, value)`.
+- **K closest points**: heap of `(distance, point)`.
+- **Merge K sorted lists**: heap of `(value, list_id, index)`.
+
+The unifying principle: **a heap gives O(log k) access to the
+extreme of a small collection**. When the question is "top
+K," reach for a heap of size K.
 ''',
             "complexity": (
                 "**Time**: *O(n log k)*. **Space**: *O(k)*."

@@ -3346,6 +3346,105 @@ Single pass with three pointers (low, mid, high), in place.
             arr[mid], arr[high] = arr[high], arr[mid]
             high -= 1
 ''',
+            "walkthrough": r'''
+**Dutch National Flag** — Dijkstra's three-way partition.
+One pass, *O(n)* time, *O(1)* memory. The classic
+"three-pointer" algorithm.
+
+The setup: imagine the array divided into **four zones**:
+```
+[ 0s | 1s | unprocessed | 2s ]
+ 0..low-1  low..mid-1   mid..high  high+1..n-1
+```
+
+We maintain this invariant as we walk: 0s on the left, 1s in
+the middle, 2s on the right, unprocessed values in between.
+At the end, the "unprocessed" zone is empty and we're done.
+
+**`low = 0; mid = 0; high = len(arr) - 1`** — Initial setup:
+all four zones empty except "unprocessed" which is the whole
+array. `low` and `mid` start at 0 (no 0s or 1s yet); `high`
+starts at the last index (no 2s yet).
+
+**`while mid <= high:`** — Process while the unprocessed zone
+is non-empty. Each iteration handles one element from the
+front of the unprocessed zone.
+
+**`if arr[mid] == 0:`** — Found a 0. It belongs in the 0-zone
+at the front.
+
+**`arr[low], arr[mid] = arr[mid], arr[low]`** — Swap the 0
+to position `low`. What was at `low` (a 1, by the invariant)
+goes to position `mid`.
+
+**`low += 1; mid += 1`** — The 0-zone grew by 1 (low++), and
+we advanced `mid` to the next unprocessed position. Note that
+the just-swapped value at the new `mid - 1` position is a 1,
+which is correctly placed in the 1-zone.
+
+**`elif arr[mid] == 1:`** — Found a 1. Already in the right
+zone — just advance.
+
+**`mid += 1`** — The 1-zone grew by 1.
+
+**`else:  # arr[mid] == 2`** — Found a 2.
+
+**`arr[mid], arr[high] = arr[high], arr[mid]`** — Swap the 2
+to the back. What was at `high` (an **unknown** value, since
+the unprocessed zone reaches up to `high`) comes to the
+front for processing.
+
+**`high -= 1`** — The 2-zone grew by 1 from the left.
+
+**Crucial**: we do **NOT** advance `mid` here. The element
+just swapped in is unprocessed; we need to examine it on the
+next iteration. If we advanced `mid`, we'd skip a potentially
+unsorted element.
+
+**Trace on `[2, 0, 1, 2, 1, 0]`:**
+
+```
+Init: low=0, mid=0, high=5. arr=[2,0,1,2,1,0].
+
+mid=0, arr[0]=2: swap with arr[5]=0. arr=[0,0,1,2,1,2]. high=4.
+mid=0, arr[0]=0: swap with arr[0] (self). low=1, mid=1. arr unchanged.
+mid=1, arr[1]=0: swap with arr[1] (self). low=2, mid=2. arr unchanged.
+mid=2, arr[2]=1: just advance. mid=3.
+mid=3, arr[3]=2: swap with arr[4]=1. arr=[0,0,1,1,2,2]. high=3.
+mid=3, arr[3]=1: just advance. mid=4.
+mid=4 > high=3: loop ends.
+
+Result: [0, 0, 1, 1, 2, 2]. ✓
+```
+
+**Why one pass?**
+
+Each iteration either advances `mid` (0 or 1 case) or
+decrements `high` (2 case). The unprocessed range shrinks by
+1 per iteration. So the loop runs at most `n` times. *O(n)*.
+
+**Properties:**
+- **Time**: *O(n)* — strictly one pass.
+- **Space**: *O(1)* — just three indices.
+- **In-place**: Yes.
+- **Stable**: No — swapping rearranges equal elements.
+
+**Alternative**: counting sort. Count 0s, 1s, 2s in one pass;
+overwrite the array in a second pass. *O(n)* time, *O(1)*
+memory. Same asymptotics but two passes.
+
+The Dutch flag is preferred when:
+- You need a **single pass** (e.g., streaming data).
+- You don't want to look at each element twice.
+
+**Generalization**: this partition technique appears in
+**quicksort** (3-way partition) and in problems like
+"Wiggle sort" and "Sort Colors by 3 categories."
+
+The Dutch National Flag is one of the most elegant in-place
+algorithms ever written. It's named after the Dutch flag
+because it has three colored stripes.
+''',
             "complexity": (
                 "**Time**: *O(n)* — each element is inspected at most "
                 "a constant number of times.\n\n"

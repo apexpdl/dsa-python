@@ -3639,6 +3639,109 @@ current index, and the global best.
             best_overall = best_ending_here
     return best_overall
 ''',
+            "walkthrough": r'''
+**Kadane's algorithm** — one of the most famous *O(n)* DP
+algorithms. Single pass, two scalars. The brute force is
+*O(n²)* by trying every subarray; Kadane collapses it to
+*O(n)* with one beautiful insight.
+
+The insight: for each ending position `i`, the **best subarray
+ending at `i`** is either:
+1. Just `arr[i]` alone (start fresh).
+2. `arr[i]` extending the best subarray ending at `i-1`.
+
+So we keep `best_ending_here` for the current i, and
+`best_overall` for the global answer.
+
+**`def max_subarray(arr: list[int]) -> int:`** — Takes the
+array, returns the maximum contiguous subarray sum.
+
+**`best_ending_here = arr[0]`** — Initialize to the first
+element. The best subarray ending at index 0 is just `arr[0]`
+itself (there's no earlier subarray to extend).
+
+**`best_overall = arr[0]`** — Same starting point. The global
+best so far is at least `arr[0]`.
+
+**`for i in range(1, len(arr)):`** — Walk from index 1
+onward. We've handled index 0 implicitly via the
+initialization.
+
+**`best_ending_here = max(arr[i], best_ending_here + arr[i])`** —
+**The Kadane decision.** For position `i`, the best subarray
+ending here is the max of:
+- `arr[i]` alone (start fresh).
+- `best_ending_here + arr[i]` (extend the previous best).
+
+We take the max. If the previous `best_ending_here` was
+negative, extending would only hurt; starting fresh is better.
+If it was positive, extending adds value.
+
+**`if best_ending_here > best_overall: best_overall = best_ending_here`** —
+Update the global best whenever the current ending beats it.
+
+We could write `best_overall = max(best_overall, best_ending_here)`
+which is equivalent but slightly slower due to the function
+call. The `if` is a tiny optimization.
+
+**`return best_overall`** — Final answer.
+
+**Why does this work?**
+
+Every contiguous subarray has some end position. The optimal
+subarray ends at *some* position; let's call it `j`. Our
+`best_ending_here` at i=j is exactly the optimal subarray's
+sum (by our DP recurrence). When we update `best_overall` at
+that iteration, we capture it.
+
+So the global best is found by considering "best subarray
+ending here" at every position and taking the max.
+
+**Trace on `[-2, 1, -3, 4, -1, 2, 1, -5, 4]`:**
+
+```
+i=0: bend = -2, bover = -2.
+i=1: bend = max(1, -2+1) = max(1, -1) = 1. bover = 1.
+i=2: bend = max(-3, 1-3) = max(-3, -2) = -2. bover = 1.
+i=3: bend = max(4, -2+4) = max(4, 2) = 4. bover = 4.
+i=4: bend = max(-1, 4-1) = max(-1, 3) = 3. bover = 4.
+i=5: bend = max(2, 3+2) = max(2, 5) = 5. bover = 5.
+i=6: bend = max(1, 5+1) = max(1, 6) = 6. bover = 6.
+i=7: bend = max(-5, 6-5) = max(-5, 1) = 1. bover = 6.
+i=8: bend = max(4, 1+4) = max(4, 5) = 5. bover = 6.
+Return 6.
+```
+
+The best subarray is `[4, -1, 2, 1]` summing to 6.
+
+**Why is this DP?**
+
+It's a 1D DP where the state is "best subarray ending at i."
+The recurrence is `dp[i] = max(arr[i], dp[i-1] + arr[i])`.
+The full DP table would be *O(n)* memory; we only need the
+previous value, so it collapses to *O(1)*.
+
+**Properties:**
+- **Time**: *O(n)* — one pass.
+- **Space**: *O(1)* — two scalars.
+- **Stable for finding the answer**, doesn't recover the
+  actual subarray indices unless we track them separately.
+
+**To recover indices**: maintain `current_start`, reset on
+"start fresh", and update `(best_start, best_end)` when
+`best_overall` updates.
+
+**Applications:**
+- Stock buy-sell I (rephrase as max subarray of price diffs).
+- Maximum sum circular subarray (variant — solve standard
+  Kadane, plus "total minus min subarray" for the wraparound
+  case).
+- Maximum product subarray (track both max and min products
+  due to sign flips).
+
+Kadane's algorithm is a **must-know** interview classic. The
+"track local + global" pattern reappears constantly.
+''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(1)*."
             ),
@@ -3922,6 +4025,103 @@ Track the maximum of those.
         if price < min_so_far:
             min_so_far = price
     return best
+''',
+            "walkthrough": r'''
+**Best Time to Buy and Sell Stock I**. The classic "buy once,
+sell once, maximize profit" problem. *O(n)* with the
+running-minimum trick.
+
+**`def max_profit(prices: list[int]) -> int:`** — Takes daily
+prices, returns the maximum profit possible from one
+buy-then-sell pair. If no profitable trade exists, returns 0.
+
+**`min_so_far = prices[0]`** — Track the cheapest price seen
+**so far**. Initially the first day's price. As we walk
+forward, we update this — but it can only decrease.
+
+The mental model: imagine reading the prices day by day,
+remembering "the cheapest day I've seen." If a future day's
+price is higher, that's a potential sell day.
+
+**`best = 0`** — Best profit so far. Starts at 0 because if
+all prices are non-increasing, we don't trade (profit 0).
+We don't take negative trades.
+
+**`for price in prices[1:]:`** — Walk every day starting from
+day 1 (we already initialized with day 0).
+
+**`if price - min_so_far > best: best = price - min_so_far`** —
+**Sell today?** If we'd sold at `price` after buying at
+`min_so_far`, the profit is `price - min_so_far`. If that
+beats our current best, update.
+
+The key insight: we want to **maximize** `price - min_so_far`.
+For any given selling day, the best buy is the cheapest day
+before it. By tracking `min_so_far`, we always know that
+cheapest day in constant time.
+
+**`if price < min_so_far: min_so_far = price`** — **Update
+the running minimum.** If today is cheaper than any day we've
+seen, future days might benefit from buying today.
+
+Note the ordering: we check "sell today" **before** updating
+"buy today." Why? Because we can't buy and sell on the same
+day (or the problem would be trivial). So when considering
+selling on day `i`, the buy day must be **strictly earlier**.
+
+If we updated `min_so_far` first, then `price - min_so_far`
+would be 0 (we'd be subtracting from ourselves). The check
+before update enforces "buy was on a previous day."
+
+**`return best`** — Hand back the maximum profit.
+
+**Trace on `prices = [7, 1, 5, 3, 6, 4]`:**
+
+```
+Init: min_so_far = 7, best = 0.
+day=1, price=1: 1-7 = -6, not > 0. min_so_far = 1.
+day=2, price=5: 5-1 = 4 > 0. best = 4.
+day=3, price=3: 3-1 = 2, not > 4. min_so_far stays 1.
+day=4, price=6: 6-1 = 5 > 4. best = 5.
+day=5, price=4: 4-1 = 3, not > 5.
+Return 5.
+```
+
+Best trade: buy on day 1 (price 1), sell on day 4 (price 6),
+profit 5.
+
+**Properties:**
+- **Time**: *O(n)*. One pass.
+- **Space**: *O(1)*. Two scalars.
+
+**Why does the brute force fail at scale?**
+
+The brute force tries every (buy day, sell day) pair —
+*O(n²)*. For `n = 10⁵`, that's 10 billion ops. Kadane-style
+single-pass is much faster.
+
+**The Kadane connection:**
+
+This problem is **Kadane in disguise**. Consider the
+**day-to-day differences** `d[i] = prices[i] - prices[i-1]`.
+Then the profit of buying on day `a` and selling on day `b` is
+`d[a+1] + d[a+2] + ... + d[b]` — the sum of a contiguous
+subarray of `d`. Max profit = max subarray sum of `d`. Run
+Kadane on `d` and you get the same answer.
+
+Both formulations are *O(n)*. The "running min" version is
+slightly cleaner.
+
+**Variations:**
+- **Stock II** (unlimited transactions): sum all positive
+  daily differences.
+- **Stock III** (at most 2 transactions): DP with multiple
+  states.
+- **Stock IV** (at most K): general DP.
+- **Stock with cooldown / fee**: more DP states.
+
+Stock I is the gateway to a whole family of state-machine
+DPs in Step 16.
 ''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },

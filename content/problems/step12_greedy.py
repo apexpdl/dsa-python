@@ -93,6 +93,78 @@ def find_content_children(g, s):
         j += 1                    # move past this cookie either way
     return i
 ''',
+            "walkthrough": r'''
+The optimal greedy. Sort both arrays, then walk with two
+pointers. *O(n log n + m log m)* due to the sorts; the
+two-pointer walk itself is *O(n + m)*.
+
+**`def find_content_children(g, s):`** — Takes children's
+greed factors `g` and cookie sizes `s`. Returns the maximum
+number of children we can satisfy.
+
+**`g.sort(); s.sort()`** — Sort both arrays in ascending
+order. This is the **enabling step** for the greedy. After
+sorting, smaller children come first (easier to satisfy) and
+smaller cookies come first (use them up before reaching for
+bigger ones).
+
+**`i = j = 0`** — Two pointers. `i` walks through children;
+`j` walks through cookies. We try to match them.
+
+**`while i < len(g) and j < len(s):`** — Continue while we
+have both children left to feed and cookies left to give.
+
+**`if s[j] >= g[i]:`** — Is the current cookie big enough to
+satisfy the current child? Since both arrays are sorted, we
+just need to compare the fronts.
+
+**`i += 1`** — Yes! Child `i` is content. Move to the next
+child. We don't immediately also advance `j` here — that
+happens unconditionally below.
+
+**`j += 1`** — Move past this cookie either way:
+- If we used it (matched a child), the cookie is consumed.
+- If we couldn't use it (this cookie was too small even for
+  the smallest unfed child), then this cookie is useless for
+  every later child (who are at least as greedy) — discard it.
+
+**`return i`** — `i` ends up equal to the number of satisfied
+children. Return it.
+
+**Why is this greedy correct?**
+
+The **exchange argument**: suppose some optimal solution uses
+cookie `B` for child `X`, but cookie `A` (smaller, still
+satisfies `X`) is sitting unused. Then we can swap:
+use `A` for `X` and free up `B`. Either `B` then satisfies
+some other child (improving the solution) or it's wasted (no
+change). Either way, the new solution is at least as good.
+
+So we can always rearrange any optimal solution to use the
+**smallest possible cookie** for each child. That's exactly
+what our greedy does: smallest unfed child + smallest cookie
+that fits + walk.
+
+**Trace on `g = [1, 2, 3], s = [1, 1]`:**
+```
+After sort: g = [1, 2, 3], s = [1, 1]
+i=0, j=0: s[0]=1 >= g[0]=1 → satisfy child 0. i=1.
+         j=1 (advanced unconditionally).
+i=1, j=1: s[1]=1 < g[1]=2 → cookie too small. j=2.
+         (loop ends, j out of range)
+Return i = 1. (Only 1 child satisfied.)
+```
+
+The unused cookie at index 0 (the other size-1) couldn't help
+anyone after child 0 because all later children are greedier.
+
+**Properties:**
+- **Time**: *O(n log n + m log m)* dominated by sorting.
+- **Space**: *O(1)* (sorting in place; just two pointers).
+
+**The pattern**: sort + two pointers + greedy matching. The
+same shape appears in many "match small to small" problems.
+''',
             "complexity": "Time O(n log n + m log m), space O(1).",
         },
         "deep_concept": r'''
@@ -362,6 +434,103 @@ def check_valid_string(s):
         if low < 0:
             low = 0                # clamp: more ')' than '(' is invalid; pretend '*' was something else
     return low == 0
+''',
+            "walkthrough": r'''
+A beautiful **range-tracking** algorithm. Instead of trying
+each interpretation of `*` (3 options each → exponential), we
+track the **range** of possible open-paren counts. One pass,
+constant memory.
+
+**`def check_valid_string(s):`** — Takes a string of `(`, `)`,
+and `*`. Returns True iff some interpretation of `*`
+(each can be `(`, `)`, or empty) makes the string a valid
+balanced-parens.
+
+**`low = high = 0`** — Two counters tracking the **range**
+of possible "open paren counts" after processing each char.
+
+- `low` = minimum possible open count (treat every `*` as a
+  `)`).
+- `high` = maximum possible open count (treat every `*` as a
+  `(`).
+
+At any moment, the actual open count is somewhere in
+`[low, high]` depending on how we interpret each `*` seen so
+far.
+
+**`for ch in s:`** — Walk every char.
+
+**`if ch == '(': low += 1; high += 1`** — A `(` increases the
+open count by exactly 1, regardless of interpretation. Both
+bounds shift up.
+
+**`elif ch == ')': low -= 1; high -= 1`** — A `)` decreases
+the open count by exactly 1. Both bounds shift down.
+
+**`else: low -= 1; high += 1`** — A `*` can decrease (acting
+as `)`), increase (acting as `(`), or leave unchanged (empty).
+The minimum action is to decrease (`low -= 1`). The maximum
+is to increase (`high += 1`). The bounds widen.
+
+**`if high < 0: return False`** — If even the **maximum**
+possible open count is negative, then **every** interpretation
+has too many `)`s. Invalid — no way to fix it.
+
+**`if low < 0: low = 0`** — **Clamp** `low` to zero. Here's
+why: `low < 0` means some bad interpretation has negative
+opens, but valid sequences can't have negative opens.
+We discard that interpretation by setting `low = 0` — that is,
+"the minimum possible open count remains 0; we just won't
+consider interpretations that would go negative."
+
+**`return low == 0`** — At the end, the string is valid iff
+some interpretation balances exactly. `low <= 0 <= high`
+means 0 is in the possible range. After clamping `low` to
+zero earlier, the check `low == 0` is sufficient.
+
+**Why does this work?**
+
+The key insight: even though `*` has 3 interpretations each
+(creating 3^k possible total interpretations for k stars),
+the **range** of resulting open counts is contiguous (an
+interval). So we only need to track the two endpoints, not
+the whole exponential set.
+
+After processing the whole string, we want some
+interpretation to give open count = 0. That's possible iff
+0 ∈ [low, high]. With our clamping, that simplifies to
+`low == 0`.
+
+**Trace on `s = "(*))"`:**
+```
+Char '(' : low=1, high=1.
+Char '*' : low=0, high=2. (range: 0 to 2 opens)
+Char ')' : low=-1 → clamp to 0, high=1.
+Char ')' : low=-1 → clamp to 0, high=0.
+End: low=0, high=0. Return low == 0 → True.
+```
+
+Trace on `s = "((*)`:
+```
+Char '(' : low=1, high=1.
+Char '(' : low=2, high=2.
+Char '*' : low=1, high=3.
+Char ')' : low=0, high=2.
+End: low=0, high=2. Return low == 0 → True.
+```
+
+Trace on `s = ")("`:
+```
+Char ')' : low=-1, high=-1. high < 0 → return False.
+```
+
+**Properties:**
+- **Time**: *O(n)* single pass.
+- **Space**: *O(1)*.
+
+The pattern — **track a feasibility interval** rather than
+each possibility — appears in many other constraint problems
+(longest valid substring, validate IP, etc).
 ''',
             "complexity": "Time O(n), space O(1).",
         },

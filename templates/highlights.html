@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Highlights — DSA for Beginners{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>Highlights</h1>
+  <p class="muted">
+    Snippets you saved while reading. Select any text on a lesson or
+    problem page, then click the "★ Save highlight" pill that appears.
+    Highlights live in this browser only.
+  </p>
+</section>
+
+<ul class="highlight-list" data-highlight-list>
+  <li class="highlight-empty" data-highlight-empty>
+    No highlights yet. Go to a lesson or problem, select text, and click
+    "★ Save highlight" — it will appear here.
+  </li>
+</ul>
+
+<template id="highlight-template">
+  <li class="highlight-entry">
+    <blockquote data-text></blockquote>
+    <div class="highlight-meta">
+      <span class="kind kind-problem" data-kind>page</span>
+      <a data-link></a>
+      <span data-time></span>
+      <button type="button" class="delete-highlight" data-delete>Delete</button>
+    </div>
+  </li>
+</template>
+{% endblock %}

@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}Code Playground — DSA for Beginners{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>Code Playground</h1>
+  <p class="muted">
+    A real Python 3 interpreter that runs <strong>entirely in your
+    browser</strong> (via Pyodide). No server, no signup. Try the
+    algorithms you're learning, modify them, see the output.
+  </p>
+</section>
+
+<div class="playground">
+  <div class="playground-help">
+    <h3>How to use</h3>
+    <p>
+      Type Python in the editor below and click <strong>Run</strong>
+      (or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>). The first run loads
+      Python (~6&nbsp;MB) and may take a few seconds. Subsequent runs
+      are instant. Output (including <code>print()</code> and errors)
+      appears in the panel underneath.
+    </p>
+    <p>Most of the standard library is available — including
+      <code>collections</code>, <code>heapq</code>, <code>bisect</code>,
+      <code>math</code>, <code>functools</code>, <code>itertools</code>.
+      No <code>input()</code> (you must hard-code inputs).</p>
+  </div>
+
+  <div class="playground-templates">
+    <strong style="font-size:13px;color:var(--fg-muted);align-self:center;">Templates:</strong>
+    <button class="btn btn-small" data-template="hello">Hello world</button>
+    <button class="btn btn-small" data-template="fib">Fibonacci</button>
+    <button class="btn btn-small" data-template="binary-search">Binary search</button>
+    <button class="btn btn-small" data-template="kadane">Kadane (max subarray)</button>
+    <button class="btn btn-small" data-template="two-sum">Two Sum</button>
+    <button class="btn btn-small" data-template="bfs">BFS on graph</button>
+  </div>
+
+  <div class="playground-shell">
+    <div class="playground-bar">
+      <div class="left">
+        <strong>main.py</strong>
+        <span class="playground-status" data-status>Python not loaded</span>
+      </div>
+      <div class="right">
+        <button class="btn btn-small" data-clear-output>Clear output</button>
+        <button class="btn btn-primary" data-run-code>▶ Run</button>
+      </div>
+    </div>
+    <textarea class="playground-editor"
+              data-editor
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              wrap="off"
+              placeholder="# Write Python here. Ctrl+Enter to run.&#10;print('Hello from Pyodide!')&#10;">print("Welcome to the DSA playground.")
+print("Try a problem from the sheet, or a template above.")
+print()
+print("Sum of 1..100:", sum(range(1, 101)))
+</textarea>
+    <pre class="playground-output" data-output>(no output yet — click Run)</pre>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+(function () {
+  const editor = document.querySelector("[data-editor]");
+  const outputEl = document.querySelector("[data-output]");
+  const statusEl = document.querySelector("[data-status]");
+  const runBtn = document.querySelector("[data-run-code]");
+  const clearBtn = document.querySelector("[data-clear-output]");
+
+  let pyodideReadyPromise = null;
+  let pyodide = null;
+
+  function setStatus(text, busy) {
+    statusEl.textContent = text;
+    if (busy) {
+      statusEl.style.background = "var(--accent)";
+      statusEl.style.color = "white";
+    } else {
+      statusEl.style.background = "var(--accent-soft)";
+      statusEl.style.color = "var(--fg)";
+    }
+  }
+
+  function appendOutput(text, isError) {
+    if (outputEl.textContent === "(no output yet — click Run)") {
+      outputEl.textContent = "";
+    }
+    outputEl.textContent += text;
+    outputEl.classList.toggle("error", !!isError);
+    outputEl.scrollTop = outputEl.scrollHeight;
+  }
+
+  function clearOutput() {
+    outputEl.textContent = "(no output yet — click Run)";
+    outputEl.classList.remove("error");
+  }
+
+  async function loadPyodideOnce() {
+    if (pyodideReadyPromise) return pyodideReadyPromise;
+    setStatus("Loading Python…", true);
+    pyodideReadyPromise = (async () => {
+      pyodide = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
+        stdout: (s) => appendOutput(s + "\n", false),
+        stderr: (s) => appendOutput(s + "\n", true),
+      });
+      setStatus("Python ready", false);
+      return pyodide;
+    })();
+    return pyodideReadyPromise;
+  }
+
+  async function runCode() {
+    clearOutput();
+    runBtn.disabled = true;
+    runBtn.textContent = "Running…";
+    try {
+      await loadPyodideOnce();
+      const code = editor.value;
+      // Use runPythonAsync so top-level await also works.
+      const result = await pyodide.runPythonAsync(code);
+      // If the script's last expression has a value, surface it (REPL style).
+      if (result !== undefined && result !== null && String(result) !== "") {
+        // toJs converts Python objects to JS for printing. Strings are passed through.
+        const repr = (typeof result === "object" && result && typeof result.toString === "function")
+          ? result.toString()
+          : String(result);
+        if (repr) {
+          // Only print if not already in output (since print() is the usual path).
+          // Skip empty trailing values to keep output clean.
+        }
+      }
+      if (outputEl.textContent === "" || outputEl.textContent === "(no output yet — click Run)") {
+        outputEl.textContent = "(no output — your code didn't print anything)";
+        outputEl.classList.remove("error");
+      }
+    } catch (err) {
+      appendOutput(String(err && err.message ? err.message : err) + "\n", true);
+    } finally {
+      runBtn.disabled = false;
+      runBtn.textContent = "▶ Run";
+    }
+  }
+
+  runBtn.addEventListener("click", runCode);
+  clearBtn.addEventListener("click", clearOutput);
+
+  // Ctrl+Enter / Cmd+Enter runs the code from inside the editor.
+  editor.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      runCode();
+    }
+    // Tab inserts spaces instead of changing focus.
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      editor.value = editor.value.substring(0, start) + "    " + editor.value.substring(end);
+      editor.selectionStart = editor.selectionEnd = start + 4;
+    }
+  });
+
+  // Template snippets the user can drop into the editor.
+  const TEMPLATES = {
+    "hello": `print("Hello, DSA!")
+print("Today is a great day to solve a problem.")
+`,
+    "fib": `def fib(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+
+for i in range(10):
+    print(f"fib({i}) = {fib(i)}")
+`,
+    "binary-search": `def binary_search(arr, target):
+    lo, hi = 0, len(arr) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if arr[mid] == target:
+            return mid
+        if arr[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1
+
+arr = [-3, -1, 0, 2, 4, 7, 11, 13, 18, 22]
+for t in [4, 13, 17, -3, 22, 100]:
+    print(f"index of {t} = {binary_search(arr, t)}")
+`,
+    "kadane": `def max_subarray(arr):
+    best = current = arr[0]
+    for x in arr[1:]:
+        current = max(x, current + x)
+        best = max(best, current)
+    return best
+
+print(max_subarray([-2, 1, -3, 4, -1, 2, 1, -5, 4]))
+# Expected: 6 (from [4, -1, 2, 1])
+`,
+    "two-sum": `def two_sum(nums, target):
+    seen = {}
+    for i, x in enumerate(nums):
+        need = target - x
+        if need in seen:
+            return [seen[need], i]
+        seen[x] = i
+    return [-1, -1]
+
+print(two_sum([2, 7, 11, 15], 9))   # [0, 1]
+print(two_sum([3, 2, 4], 6))         # [1, 2]
+print(two_sum([3, 3], 6))            # [0, 1]
+`,
+    "bfs": `from collections import deque
+
+def bfs(graph, start):
+    visited = {start: 0}
+    q = deque([start])
+    while q:
+        u = q.popleft()
+        for v in graph.get(u, ()):
+            if v not in visited:
+                visited[v] = visited[u] + 1
+                q.append(v)
+    return visited
+
+graph = {
+    "A": ["B", "C"],
+    "B": ["A", "D"],
+    "C": ["A", "D", "E"],
+    "D": ["B", "C"],
+    "E": ["C"],
+}
+print(bfs(graph, "A"))
+`,
+  };
+
+  document.querySelectorAll("[data-template]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-template");
+      if (TEMPLATES[key]) {
+        editor.value = TEMPLATES[key];
+        editor.focus();
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

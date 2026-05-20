@@ -101,6 +101,18 @@ def bookmarks():
     return render_template("bookmarks.html", problems=PROBLEMS)
 
 
+@app.route("/highlights")
+def highlights():
+    # Highlights live entirely in localStorage. This route just shows the shell.
+    return render_template("highlights.html")
+
+
+@app.route("/code")
+def code_playground():
+    # Browser-side Python (Pyodide) playground.
+    return render_template("code.html")
+
+
 @app.errorhandler(404)
 def not_found(_):
     return render_template("404.html"), 404

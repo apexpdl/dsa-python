@@ -1020,6 +1020,110 @@ def coin_change(coins, amount):
                 dp[a] = min(dp[a], dp[a - c] + 1)
     return dp[amount] if dp[amount] != INF else -1
 ''',
+            "walkthrough": r'''
+**Coin Change** (minimum coins). The canonical **unbounded
+knapsack** problem with **min** instead of max. *O(amount × |coins|)*.
+
+The problem: given coin denominations and a target amount,
+find the **fewest** coins needed to make the amount. Each
+coin can be used unlimited times. Return -1 if impossible.
+
+**`def coin_change(coins, amount):`** — Takes coins and
+amount, returns min coin count or -1.
+
+**`INF = amount + 1`** — A sentinel meaning "impossible." We
+use `amount + 1` because the answer (if it exists) is at
+most `amount` (using `amount` coins of value 1). Any value
+larger than `amount` means "no solution."
+
+We could use `float('inf')`, but `amount + 1` keeps
+everything as integers — cleaner.
+
+**`dp = [INF] * (amount + 1); dp[0] = 0`** — Initialize the
+DP array. `dp[a]` will hold the min coins for amount `a`.
+- `dp[0] = 0`: 0 coins make amount 0.
+- All others start at INF (unsolved).
+
+**`for a in range(1, amount + 1):`** — Build up `dp` from
+amount 1 to `amount`.
+
+**`for c in coins:`** — For each available coin denomination.
+
+**`if c <= a:`** — Can this coin "fit" into amount `a`? If
+the coin's value exceeds the amount, we can't use it for this
+amount.
+
+**`dp[a] = min(dp[a], dp[a - c] + 1)`** — **The recurrence.**
+If we use coin `c` as the last coin, the remaining amount is
+`a - c`, requiring `dp[a - c]` coins. Plus 1 for the current
+coin.
+
+Take the minimum across all possible "last coin" choices.
+
+**`return dp[amount] if dp[amount] != INF else -1`** — Final
+answer. If still INF, no solution; return -1.
+
+**Trace on `coins = [1, 2, 5], amount = 11`:**
+
+```
+dp[0] = 0.
+dp[1]: c=1: dp[1] = min(INF, dp[0]+1) = 1.
+dp[2]: c=1: dp[2] = min(INF, dp[1]+1) = 2.
+       c=2: dp[2] = min(2, dp[0]+1) = 1.
+dp[3]: c=1: dp[3] = min(INF, 1+1) = 2.
+       c=2: dp[3] = min(2, 1+1) = 2.
+dp[4]: c=1: dp[4] = 3. c=2: dp[4] = min(3, 2)=2.
+dp[5]: c=1: 3. c=2: min(3, 2+1)=3. c=5: min(3, 0+1)=1. dp[5]=1.
+dp[6]: c=1: 2. c=2: min(2, 1+1)=2. c=5: min(2, 1+1)=2. dp[6]=2.
+... (continue) ...
+dp[11]: c=5: dp[11] = min(_, dp[6]+1) = 2+1 = 3.
+         c=2: dp[11] = min(3, dp[9]+1).
+         dp[9] = 3 (5+2+2 or 5+2+2). dp[11] = min(3, 4) = 3.
+         c=1: dp[11] = min(3, dp[10]+1) = min(3, 2+1) = 3.
+
+Return dp[11] = 3.
+```
+
+Three coins: 5 + 5 + 1 = 11. Correct.
+
+**Why unbounded vs 0/1?**
+
+Notice we iterate `a` **upward**. When we compute `dp[a]`
+using coin `c`, we look at `dp[a - c]` — which has **already
+been updated** with the current coin available. This means
+the current coin can be used **multiple times** in the
+optimal solution for `dp[a]`. That's exactly what we want
+for unbounded.
+
+If we wanted 0/1 (each coin used at most once), we'd iterate
+**downward** to ensure `dp[a - c]` represents "without this
+coin available yet."
+
+**Properties:**
+- **Time**: *O(amount × |coins|)*. Pseudo-polynomial in
+  amount.
+- **Space**: *O(amount)*.
+
+**Why not greedy?**
+
+For "nice" coin systems (US coins: 1, 5, 10, 25), greedy
+"take the largest coin that fits" works. But for arbitrary
+coins like `[1, 3, 4]` with `amount = 6`:
+- Greedy: 4 + 1 + 1 = 3 coins.
+- Optimal: 3 + 3 = 2 coins.
+
+So greedy can fail; DP is general.
+
+**Related:**
+- **Coin Change II** (count ways): same shape, replace `min`
+  with `sum`.
+- **Perfect squares**: coins are perfect squares (1, 4, 9, 16
+  ...). Same algorithm.
+- **Minimum number of refueling stops**: similar DP shape.
+
+Coin Change is the gateway to unbounded knapsack and
+reusable-resource DP problems.
+''',
             "complexity": "Time O(amount · |coins|).",
         },
         "deep_concept": "—",

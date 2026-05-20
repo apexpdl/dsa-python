@@ -2827,6 +2827,55 @@ This is the first time you really feel the cost of redundant work.
     # CORRECT but slow because of overlapping subproblems.
     return fib_brute(n - 1) + fib_brute(n - 2)
 ''',
+            "walkthrough": r'''
+This is the most famous "obviously correct but unacceptably
+slow" function in computer science. Three lines, deep lesson.
+
+**`def fib_brute(n: int) -> int:`** — Takes an integer `n`,
+returns the `n`-th Fibonacci number.
+
+**`if n < 2: return n`** — The **base case**. Fibonacci is
+defined as `F(0) = 0` and `F(1) = 1`. The condition `n < 2`
+captures both: when `n` is 0, return 0; when `n` is 1, return
+1. We need two base cases (not just one) because the recursive
+step subtracts 2, so we need both `n - 1` and `n - 2` to
+eventually bottom out cleanly.
+
+Why `< 2` instead of two separate `== 0` and `== 1` checks?
+Compactness. The behavior is the same: when `n` is 0, we
+return 0; when `n` is 1, we return 1. The single condition
+covers both cases.
+
+**`return fib_brute(n - 1) + fib_brute(n - 2)`** — The
+**recursive case**, a direct translation of the mathematical
+definition `F(n) = F(n-1) + F(n-2)`. Two recursive calls, one
+addition.
+
+The reason this code is so beautiful and so terrible: it's
+beautiful because it's a one-to-one match with the math. It's
+terrible because it computes the same subproblems over and
+over again.
+
+Trace `fib_brute(5)`. It calls `fib(4)` and `fib(3)`. `fib(4)`
+in turn calls `fib(3)` and `fib(2)`. **Already `fib(3)` is
+being computed twice!** And it gets worse. `fib(3)` is
+computed twice, `fib(2)` is computed three times, `fib(1)` is
+computed five times, `fib(0)` is computed three times. The
+recursion tree explodes exponentially even though there are
+only `n + 1` distinct subproblems (`F(0)` through `F(n)`).
+
+The time complexity works out to roughly `O(φⁿ)` where φ ≈
+1.618 (the golden ratio). For `n = 30`, this means about a
+million calls. For `n = 50`, more than a billion. For `n =
+100`, the heat death of the universe arrives before the
+function returns.
+
+The fix (in the optimized section): notice that we're
+re-computing things, and **remember** the answers we've
+already computed. This single insight transforms the
+exponential function into a linear one. It's the conceptual
+seed of dynamic programming.
+''',
             "complexity": (
                 "**Time**: *O(φⁿ)* — exponential. **Space**: *O(n)* "
                 "call stack."
@@ -2937,6 +2986,78 @@ version, the one to ship):
         prev2, prev1 = prev1, prev1 + prev2
     # After the loop, prev1 is F(n).
     return prev1
+''',
+            "walkthrough": r'''
+The bottom-up version. We trade the recursive call tree for a
+single linear loop with constant memory. This is the version
+you'd ship to production.
+
+**`def fib(n: int) -> int:`** — Same signature as the brute
+force.
+
+**`if n < 2: return n`** — Same base case as before. Handle
+`F(0) = 0` and `F(1) = 1` directly so the loop below can
+start at `i = 2`.
+
+**`prev2, prev1 = 0, 1`** — Initialize two variables to hold
+the most recent two Fibonacci values. `prev2 = F(0) = 0` and
+`prev1 = F(1) = 1`. These are our "window of size 2" into the
+sequence. The key insight: to compute `F(i)`, we only need
+`F(i-1)` and `F(i-2)`. We don't need to remember anything
+older than that. So we keep exactly two variables.
+
+This is **space optimization**. The naive DP would build a
+full array `dp[0..n]` of size O(n). But we never reference
+`dp[i-3]`, `dp[i-4]`, etc. — so why store them? Two scalars
+suffice. This trick (rolling two variables for a 1-D DP) shows
+up in many later problems.
+
+**`for _ in range(2, n + 1):`** — Loop from `i = 2` to `i = n`
+inclusive. The `+ 1` in `n + 1` accounts for Python's
+exclusive upper bound: `range(2, 5)` gives `2, 3, 4`, not
+`2, 3, 4, 5`. We want to include `n` itself.
+
+The underscore `_` is Python convention for "loop variable we
+don't use." We don't actually need the index `i` because we're
+updating `prev1` and `prev2` directly; we just need to know
+how many iterations to do. Using `_` signals to readers "I
+don't care about the loop counter."
+
+**`prev2, prev1 = prev1, prev1 + prev2`** — Here is the magic
+line. Parallel assignment in Python. The right side is
+evaluated **completely first** using the old values, then both
+names are assigned.
+
+So if before this line `prev2 = a` and `prev1 = b`:
+- Old `prev1` was `b`, becomes the new `prev2`.
+- `prev1 + prev2` is `b + a`, becomes the new `prev1`.
+
+After this line: `prev2 = b`, `prev1 = a + b`. We've "slid the
+window" one position to the right.
+
+This trick — parallel assignment to swap or shift state —
+avoids the need for a temporary variable. Without it we'd need:
+```python
+temp = prev1 + prev2
+prev2 = prev1
+prev1 = temp
+```
+Same algorithm, three lines instead of one. Python's tuple
+assignment compresses it.
+
+**`return prev1`** — After the loop, `prev1` holds the most
+recently computed Fibonacci value, which is `F(n)`. Return it.
+
+Total work: one iteration per Fibonacci number from 2 to n,
+each doing constant work. That's *O(n)* time. Memory is just
+two integers — *O(1)*. Compare to the brute force's *O(φⁿ)*
+time and *O(n)* recursion stack. We went from "impractical
+for n > 35" to "instant for n = 1,000,000."
+
+The lesson here is one of the central lessons of DP: **identify
+which subproblem answers you actually need at each step, and
+keep only those.** Don't store the whole history if a small
+window will do.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(1)*."
@@ -3356,6 +3477,59 @@ We will improve to a single pass using a dictionary.
         result[x] = count
     return result
 ''',
+            "walkthrough": r'''
+The brute force counts every distinct value by re-walking the
+whole array. Let me explain piece by piece.
+
+**`def count_freq_brute(arr: list) -> dict:`** — Takes a list,
+returns a dictionary mapping each distinct value to how many
+times it appears.
+
+**`seen = []`** — A list of values we have already counted. We
+maintain this to avoid re-counting a value that appears
+multiple times in the array.
+
+**`result = {}`** — An empty dictionary to hold our final
+answer.
+
+**`for x in arr:`** — Outer loop: each iteration picks a
+candidate value from the array.
+
+**`if x in seen: continue`** — Skip if we've already counted
+`x` in a previous iteration. The `continue` keyword jumps to
+the next iteration of the outer loop without executing the
+rest of the body. This guard is necessary because the outer
+loop walks **all** elements, including duplicates. Without
+the skip, we'd waste effort recounting.
+
+But notice: `x in seen` itself is *O(len(seen))* because `seen`
+is a list and `in` does a linear scan. This is why the
+overall complexity is *O(n²)* in the worst case.
+
+**`seen.append(x)`** — Record that we're about to count `x`,
+so the next time we see it in the outer loop we'll skip.
+
+**`count = 0`** — Reset the counter for this new value.
+
+**`for y in arr:`** — Inner loop: walk the whole array again
+looking for `x`.
+
+**`if y == x: count += 1`** — Tally each match.
+
+**`result[x] = count`** — Record the final count under the key
+`x`. The dictionary will end up with one entry per distinct
+value.
+
+**`return result`** — Hand back the count map.
+
+The cost: outer loop runs `n` times. For each iteration, the
+`seen` lookup costs up to *O(n)*, and if `x` is new, the inner
+loop also costs *O(n)*. Total: *O(n²)*. For `n = 100,000`,
+that's 10 billion operations — way too slow.
+
+The optimized version uses a hash map (`Counter`) to do all
+the counting in one linear pass. Same answer, *O(n)* time.
+''',
             "complexity": (
                 "**Time**: *O(n²)* in the worst case.\n\n"
                 "**Space**: *O(n)* for the result and the `seen` list."
@@ -3406,6 +3580,88 @@ def count_freq_manual(arr: list) -> dict:
         # start its count at 0 and immediately bump to 1.
         counts[x] = counts.get(x, 0) + 1
     return counts
+''',
+            "walkthrough": r'''
+The optimal version uses a hash map (Python's dict, or
+`Counter` which is a specialized dict). Single pass, *O(n)*.
+
+**Version 1: Using Counter**
+
+**`from collections import Counter`** — Import Counter from
+Python's standard library. Counter is a dict subclass purpose-
+built for counting.
+
+**`def count_freq(arr: list) -> dict:`** — Function signature.
+
+**`return dict(Counter(arr))`** — Three operations packed into
+one expression:
+1. `Counter(arr)` walks the array once, building a Counter
+   that maps each value to its count.
+2. `dict(...)` converts the Counter to a plain dict. Strictly
+   speaking unnecessary (Counter IS a dict), but it gives us
+   a regular dict if the caller expects that exact type.
+
+Counter is implemented in optimized C inside Python, so it's
+faster than a hand-written loop for large arrays. It's the
+idiomatic choice for "give me the frequency map."
+
+**Version 2: Manual hash map**
+
+For learning purposes, here's the same idea without Counter,
+showing exactly what's happening inside.
+
+**`def count_freq_manual(arr: list) -> dict:`** — Same return
+shape.
+
+**`counts: dict = {}`** — Start with an empty dict.
+
+**`for x in arr:`** — Walk each element of the array exactly
+once.
+
+**`counts[x] = counts.get(x, 0) + 1`** — Increment the count
+for value `x`. Let me explain this carefully because it's a
+core idiom.
+
+`counts.get(x, 0)` is Python's "safe lookup with default."
+It returns `counts[x]` if `x` is a key in `counts`, and
+returns `0` otherwise. The default `0` is what saves us from
+a `KeyError` when `x` hasn't been seen before.
+
+We then add 1 (because we just saw `x` one more time) and
+assign back to `counts[x]`. If `x` was new, we end up with
+`counts[x] = 1`. If it was at 3, we end up with `counts[x] = 4`.
+
+You could also write this as:
+```python
+if x in counts:
+    counts[x] += 1
+else:
+    counts[x] = 1
+```
+Three lines instead of one. Or use `defaultdict(int)`:
+```python
+from collections import defaultdict
+counts = defaultdict(int)
+for x in arr:
+    counts[x] += 1
+```
+All three styles are correct. The `get` style is shortest;
+defaultdict is cleanest when many later operations expect a
+default; Counter is the most idiomatic when you just want
+frequencies.
+
+**`return counts`** — Hand back the frequency map.
+
+Total work: one pass through the array. Each iteration does
+a hash lookup (O(1) average) and an assignment. Total *O(n)*
+time, *O(k)* memory where `k` is the number of distinct
+values. That's a massive improvement over the brute force's
+*O(n²)*.
+
+The key insight: **hash maps turn "for each value, count
+occurrences" from a nested loop into a single linear pass.**
+Each element of the array is examined exactly once; the hash
+takes care of remembering everything we've seen.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(k)* where `k` is the "

@@ -1308,6 +1308,141 @@ def dijkstra(V, adj, src):
                 heapq.heappush(h, (nd, v))
     return dist
 ''',
+            "walkthrough": r'''
+**Dijkstra's algorithm** — one of the most famous algorithms
+in computer science. Computes shortest paths from a single
+source to all vertices in a graph with **non-negative edge
+weights**. *O((V + E) log V)* with a min-heap.
+
+**`import heapq`** — Python's min-heap. We'll use it to
+always extract the next "closest unfinalized" vertex.
+
+**`def dijkstra(V, adj, src):`** — Takes the number of
+vertices, an adjacency list `adj[u] = [(v, w), ...]` of
+(neighbor, edge weight) pairs, and the source vertex.
+Returns an array of shortest distances from `src`.
+
+**`INF = float('inf')`** — A "haven't reached yet" sentinel.
+
+**`dist = [INF] * V`** — Distance array, all infinity
+initially. By the end, `dist[u]` will hold the shortest
+distance from `src` to `u`.
+
+**`dist[src] = 0`** — Source is at distance 0 from itself.
+
+**`h = [(0, src)]`** — Min-heap initialized with `(0, src)`.
+We store tuples `(distance, vertex)` so the heap orders by
+distance ascending. The smallest entry is always the next
+vertex to finalize.
+
+**`while h:`** — Continue while there's something to process.
+
+**`d, u = heapq.heappop(h)`** — Extract the vertex with the
+**smallest tentative distance**. This is the **greedy step**:
+Dijkstra claims that this vertex's distance is now **final**
+— no shorter path can exist (assuming non-negative weights).
+
+**`if d > dist[u]: continue`** — **Stale entry skip.** The
+heap might contain multiple entries for the same vertex (we
+push every time we improve a distance). The first time we pop
+`u`, the distance is correct. Later pops for `u` have stale,
+larger distances — skip them.
+
+The reason we don't bother removing old entries when we add
+new ones: removing from a heap is *O(n)*. It's cheaper to
+just push duplicates and skip when popping. This is called
+**lazy deletion**.
+
+**`for v, w in adj[u]:`** — For each neighbor `v` of `u`, with
+edge weight `w`...
+
+**`nd = d + w`** — Compute the candidate new distance to `v`:
+distance to `u` plus the edge weight.
+
+**`if nd < dist[v]:`** — **Relaxation step.** If this path is
+shorter than any path we've found to `v` so far...
+
+**`dist[v] = nd`** — Update the distance.
+
+**`heapq.heappush(h, (nd, v))`** — Push the new (distance,
+vertex) onto the heap for later processing.
+
+**`return dist`** — All distances computed.
+
+**Why does Dijkstra work?**
+
+The greedy correctness: when we pop the vertex with the
+**smallest tentative distance**, no shorter path to it can
+exist via any other vertex. Reason: every alternative path
+goes through some unpopped vertex with tentative distance
+**larger** than ours (we picked the smallest). Adding more
+non-negative edges only makes the path longer. So our
+tentative distance is the true shortest distance.
+
+This argument **fails** with negative edges: a later negative
+edge could shorten a path through some "finalized" vertex.
+For negative edges, use Bellman-Ford or SPFA.
+
+**Why O((V + E) log V)?**
+
+- Each vertex is "finalized" once, contributing *O(log V)*
+  for its pop.
+- Each edge is examined once across all relaxations,
+  contributing *O(log V)* for the potential push.
+- Total: *O((V + E) log V)*.
+
+**Trace on a small graph:**
+```
+        2
+   A -------> B
+   |           \
+  1|            \3
+   v             v
+   C -------> D
+        4
+```
+Sources: A. adj = {A: [(B,2), (C,1)], B: [(D,3)], C: [(D,4)], D: []}
+
+```
+Init: dist = [0, INF, INF, INF], h = [(0, A)]
+Pop (0, A). d=0=dist[A]. Relax neighbors:
+  B: nd=2 < INF. dist[B]=2. Push (2, B).
+  C: nd=1 < INF. dist[C]=1. Push (1, C).
+h = [(1, C), (2, B)].
+
+Pop (1, C). d=1=dist[C]. Relax neighbors:
+  D: nd=5 < INF. dist[D]=5. Push (5, D).
+h = [(2, B), (5, D)].
+
+Pop (2, B). d=2=dist[B]. Relax neighbors:
+  D: nd=5 not < 5. Skip.
+h = [(5, D)].
+
+Pop (5, D). d=5=dist[D]. No neighbors.
+
+Done: dist = [0, 2, 1, 5].
+```
+
+**Properties:**
+- **Non-negative weights only.** Otherwise correctness breaks.
+- **Single source.** For all-pairs use Floyd-Warshall or
+  multiple Dijkstra runs.
+- **Sparse graphs**: this min-heap version is ideal.
+- **Dense graphs**: a different implementation (array-based,
+  no heap) gives *O(V²)* which can beat the heap version
+  when `E ≈ V²`.
+
+**Applications:**
+- Network routing (OSPF protocol).
+- GPS shortest path.
+- Game AI pathfinding (Dijkstra is the predecessor of A*).
+- Network flow algorithms (subroutine).
+- Dependency resolution.
+
+Dijkstra is one of the "must-know" algorithms in DSA.
+Combined with Floyd-Warshall, Bellman-Ford, and BFS for
+unweighted graphs, it covers the shortest-path universe.
+''',
             "complexity": "Time O((V + E) log V), space O(V + E).",
         },
         "deep_concept": "Dijkstra is a *greedy* algorithm. Each pop finalizes one vertex's distance. The non-negative weight assumption is essential — otherwise a later edge could 'unfinalize' a vertex.",

@@ -1191,6 +1191,58 @@ and we can do better with one pass.
             best = run
     return best
 ''',
+            "walkthrough": r'''
+The brute force tries every possible starting position and
+walks forward counting consecutive 1s. Simple, but does
+redundant work.
+
+**`def max_ones_brute(arr: list[int]) -> int:`** — Takes an
+array of 0s and 1s, returns the length of the longest run of
+consecutive 1s.
+
+**`n = len(arr)`** — Cache the length for the loop bounds.
+
+**`best = 0`** — Track the longest run found so far. Starts at
+0 because an all-zeros array has no run of 1s.
+
+**`for i in range(n):`** — Outer loop: try each index `i` as a
+potential starting position for a run.
+
+**`run = 0`** — Reset the run counter for this new starting
+position. We're about to count how many consecutive 1s
+**start** at index `i`.
+
+**`j = i`** — `j` is the index we're currently examining,
+starting from `i`. We use a separate variable so the outer
+`i` can keep its position for the next iteration.
+
+**`while j < n and arr[j] == 1:`** — Walk forward as long as
+two things hold: we haven't run off the end of the array, and
+the current value is 1. The instant we see a 0 (or run off
+the end), the run ends.
+
+The order matters here: `j < n` comes first because of Python's
+short-circuit evaluation. If `j == n`, we should stop and not
+evaluate `arr[j]` (which would be out of bounds). Python only
+evaluates the second condition if the first is True. So this
+order keeps us safe from index errors.
+
+**`run += 1; j += 1`** — Found a 1; bump both counters.
+
+**`if run > best: best = run`** — After the inner while ends,
+check if this run beats our current best. If yes, update.
+
+**`return best`** — Hand back the answer.
+
+The cost: outer loop runs `n` times. Inner while can run up to
+`n` times for each. Worst case (all 1s): the inner loop runs
+roughly `n`, `n-1`, `n-2`, ..., 1 times for each outer
+iteration — total *O(n²)*. Wasteful, because we're re-counting
+sub-runs many times.
+
+The optimized version does it in a single pass with constant
+memory — see below.
+''',
             "complexity": (
                 "**Time**: *O(n²)* worst case. **Space**: *O(1)*."
             ),
@@ -1229,6 +1281,64 @@ Single pass with two scalars: current run and best run.
             # The run ends here; reset the counter.
             current = 0
     return best
+''',
+            "walkthrough": r'''
+The single-pass version. Two scalars, one walk. This is the
+"current streak vs all-time record" pattern that appears in
+many problems.
+
+**`def max_consecutive_ones(arr: list[int]) -> int:`** — Same
+signature.
+
+**`best = 0`** — The longest run we've seen *anywhere* in the
+array so far. Our final answer.
+
+**`current = 0`** — The length of the run we're currently
+inside. Resets every time we see a 0.
+
+**`for x in arr:`** — Walk through every element. We don't
+even need the index — we just need the value at each position.
+This is the cleanest form of an array walk in Python.
+
+**`if x == 1:`** — Hit a 1. We're inside (or starting) a run
+of 1s.
+
+**`current += 1`** — Extend the current run by one. If we just
+came from a stretch of 0s, `current` was 0 before this and is
+now 1 — the start of a new run.
+
+**`if current > best: best = current`** — Update the all-time
+record if our current run has surpassed it. This check is
+done **every time** we extend a run, not just at the end of
+the run. Why? Because the current run might be ongoing when
+the array ends; we'd miss the answer if we only checked at
+the next 0.
+
+You could also write `best = max(best, current)`, which is
+more Pythonic. The `if` version avoids the `max` function
+call, marginally faster in a tight loop.
+
+**`else: current = 0`** — Hit a 0. The current run ends. Reset
+`current` to start fresh next time we see a 1.
+
+**`return best`** — Hand back the all-time longest run.
+
+The mental model: imagine watching a streak of dominoes
+falling. As long as 1s keep arriving, the streak grows; the
+moment a 0 arrives, the streak resets. Throughout the whole
+process, we're keeping a running record of "longest streak
+ever seen."
+
+Total work: one pass, *O(n)*. Two scalars, *O(1)* extra
+memory. This is the asymptotic floor for this problem —
+there's no way to do less work because we must at least look
+at every element once.
+
+The "carry current streak, update record" pattern generalizes
+to: longest run of any condition, longest non-decreasing
+subarray, longest substring without repeating characters
+(with a twist), max stock profit with one buy-sell, and many
+others.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(1)*."
@@ -1890,6 +2000,79 @@ def missing_number_xor(arr: list[int]) -> int:
         result ^= x
     # Everything present in both cancels; what remains is the missing one.
     return result
+''',
+            "walkthrough": r'''
+Two beautiful constant-memory algorithms for the same problem.
+Both run in *O(n)* with *O(1)* memory. The choice between
+them depends on whether you're worried about integer overflow.
+
+**Version 1: The Gauss sum trick**
+
+**`def missing_number_sum(arr: list[int]) -> int:`** — Takes
+an array containing all integers from 0 to n except one, and
+returns the missing one. The array length is `n`.
+
+**`n = len(arr)`** — The array has length `n`. The complete
+set `0, 1, ..., n` has `n + 1` elements; the array is missing
+one of them.
+
+**`expected = n * (n + 1) // 2`** — Gauss's formula for the
+sum of integers from 0 to n inclusive. The math: pair the
+numbers `(0, n), (1, n-1), (2, n-2), ...` — each pair sums to
+`n`. There are `(n + 1) / 2` such pairs, giving total sum
+`n × (n + 1) / 2`. We use integer division `//` to keep the
+result as an integer (one of `n` and `n+1` is always even, so
+the division is always exact).
+
+This formula computes the expected sum in **constant time** —
+no loop required.
+
+**`return expected - sum(arr)`** — The actual sum of the
+array is missing exactly one value. The difference between
+expected and actual is that missing value. Return it.
+
+`sum(arr)` walks the array once, *O(n)*. So this whole
+function is *O(n)* time, *O(1)* extra memory.
+
+**Version 2: The XOR trick**
+
+Same idea but using XOR instead of addition. The reason: in
+languages with 32-bit integers, the sum could overflow. XOR
+can never overflow because each bit operates independently.
+
+**`def missing_number_xor(arr: list[int]) -> int:`** — Same
+signature.
+
+**`n = len(arr)`** — Same setup.
+
+**`result = 0`** — Start the running XOR at 0. Recall `x ^ 0 = x`,
+so 0 is the identity for XOR.
+
+**`for i in range(n + 1):`** — Loop from 0 to n inclusive.
+
+**`result ^= i`** — XOR each value of the complete set into
+the running total.
+
+**`for x in arr:`** — Now XOR every element of the actual array.
+
+**`result ^= x`** — XOR each one in.
+
+After both loops, every value that appears in **both** the
+complete set and the array has been XORed twice, so it
+cancels itself out (`x ^ x = 0`). The only value that has
+been XORed an odd number of times is the one in the complete
+set but missing from the array — exactly what we want.
+
+**`return result`** — Hand back the missing value.
+
+This is *O(n)* time, *O(1)* memory, and is safe from integer
+overflow. The sum version is one line shorter but can overflow
+on 32-bit integers; the XOR version is two passes and never
+overflows. Pick based on your constraints.
+
+The XOR trick is one of the most elegant uses of bitwise math
+in DSA. Once you internalize "XOR cancels pairs," dozens of
+problems become approachable in *O(1)* memory.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(1)*."

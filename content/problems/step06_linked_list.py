@@ -72,6 +72,79 @@ def reverse_via_list(head: ListNode | None) -> ListNode | None:
         node = node.next
     return head
 ''',
+            "walkthrough": r'''
+The "use auxiliary memory" approach. Collect the values into
+a list, then write them back in reverse order. Works correctly
+but uses extra memory. Walking through every line:
+
+**The node class:**
+
+**`class ListNode:`** — Defines a linked list node. Each node
+has a value and a pointer to the next node.
+
+**`def __init__(self, val: int = 0, next: "ListNode | None" = None):`** —
+Constructor. The defaults `val=0, next=None` let us create
+nodes with `ListNode()` (an empty node) or `ListNode(5)` (a
+single-value node) or `ListNode(5, other)` (linked to another).
+
+The type hint `"ListNode | None"` is in quotes because Python
+needs the string version for forward references — the type
+`ListNode` doesn't exist yet at the moment we're defining the
+class itself.
+
+**`self.val = val; self.next = next`** — Just store the args
+as attributes. Standard initializer.
+
+**The reverse function:**
+
+**`def reverse_via_list(head: ListNode | None) -> ListNode | None:`** —
+Takes the head of a linked list, returns the new head after
+reversal.
+
+**`if head is None: return None`** — An empty list reverses
+to an empty list. Handle it cleanly so the rest of the
+function can assume `head` is real.
+
+**`values = []`** — Will hold all the node values in their
+original order.
+
+**`node = head`** — A walker pointing to the current node.
+Initially the head.
+
+**`while node:`** — Walk the list. `while node` is True as
+long as `node` is not None.
+
+**`values.append(node.val)`** — Record the current value.
+
+**`node = node.next`** — Move to the next node. After all
+iterations, `node` is None and we exit.
+
+**`node = head`** — Reset the walker to the head for a second
+pass.
+
+**`for v in reversed(values):`** — Walk the values list in
+reverse. `reversed(values)` is an iterator that yields the
+last element first, second-to-last second, etc.
+
+**`node.val = v`** — Overwrite the current node's value with
+the next value from the reversed sequence.
+
+**`node = node.next`** — Move to the next node and continue.
+
+After the loop, the **structure** of the list is unchanged
+(nodes are still linked the same way), but their **values**
+have been overwritten in reverse order — effectively
+reversing the list's content.
+
+**`return head`** — The head node is the same object as
+before (its `val` was changed, but it's the same memory).
+Return it.
+
+This is *O(n)* time and *O(n)* memory. The optimized version
+(below) does it in *O(n)* time but *O(1)* memory by
+rearranging the **pointers** instead of copying values.
+That's the canonical linked-list reversal.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(n)*.",
         },
         "thought_process": r'''
@@ -128,6 +201,106 @@ def reverse_recursive(head: ListNode | None) -> ListNode | None:
     # And cut head's old forward pointer.
     head.next = None
     return new_head
+''',
+            "walkthrough": r'''
+The canonical linked-list reversal. Three pointers, one pass,
+constant memory. Memorize the shape — it's one of the most
+asked interview problems.
+
+**Version 1: Iterative three-pointer reversal**
+
+**`def reverse_iter(head: ListNode | None) -> ListNode | None:`** —
+Takes the head, returns the new head (the original tail).
+
+**`prev: ListNode | None = None`** — `prev` tracks the
+already-reversed portion. Initially None because the reversed
+prefix is empty. By the end of the algorithm, `prev` will
+point to the new head.
+
+**`curr = head`** — `curr` is the node we're currently
+processing. Initially the head of the original list.
+
+**`while curr is not None:`** — Loop until we've processed
+every node.
+
+**`next_node = curr.next`** — **Save the next pointer** before
+we overwrite `curr.next`. This is the most-forgotten line in
+the algorithm. If we skip it, the next iteration loses access
+to the rest of the list.
+
+**`curr.next = prev`** — **Flip the arrow.** The current node
+now points **backward** to the previously processed node. This
+is the actual reversal step.
+
+For example, after processing the second node, the list looks
+like `1 ← 2  3 → 4 → 5` (the 1-2 arrow has been flipped; the
+2-3 link is broken because `2.next` was just overwritten,
+but we saved it as `next_node`).
+
+**`prev = curr`** — Slide `prev` forward. The current node
+is now part of the reversed prefix.
+
+**`curr = next_node`** — Slide `curr` to the next node (which
+we saved at the top of the loop). Without the save, this line
+would crash.
+
+**`return prev`** — When the loop exits, `curr` is None and
+`prev` is the last node we processed — which was the original
+tail and is now the new head.
+
+The mental movie: imagine three fingers on the page. `prev`
+trails one position behind `curr`. On each iteration, you
+flip the arrow of the node `curr` is pointing at (so it
+points back at `prev`), then both fingers slide one step
+forward. The "saved next_node" finger temporarily points to
+where you're going.
+
+Total: *O(n)* time, *O(1)* memory. No extra data structure.
+
+**Version 2: Recursive reversal**
+
+Same idea, recursive form.
+
+**`if head is None or head.next is None: return head`** —
+Base case. An empty list or single-node list is already
+reversed; just return it.
+
+**`new_head = reverse_recursive(head.next)`** — **Trust the
+recursive call.** It promises to reverse the rest of the list
+(`head.next` onward) and return the new head of that reversed
+sublist.
+
+For example, on `1 → 2 → 3`: this recursively reverses
+`2 → 3` into `3 → 2` and returns `3` as the new head. After
+the call: `1 → 2 ← 3` (the recursion has flipped 2 and 3, but
+1 still points forward).
+
+**`head.next.next = head`** — Now we need to flip the edge
+between `head` and `head.next` too. `head.next` is the node
+that was originally next; its `.next` is now set to point
+back at `head`.
+
+In the example: `head` is `1`, `head.next` is `2`. The line
+`head.next.next = head` makes `2.next = 1`. Now:
+`1 → 2 ← 3` becomes `1 ⇄ 2 ← 3` — but `1.next` still points
+to `2`, creating a cycle. We fix it next.
+
+**`head.next = None`** — Break `head`'s forward arrow. Now
+`head` is the new tail.
+
+After: `1 ← 2 ← 3` with `1.next = None`. Done.
+
+**`return new_head`** — Return whatever the recursive call
+returned — which is the original tail, now the new head.
+
+The recursive version uses *O(n)* stack space, which is worse
+than the iterative *O(1)*. For lists of millions of nodes, the
+recursion may overflow Python's stack. The iterative version
+is preferred in practice.
+
+The lesson here: both algorithms maintain the same invariant.
+Iterative tracks `prev` explicitly; recursive uses the call
+stack to remember. They're conceptually identical.
 ''',
             "complexity": (
                 "**Time**: *O(n)* both versions. **Space**: *O(1)* "

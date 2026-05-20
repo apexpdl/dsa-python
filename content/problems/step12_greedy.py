@@ -627,6 +627,113 @@ def job_sequencing(jobs):
             count += 1
     return count, total_profit
 ''',
+            "walkthrough": r'''
+**Job Sequencing with Deadlines.** Greedy with a twist:
+**latest-slot scheduling**.
+
+The problem: N jobs, each with `deadline[i]` and `profit[i]`.
+Each takes 1 time unit. One job per unit. Maximize total
+profit subject to each job finishing by its deadline.
+
+**The greedy strategy**: sort jobs by profit **descending**.
+For each job (in that order), assign to the **latest unused
+time slot** at or before its deadline. Skip if no slot
+available.
+
+**Why latest, not earliest?** Because using late slots
+preserves early slots for **future** jobs with tight
+deadlines. If we used early slots first, we'd starve high-
+profit jobs with tight deadlines.
+
+**Why sort by profit descending?** Greedy picks the highest-
+profit job first. We give it the best chance (latest slot in
+its deadline window). Then the next highest. Etc.
+
+**`def job_sequencing(jobs):`** — Takes list of (deadline,
+profit) tuples. Returns (count, total profit).
+
+**`jobs_sorted = sorted(jobs, key=lambda x: -x[1])`** — Sort
+by profit descending (negative for descending sort).
+
+**`max_d = max(d for d, _ in jobs)`** — Find the largest
+deadline. The slot array must be at least this size.
+
+**`slot = [False] * (max_d + 1)`** — Time slot occupancy.
+`slot[t] = True` iff time slot `t` has been assigned.
+
+We use 1-indexed slots (slot[0] unused) to match the
+"deadline 1 means by end of day 1" convention.
+
+**`total_profit = 0; count = 0`** — Running totals.
+
+**`for d, p in jobs_sorted:`** — Walk jobs in profit order.
+
+**`t = d`** — Start trying from the **latest** possible slot
+(the deadline itself).
+
+**`while t > 0 and slot[t]: t -= 1`** — Walk backward from
+`d` looking for an empty slot. Stop at the leftmost slot or
+when we find an empty one.
+
+**`if t > 0:`** — Found an empty slot at or before deadline.
+
+**`slot[t] = True; total_profit += p; count += 1`** — Take
+the slot. Add the profit.
+
+If `t = 0` (we walked off the left), no empty slot exists
+for this job. Skip it.
+
+**`return count, total_profit`** — Final answer.
+
+**Trace on `jobs = [(4, 20), (1, 10), (1, 40), (1, 30)]`:**
+
+```
+Sorted by profit descending: [(1,40), (1,30), (4,20), (1,10)].
+max_d = 4. slot = [F, F, F, F, F].
+
+(1, 40): t=1. slot[1] empty. Take. slot=[F,T,F,F,F]. profit=40.
+(1, 30): t=1. slot[1] taken. t=0. Skip.
+(4, 20): t=4. slot[4] empty. Take. slot=[F,T,F,F,T]. profit=60.
+(1, 10): t=1. taken. t=0. Skip.
+
+Return (2, 60).
+```
+
+Two jobs taken: $40 + $20 = $60. Verify: we couldn't have done
+better — both deadline-1 jobs have only one slot (slot 1),
+and we picked the most profitable.
+
+**Why does the greedy work?**
+
+**Exchange argument**: suppose some optimal solution schedules
+job A (profit p_A) in slot s, but we'd assign job B (profit
+p_B > p_A) to that slot. Then we can swap them: A goes to
+B's slot, B takes A's. If A still fits within its deadline,
+the swap is legal — and either gains or preserves profit (no
+loss, since p_B ≥ p_A).
+
+By repeated swaps, we can always transform any optimum into
+our greedy.
+
+**Properties:**
+- **Time**: *O(N · max_deadline)* — worst-case inner while.
+  Optimized with DSU: *O(N · α(N))* near-linear.
+- **Space**: *O(max_deadline)* for the slot array.
+
+**With DSU**: maintain "next available slot ≤ d" via union-
+find. Each query is amortized near-*O(1)*. Worth knowing
+for large deadlines.
+
+**Variations:**
+- **Each job has unit time** (this problem).
+- **Variable processing time**: harder, needs scheduling
+  theory.
+- **Job sequencing with preemption**: even harder.
+
+This problem is one of the **canonical greedy problems**
+showing that "**latest available**" can be the right
+strategy when "earliest available" fails.
+''',
             "complexity": "Time O(N · max_deadline). With DSU, amortized O(N · α).",
         },
         "deep_concept": r'''

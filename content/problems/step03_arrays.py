@@ -438,6 +438,45 @@ for x in arr:
             second = x
     return second
 ''',
+            "walkthrough": r'''
+The two-pass approach is straightforward — find the biggest,
+then find the biggest of "everything that's not the biggest."
+
+**`def second_largest_two_pass(arr: list[int]) -> int:`** —
+Takes the array, returns the second-largest value, or -1 if
+none exists (e.g., all elements are equal).
+
+**`biggest = arr[0]`** — Start the running max as `arr[0]`.
+
+**`for x in arr: if x > biggest: biggest = x`** — Standard
+max-of-array loop from the previous problem. By the end,
+`biggest` holds the global maximum.
+
+**`second = -1`** — Initialize `second` to -1 as a sentinel
+meaning "no second largest found yet." If the array has only
+one distinct value (like `[5, 5, 5]`), this will remain -1
+and we'll return it.
+
+**`for x in arr:`** — Second pass over the array.
+
+**`if x < biggest and x > second:`** — Two conditions joined
+by `and`. (a) `x < biggest`: strictly less than the global
+max, so we exclude duplicates of the biggest. (b) `x > second`:
+better than our current second-best candidate. If both hold,
+this is a new second-best.
+
+**`second = x`** — Update.
+
+**`return second`** — Hand back the answer.
+
+This is simple but requires two full passes through the array.
+For huge arrays we'd prefer a single pass — and that's exactly
+what the optimized version does (see below). The single-pass
+version is trickier because it has to maintain *two* running
+quantities simultaneously, with a careful update order: when
+a new biggest arrives, the *old biggest* becomes the new
+second-largest. Mess up the order and you lose information.
+''',
             "complexity": (
                 "**Time**: *O(n)* but two passes. **Space**: *O(1)*."
             ),
@@ -486,6 +525,67 @@ A single pass maintaining both `largest` and `second`.
     if second == float("-inf"):
         return -1
     return int(second)
+''',
+            "walkthrough": r'''
+Now the elegant single-pass version. The clever part is the
+update order — get it wrong and you lose data.
+
+**`largest = float("-inf")`** — Sentinel value meaning "no
+candidate seen yet." Anything we encounter will be larger.
+Using `-inf` (negative infinity) ensures the very first
+comparison always wins. Some implementations use `arr[0]`
+instead; either works.
+
+**`second = float("-inf")`** — Same sentinel for the
+second-largest tracker.
+
+**`for x in arr:`** — Walk through every element.
+
+**`if x > largest:`** — `x` beats the current champion. Three
+things follow.
+
+**`second = largest`** — **Here is the critical step.** Before
+we crown `x` as the new largest, we **demote the old
+largest** to second place. Why? Because if `x` is bigger than
+the old largest, the old largest is automatically the
+second-best thing we've seen. We must capture it before
+overwriting.
+
+If we swapped these two lines (`largest = x` first, then
+`second = largest`), we'd assign `x` to `second` — wrong! The
+*old* largest would have been overwritten and lost. This is
+the kind of order-sensitive bug that beginners hit and
+struggle to debug.
+
+**`largest = x`** — Now safe to crown `x`.
+
+**`elif x < largest and x > second:`** — `x` is not bigger
+than `largest`, but it might be bigger than `second`. Two
+conditions:
+- `x < largest`: strict less-than, to exclude duplicates of
+  the largest. If `arr = [5, 5, 3]`, we want `second = 3`,
+  not `5`.
+- `x > second`: better than our current second-place
+  candidate.
+
+**`second = x`** — `x` slots into second place.
+
+**`if second == float("-inf"): return -1`** — If we never
+updated `second` (array was all equal, or only one element),
+return -1 to signal "no second-largest exists."
+
+**`return int(second)`** — Otherwise return the answer. The
+`int()` conversion is just to clean up the float representation
+back to a regular integer.
+
+The mental model: imagine an Olympic podium with gold and
+silver positions. When a new athlete arrives with a faster
+time than gold, gold moves to silver and the new one takes
+gold. If the new athlete is between gold and silver, they
+take silver. If slower than silver, ignore. Same algorithm.
+
+This pattern generalizes to top-K with a min-heap of size K.
+We'll meet it again in many later problems.
 ''',
             "complexity": (
                 "**Time**: *O(n)* single pass. **Space**: *O(1)*."

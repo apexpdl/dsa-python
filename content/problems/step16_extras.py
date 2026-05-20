@@ -1904,6 +1904,102 @@ def lis_n2(nums):
                 dp[i] = max(dp[i], dp[j] + 1)
     return max(dp)
 ''',
+            "walkthrough": r'''
+**Longest Increasing Subsequence (LIS)** — the *O(n²)* DP
+version. The simpler of two important LIS algorithms. The
+*O(n log n)* binary-search variant is in a separate problem.
+
+The problem: given an array, find the length of the longest
+strictly increasing subsequence (not necessarily contiguous).
+
+`[10, 9, 2, 5, 3, 7, 101, 18]` → LIS could be `[2, 3, 7, 18]`
+or `[2, 5, 7, 18]`. Length 4.
+
+**The DP state**: `dp[i]` = length of the LIS **ending at
+index `i`** (must include `nums[i]`).
+
+The recurrence: for each `i`, look at every earlier index `j`.
+If `nums[j] < nums[i]`, the LIS ending at `j` can be extended
+by appending `nums[i]`. So `dp[i] = max(dp[i], dp[j] + 1)`.
+
+If no smaller earlier value exists, `dp[i] = 1` (just `nums[i]`
+alone).
+
+**`def lis_n2(nums):`** — Takes the array, returns LIS length.
+
+**`n = len(nums)`** — Cache length.
+
+**`dp = [1]*n`** — Initialize. Every single element is itself
+a length-1 increasing subsequence.
+
+**`for i in range(n):`** — For each ending position `i`...
+
+**`for j in range(i):`** — ...look at every earlier index.
+
+**`if nums[j] < nums[i]:`** — Strictly less than (for strict
+increasing). If you want non-decreasing, use `<=`.
+
+**`dp[i] = max(dp[i], dp[j] + 1)`** — Update the best LIS
+ending at `i` by extending the LIS ending at `j`.
+
+**`return max(dp)`** — The LIS over the whole array ends
+somewhere — return the max across all ending positions.
+
+**Trace on `nums = [10, 9, 2, 5, 3, 7, 101, 18]`:**
+
+```
+i=0 (10): dp = [1, 1, 1, 1, 1, 1, 1, 1].
+i=1 (9): nothing < 9 earlier (only 10). dp[1] = 1.
+i=2 (2): nothing < 2. dp[2] = 1.
+i=3 (5): nums[2]=2 < 5 → dp[3] = max(1, 1+1) = 2.
+i=4 (3): nums[2]=2 < 3 → dp[4] = max(1, 1+1) = 2.
+i=5 (7): 2<7 → dp[5]=max(1,2)=2.
+        5<7 → dp[5]=max(2,2+1)=3.
+        3<7 → dp[5]=max(3,2+1)=3.
+i=6 (101): all earlier (10,9,2,5,3,7) < 101.
+          Take dp[5]+1 = 4. dp[6] = 4.
+i=7 (18): 10<18 → dp[7]=max(1,2)=2.
+         9<18 → ...
+         eventually dp[7] = max from 7's chain = dp[5]+1 = 4.
+
+dp = [1, 1, 1, 2, 2, 3, 4, 4].
+Return max = 4.
+```
+
+LIS length is 4. (e.g., `[2, 5, 7, 101]` or `[2, 5, 7, 18]`.)
+
+**Properties:**
+- **Time**: *O(n²)*.
+- **Space**: *O(n)* for the dp array.
+
+**To recover the actual subsequence**: also maintain a
+`parent[i]` pointer to the index `j` that gave the best
+`dp[i]`. Walk back from the argmax.
+
+**Why O(n²) and not O(n)?**
+
+Each ending position must consider every potentially smaller
+earlier element. There's no way to avoid that double loop in
+the naive DP.
+
+The clever *O(n log n)* version uses **binary search on a
+"smallest tail" array**: maintain a sorted array of "smallest
+possible tail of an increasing subsequence of length k+1."
+Each new element either extends or replaces. Binary search
+finds the right position.
+
+**Applications:**
+- **Box stacking** (sort by base, then LIS by height).
+- **Longest chain of pairs**.
+- **Longest divisible subset**.
+- **Patience sorting** (a card game whose pile count equals
+  LIS).
+- **Russian doll envelopes**.
+
+LIS is the prototype of "**sequence DP**" — DP on a 1D array
+where the state involves an ending index. Mastering it
+unlocks many subsequence problems.
+''',
             "complexity": "Time O(n²).",
         },
         "deep_concept": "—",

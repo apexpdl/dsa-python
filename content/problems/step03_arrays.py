@@ -81,6 +81,52 @@ contrast with the correct one-pass solution.
     # Defensive return; should not reach here for non-empty arrays.
     raise ValueError("empty array")
 ''',
+            "walkthrough": r'''
+This is the "test every candidate against every other element"
+approach. Inefficient but very explicit.
+
+**`def largest_brute(arr: list[int]) -> int:`** — Takes a list
+of integers, returns the largest one.
+
+**`n = len(arr)`** — Cache the length. We'll reference it
+twice inside loops, and reading `len(arr)` every time has a
+tiny but real cost.
+
+**`for i in range(n):`** — Outer loop: pick each index `i` in
+turn as our candidate for "the largest."
+
+**`ok = True`** — Optimistically assume the current candidate
+is the largest. We'll set this to False if we find evidence
+otherwise.
+
+**`for j in range(n):`** — Inner loop: scan every other index
+`j`. We're checking: is there any element that's bigger than
+`arr[i]`? If yes, `arr[i]` is not the max.
+
+**`if arr[j] > arr[i]:`** — Found an element bigger than the
+candidate. The candidate is not the max.
+
+**`ok = False; break`** — Mark the candidate as failed and
+break out of the inner loop. No point checking the rest of
+`j` once we've found a counter-example.
+
+**`if ok: return arr[i]`** — If the inner loop completed
+without finding anything bigger, then `arr[i]` *is* the max.
+Return it.
+
+**`raise ValueError("empty array")`** — Defensive code in case
+the array is empty. The outer loop wouldn't run, and we'd fall
+through without returning.
+
+The total work: for each of `n` candidates, we scan up to `n`
+elements. That's `n × n = n²` operations in the worst case.
+For `n = 1000`, that's a million operations — still fast. For
+`n = 1,000,000`, that's a trillion — way too slow. The
+optimized version below uses a single scan.
+
+This is the kind of brute force we write *first* — easy to
+understand, easy to verify, but not what we ship.
+''',
             "complexity": (
                 "**Time**: *O(n²)* — we re-scan for each candidate.\n\n"
                 "**Space**: *O(1)*."
@@ -120,6 +166,57 @@ Single pass with a running maximum. *O(n)* time, *O(1)* extra space.
         if arr[i] > best:
             best = arr[i]
     return best
+''',
+            "walkthrough": r'''
+This is one of the most important "small patterns" in all of
+DSA. Memorize it. Variants of this loop appear in dozens of
+problems.
+
+**`def largest(arr: list[int]) -> int:`** — Same signature.
+
+**`best = arr[0]`** — Initialize our running maximum to the
+first element. We pick `arr[0]` because we have no other
+information yet — the first element is the best we've seen so
+far (the only one we've seen, in fact). Some people use
+`float('-inf')` here for safety, but `arr[0]` works as long
+as the array is non-empty.
+
+**`for i in range(1, len(arr)):`** — Loop from index 1 to the
+end. Why start at 1 and not 0? Because we already used
+`arr[0]` as our initial `best`. Comparing it against itself
+would be wasted work.
+
+You might also write this as:
+```python
+for x in arr[1:]:
+    if x > best: best = x
+```
+Both are correct. The index version is slightly more
+efficient (no slice copy), but for normal-sized inputs the
+difference is negligible.
+
+**`if arr[i] > best:`** — The challenger comparison. Is this
+new element bigger than our current champion?
+
+**`best = arr[i]`** — Crown the new champion. If `arr[i]` is
+bigger than the previous best, it becomes the new best. We
+keep this updated as we walk.
+
+**`return best`** — After the loop completes, `best` holds
+the maximum value seen anywhere in the array. Return it.
+
+The mental model: imagine a tournament where each new array
+element challenges the reigning champion. If the challenger
+is stronger (bigger), they take the crown. After everyone has
+challenged once, whoever is wearing the crown is the overall
+winner.
+
+Total work: we look at each element exactly once (after the
+initial `arr[0]`). That's *O(n)*. The brute force did *O(n²)*
+by comparing every element against every other; the optimized
+version compares each element only against the running best.
+The insight that turned `n²` into `n` is just **one extra
+variable** — `best` — carried across iterations.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(1)*."

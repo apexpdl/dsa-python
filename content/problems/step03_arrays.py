@@ -5316,6 +5316,108 @@ or append a new one.
             merged.append([start, end])
     return merged
 ''',
+            "walkthrough": r'''
+**Merge Overlapping Intervals** — the gateway to interval
+problems. Sort by start, sweep once, merge greedily.
+*O(n log n)*.
+
+The setup: given a list of intervals like `[[1,3], [2,6],
+[8,10]]`, merge any that overlap. `[1,3]` and `[2,6]` overlap
+(share `[2,3]`), so they merge to `[1,6]`.
+
+**`def merge_intervals(intervals: list[list[int]]) -> list[list[int]]:`** —
+Takes intervals, returns merged intervals.
+
+**`if not intervals: return []`** — Edge case for empty input.
+
+**`intervals = sorted(intervals, key=lambda iv: (iv[0], iv[1]))`** —
+**The enabling step.** Sort by start time. Without this, we'd
+have to consider arbitrary pairings — but with sorted starts,
+only **adjacent** intervals in the sorted order can overlap.
+
+The tiebreaker `(iv[0], iv[1])` sorts by start primarily and
+end secondarily; equal starts are ordered by their ends.
+Doesn't affect correctness but produces deterministic output.
+
+**`merged: list[list[int]] = [list(intervals[0])]`** — Start
+the result with the first interval (copied to avoid aliasing
+issues if we mutate). We'll merge subsequent intervals into
+this growing list.
+
+**`for start, end in intervals[1:]:`** — Process every
+interval after the first.
+
+The `start, end = intervals[1:]` destructures each sublist
+into two named variables — Python's tuple unpacking.
+
+**`last_start, last_end = merged[-1]`** — Look at the **last
+merged interval**. This is the only one a new interval could
+potentially overlap with (because we processed in sorted
+order — anything earlier ends even sooner).
+
+**`if start <= last_end:`** — **Overlap test.** The new
+interval starts at `start`. If `start <= last_end`, the new
+interval begins inside the last merged interval — overlap.
+
+We use `<=`. Touching intervals like `[1, 2]` and `[2, 3]`
+merge into `[1, 3]`. If you want them to stay separate, use
+`<` instead.
+
+**`merged[-1][1] = max(last_end, end)`** — Extend the last
+merged interval's end to whichever is later. The new
+interval is consumed.
+
+Why `max`? Because the new interval might extend past the
+last one, or might be entirely inside it (`end <= last_end`).
+Taking max handles both.
+
+**`else: merged.append([start, end])`** — No overlap. Append
+the new interval to the result.
+
+**`return merged`** — Hand back the merged intervals.
+
+**Trace on `[[1,3], [2,6], [8,10], [15,18]]`:**
+
+```
+After sort: same (already sorted by start).
+
+Init: merged = [[1, 3]].
+
+iv = [2, 6]: last = [1, 3]. start=2 <= last_end=3. Merge.
+              merged[-1][1] = max(3, 6) = 6. merged = [[1, 6]].
+iv = [8, 10]: last = [1, 6]. start=8 > last_end=6. No overlap.
+              Append. merged = [[1, 6], [8, 10]].
+iv = [15, 18]: last = [8, 10]. start=15 > last_end=10. No overlap.
+              Append. merged = [[1, 6], [8, 10], [15, 18]].
+
+Return [[1, 6], [8, 10], [15, 18]].
+```
+
+**Why is the sort necessary?**
+
+Without sort, overlapping intervals can be **far apart** in
+the input. Detecting overlap would require comparing every
+pair — *O(n²)*. After sorting, overlaps are always between
+**adjacent** intervals, which makes the sweep work in *O(n)*.
+
+**Properties:**
+- **Time**: *O(n log n)*. The sort dominates; the sweep is
+  *O(n)*.
+- **Space**: *O(n)* for the output. Sort is in-place if you
+  pass a mutable list and use `intervals.sort()` instead.
+
+**Why is this so important?**
+
+Interval problems show up constantly:
+- **Meeting rooms** (count concurrent meetings).
+- **Insert interval** (add a new interval and merge).
+- **Non-overlapping intervals** (remove minimum to make
+  non-overlapping).
+- **Car pooling** (sweep with delta events).
+
+The "sort by start, sweep once" pattern is the key. Master
+this and you've cracked the interval family.
+''',
             "complexity": (
                 "**Time**: *O(n log n)* due to sorting. **Space**: "
                 "*O(n)* for the output."

@@ -1186,6 +1186,111 @@ def merge_k_lists(lists):
             heapq.heappush(heap, (node.next.val, i, node.next))
     return dummy.next
 ''',
+            "walkthrough": r'''
+**Merge K Sorted Linked Lists.** *O(N log K)* with a min-heap.
+N = total nodes, K = number of lists.
+
+The problem: given K sorted linked lists, merge them into one
+sorted list.
+
+**The naive approach**: merge pairs. K-1 pair merges, each
+*O(N)*, total *O(N·K)*. Slow for large K.
+
+**The heap approach**: at every step, the **smallest
+available value** across all K lists is the current heads
+themselves. Use a min-heap of size K (the K heads). Pop the
+smallest, append to result, push the next node from that
+list. *O(log K)* per pop. Total *O(N log K)*.
+
+**`import heapq`** — Python's min-heap.
+
+**`class ListNode:`** — Standard linked list node.
+
+**`def merge_k_lists(lists):`** — Takes a list of K linked
+list heads.
+
+**`heap = []`** — Min-heap of `(value, list_index, node)`
+tuples. Why three elements?
+
+1. **`value`**: the heap's ordering key.
+2. **`list_index`**: a **tiebreaker** when two nodes have
+   equal values. Without it, Python would try to compare the
+   `node` objects directly — which raises a TypeError
+   because ListNode isn't comparable.
+3. **`node`**: the actual node we need to access for `.next`.
+
+**`for i, head in enumerate(lists): if head: heapq.heappush(heap, (head.val, i, head))`** —
+**Seed the heap** with the heads of all non-empty lists.
+
+**`dummy = ListNode(0); cur = dummy`** — Use a **dummy head**
+to simplify result construction. The actual result starts at
+`dummy.next`.
+
+**`while heap:`** — Loop while there are nodes left.
+
+**`val, i, node = heapq.heappop(heap)`** — Pop the smallest.
+*O(log K)*.
+
+**`cur.next = node; cur = node`** — Append to the result and
+advance the result tail.
+
+**`if node.next: heapq.heappush(heap, (node.next.val, i, node.next))`** —
+**Push the successor** of the popped node. This keeps the
+heap size at K (or less). *O(log K)*.
+
+**`return dummy.next`** — Skip the dummy and return the real
+head.
+
+**Trace on `lists = [[1,4,5], [1,3,4], [2,6]]`:**
+
+```
+Init heap: push (1, 0, list1[0]), (1, 1, list2[0]), (2, 2, list3[0]).
+heap = [(1,0,L1[0]), (1,1,L2[0]), (2,2,L3[0])].
+
+Pop (1, 0, _). Append L1[0]. Push (4, 0, L1[1]).
+   heap = [(1,1,L2[0]), (4,0,L1[1]), (2,2,L3[0])].
+Pop (1, 1, _). Append L2[0]. Push (3, 1, L2[1]).
+   heap = [(2,2,L3[0]), (4,0,L1[1]), (3,1,L2[1])].
+Pop (2, 2, _). Append L3[0]. Push (6, 2, L3[1]).
+   heap = [(3,1,L2[1]), (4,0,L1[1]), (6,2,L3[1])].
+Pop (3, 1, _). Append L2[1]. Push (4, 1, L2[2]).
+   heap = [(4,0,L1[1]), (4,1,L2[2]), (6,2,L3[1])].
+Pop (4, 0, _). Append L1[1]. Push (5, 0, L1[2]).
+Pop (4, 1, _). Append L2[2]. (L2 has no more nodes — don't push.)
+Pop (5, 0, _). Append L1[2]. (L1 has no more — don't push.)
+Pop (6, 2, _). Append L3[1]. (L3 has no more — don't push.)
+
+Final list: 1 → 1 → 2 → 3 → 4 → 4 → 5 → 6.
+```
+
+**Why O(N log K)?**
+
+Each of N total nodes is pushed and popped exactly once. Each
+heap op is *O(log K)* (heap size ≤ K throughout). Total:
+*O(N log K)*.
+
+**Properties:**
+- **Time**: *O(N log K)*.
+- **Space**: *O(K)* for the heap.
+
+**Comparison to pairwise merge:**
+- Pairwise: *O(N · K)*.
+- Divide-and-conquer merge (like merge sort): *O(N log K)*
+  — same as heap, also good.
+- Heap: *O(N log K)*, cleanest code.
+
+**Generalizations:**
+- **Merge K sorted arrays**: same idea, just use array
+  indices instead of `.next`.
+- **Smallest range covering elements from K lists**: same
+  heap structure with range tracking.
+- **K-way external merge** (huge files): the foundation of
+  external sorting.
+
+This is the **canonical multi-source merge** pattern. Use it
+whenever you have K sorted streams and need a single sorted
+output.
+''',
             "complexity": "Time O(N log k), space O(k).",
         },
         "deep_concept": r'''

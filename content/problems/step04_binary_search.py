@@ -1274,6 +1274,31 @@ search to handle the "one rotation" structure.
             return i
     return -1
 ''',
+            "walkthrough": r'''
+The brute force ignores the rotation entirely and just does a
+linear search. Easy and correct but doesn't exploit the
+structure.
+
+**`def search_rotated_linear(arr: list[int], x: int) -> int:`** —
+Takes a rotated sorted array and a target. Returns the index
+of the target or -1 if not found.
+
+**`for i, v in enumerate(arr):`** — Walk every element.
+
+**`if v == x: return i`** — Compare; return on match.
+
+**`return -1`** — Not found.
+
+That's the entire function. It's *O(n)* — exactly what we'd
+do for any unsorted array. We're throwing away the information
+that the array is "rotated sorted" — there's structure here we
+could exploit to achieve *O(log n)*.
+
+The optimized version below uses a clever observation: in a
+rotated sorted array, when you look at any midpoint, at least
+one of the two halves is itself fully sorted. That single
+insight lets binary search work even on rotated arrays.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },
         "thought_process": r'''
@@ -1335,6 +1360,98 @@ detects which half is sorted and recurses appropriately.
     return -1
 ''',
             "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
+            "walkthrough": r'''
+Binary search adapted to a rotated sorted array. The trick: at
+every midpoint, exactly one half is guaranteed to be fully
+sorted. Use that half's range to decide where to search.
+
+**`def search_rotated(arr: list[int], x: int) -> int:`** —
+Takes the rotated sorted array and target.
+
+**`lo, hi = 0, len(arr) - 1`** — Closed-interval search range.
+
+**`while lo <= hi:`** — Continue until the range collapses.
+
+**`mid = (lo + hi) // 2`** — Midpoint.
+
+**`if arr[mid] == x: return mid`** — Found it. The simple case.
+
+Now the harder cases. We need to figure out which half is
+sorted, then decide whether the target lies inside that sorted
+half.
+
+**`if arr[lo] <= arr[mid]:`** — This is the key test. If the
+**leftmost element** is less than or equal to the middle
+element, then the left half `arr[lo..mid]` is sorted. Why?
+Because a rotated sorted array has at most one "drop" point.
+If `arr[lo] <= arr[mid]`, the drop must be on the right side
+of `mid` (or not exist at all), so the left half is fully
+sorted ascending.
+
+If `arr[lo] > arr[mid]`, the drop is between `lo` and `mid`,
+so the **right** half `arr[mid..hi]` is sorted.
+
+**Case 1: Left half is sorted.**
+
+**`if arr[lo] <= x < arr[mid]:`** — Is the target inside the
+sorted left half? Note: strictly less than `arr[mid]` because
+we already know `arr[mid] != x` (we just checked).
+
+The range `arr[lo] <= x < arr[mid]` precisely describes "x is
+big enough to be at index `lo`, and small enough to be strictly
+before index `mid`."
+
+**`hi = mid - 1`** — Yes, the target is in the left half.
+Shrink the search to the left half.
+
+**`else: lo = mid + 1`** — No, the target is *not* in the
+sorted left half, so it must be in the unsorted right half.
+Move `lo` past `mid` to search the right.
+
+**Case 2: Right half is sorted.**
+
+Symmetric to Case 1.
+
+**`if arr[mid] < x <= arr[hi]:`** — Is the target in the
+sorted right half? The range is `arr[mid] < x <= arr[hi]`.
+
+**`lo = mid + 1`** — Yes; search the right half.
+
+**`else: hi = mid - 1`** — No; search the left half (which is
+the unsorted one in this case).
+
+**`return -1`** — Loop exits, target not found.
+
+Trace it on `arr = [4, 5, 6, 7, 0, 1, 2], target = 0`:
+
+```
+Iter 1: lo=0, hi=6, mid=3, arr[mid]=7 ≠ 0
+        arr[lo]=4 <= arr[mid]=7, so left half is sorted (4,5,6,7).
+        Is 0 in [4, 7)? No.
+        → search right: lo = 4
+
+Iter 2: lo=4, hi=6, mid=5, arr[mid]=1 ≠ 0
+        arr[lo]=0 <= arr[mid]=1, so left half is sorted (0,1).
+        Is 0 in [0, 1)? Yes (0 <= 0 < 1).
+        → search left: hi = 4
+
+Iter 3: lo=4, hi=4, mid=4, arr[mid]=0 == 0. Return 4.
+```
+
+Each step halves the search range, just like standard binary
+search. Total: *O(log n)* time, *O(1)* memory. Beautifully
+efficient.
+
+The lesson: **binary search doesn't require the data to be
+globally sorted**. It requires us to be able to halve the
+search range at each step using some property. In this
+problem, the property is "one half is sorted" — and that's
+enough.
+
+This pattern (one-half-sorted argument) appears in: Find
+Minimum in Rotated Sorted Array, Search in Rotated Array II
+(with duplicates — slightly more delicate), and many others.
+''',
         },
         "deep_concept": r'''
 The lesson here is that **the property we binary search on does not

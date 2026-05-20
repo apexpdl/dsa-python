@@ -1694,6 +1694,64 @@ def koko_brute(piles: list[int], h: int) -> int:
             return k
     raise ValueError("impossible")
 ''',
+            "walkthrough": r'''
+Two helper functions. First the simulator, then the brute-
+force searcher that tries every possible speed.
+
+**Helper: `hours_at_speed`**
+
+**`def hours_at_speed(piles: list[int], k: int) -> int:`** —
+Compute the total hours needed if Koko eats at speed `k`
+bananas per hour.
+
+**`total = 0`** — Running total of hours.
+
+**`for p in piles:`** — Walk every pile.
+
+**`total += (p + k - 1) // k`** — This is the **ceiling
+division** idiom in Python. It computes `ceil(p / k)` using
+only integer arithmetic.
+
+Why ceiling and not floor? Because Koko eats one pile per hour
+even if she doesn't finish it. A pile of 10 bananas at speed 4
+takes 3 hours (eat 4, 4, 2). The math: `(10 + 3) // 4 =
+13 // 4 = 3`. Verify: `ceil(10/4) = ceil(2.5) = 3`. ✓
+
+The formula `(p + k - 1) // k` is one of the most useful tiny
+tricks in DSA. Memorize it. It's how you do ceiling division
+without floating-point.
+
+**Brute force: `koko_brute`**
+
+**`for k in range(1, max(piles) + 1):`** — Try every possible
+speed from 1 up to the largest pile. Why up to `max(piles)`?
+Because at speed `max(piles)`, Koko eats the biggest pile in
+one hour, and every smaller pile in one hour, so she finishes
+in exactly `len(piles)` hours. We never need a faster speed
+than that.
+
+**`if hours_at_speed(piles, k) <= h:`** — Test if this speed
+is feasible. If she can finish in `h` hours or fewer at speed
+`k`, this speed works.
+
+**`return k`** — Found the smallest feasible speed. Return it.
+
+The `for` walks speeds in ascending order, so the first one
+that passes the test is the minimum.
+
+**`raise ValueError("impossible")`** — Defensive code. The
+problem guarantees a feasible answer exists, but if the
+caller passes nonsense (like `h < len(piles)`), this catches it.
+
+The cost: outer loop runs up to `max(piles)` times. Each
+iteration calls `hours_at_speed`, which is *O(n)*. Total
+*O(n × max(piles))*. For typical inputs this is way too slow:
+`max(piles) = 10⁹` means a billion iterations.
+
+The optimized version exploits **monotonicity** — if speed `k`
+is feasible, all speeds `> k` are also feasible. That's a
+binary-searchable property. See below.
+''',
             "complexity": (
                 "**Time**: *O(n × max(piles))*. **Space**: *O(1)*."
             ),
@@ -1754,6 +1812,89 @@ Binary search the eating speed. Each check is *O(n)*.
             # mid is too slow; must speed up.
             lo = mid + 1
     return lo
+''',
+            "walkthrough": r'''
+The canonical "binary search on the answer" problem. We don't
+binary-search an array — we binary-search the **range of
+possible speeds**. Let me walk through the entire structure.
+
+**`def min_eating_speed(piles: list[int], h: int) -> int:`** —
+Returns the minimum eating speed.
+
+**Nested helper: `can_finish(k)`**
+
+This is the **predicate** — given a candidate speed `k`, can
+Koko finish in `h` hours?
+
+**`total = 0`** — Running total of hours needed.
+
+**`for p in piles: total += (p + k - 1) // k`** — Ceiling
+division per pile. We meet the same trick as the brute force.
+
+**`if total > h: return False`** — **Early exit optimization**.
+If the partial total already exceeds `h`, we know this speed
+is too slow without checking the remaining piles. This
+shortcut roughly doubles the speed of the predicate in the
+"infeasible" case.
+
+**`return total <= h`** — Final answer: feasible if total
+hours is within budget.
+
+**The binary search itself**
+
+**`lo, hi = 1, max(piles)`** — Define the candidate range.
+
+Why `lo = 1`? Speed must be at least 1 banana per hour (can't
+eat 0). Speed 1 might be infeasible, but it's the smallest
+candidate worth trying.
+
+Why `hi = max(piles)`? At speed `max(piles)`, every pile is
+eaten in exactly 1 hour. Total hours = `len(piles)`. If `h >=
+len(piles)`, this is feasible (and the problem guarantees this
+or no answer would exist). So we never need a higher speed.
+
+**`while lo < hi:`** — Half-open style. Search continues while
+the range is non-empty.
+
+**`mid = (lo + hi) // 2`** — Midpoint speed.
+
+**`if can_finish(mid):`** — Test the predicate at this speed.
+
+**`hi = mid`** — Feasible. So `mid` is a valid answer, but
+maybe we can find a smaller (slower) one. Keep `mid` in range
+by setting `hi = mid` (half-open style includes `mid` because
+the range is `[lo, hi)`).
+
+**`else: lo = mid + 1`** — Not feasible. The minimum answer
+is strictly greater than `mid`. Exclude `mid` and everything
+to its left.
+
+**`return lo`** — When `lo == hi`, the search has converged
+on the minimum feasible speed.
+
+**Why does this work?**
+
+The crucial property: feasibility is **monotonic** in `k`. If
+Koko can finish at speed `k`, she can finish at any speed
+`k' > k` (she's strictly faster). So the set of feasible
+speeds is a contiguous range `[k*, max(piles)]` where `k*` is
+the smallest feasible speed. We're binary-searching for `k*`.
+
+The classic "binary search on the answer" template:
+1. Identify the parameter being optimized (here, `k`).
+2. Identify the monotonic predicate (`can_finish(k)`).
+3. Binary search the parameter space.
+
+The total cost: *O(log(max(piles)))* iterations of the binary
+search, each running the *O(n)* predicate. Total
+*O(n log(max(piles)))*. For `max(piles) = 10⁹` and `n = 10⁴`,
+that's about 300,000 ops — instant. Compare to the brute
+force's billion ops.
+
+This template applies to: Capacity to Ship Packages, Split
+Array Largest Sum, Aggressive Cows, Painter's Partition,
+Allocate Books, and many more. Master the template once;
+reuse it forever.
 ''',
             "complexity": (
                 "**Time**: *O(n log(max(piles)))*. The binary search "

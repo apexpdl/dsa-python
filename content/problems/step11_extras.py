@@ -1172,6 +1172,132 @@ class MedianFinder:
             return -self.lo[0]
         return (-self.lo[0] + self.hi[0]) / 2
 ''',
+            "walkthrough": r'''
+The **two-heap technique** for streaming median. *O(log n)*
+per insert, *O(1)* per query. One of the most beautiful uses
+of heaps in DSA.
+
+**The setup**
+
+We maintain two heaps that together hold all elements seen so
+far, split at the median:
+- `lo`: a **max-heap** of the smaller half. Its top is the
+  largest of the small half.
+- `hi`: a **min-heap** of the larger half. Its top is the
+  smallest of the large half.
+
+Invariant: `max(lo) <= min(hi)`. The "middle" of the data sits
+right between the two heaps.
+
+We also maintain a **size balance**: `|lo| - |hi| ∈ {0, 1}`.
+That is, `lo` is allowed to have one more element than `hi`
+(but not two more), and `hi` is never bigger.
+
+**`def __init__(self):`** — Constructor.
+
+**`self.lo = []`** — Will be used as a max-heap. Python's
+`heapq` only has min-heaps, so we **store negatives**. Pushing
+`-5` and `-3` produces a heap where the top is `-5`; reading
+`-(-5) = 5` gives us the actual maximum.
+
+**`self.hi = []`** — Min-heap, used normally.
+
+**`def addNum(self, x):`**
+
+The algorithm is: push to lo, move lo's largest to hi,
+rebalance. Three lines.
+
+**`heapq.heappush(self.lo, -x)`** — Unconditionally push `x`
+(as `-x` for max-heap behavior) into `lo`.
+
+**`heapq.heappush(self.hi, -heapq.heappop(self.lo))`** —
+Pop the **largest** of lo and push it into hi. Why? To
+maintain the invariant `max(lo) <= min(hi)`. Whichever value
+just got pushed to lo might not belong there; we send the
+current maximum to the upper heap, ensuring lo's contents are
+all ≤ hi's contents.
+
+The line is a single expression: `heappop(self.lo)` pops the
+top (smallest in absolute terms — actually `-max`). Negating
+that gives us the actual max. We then push it into hi (which
+is a normal min-heap).
+
+**`if len(self.hi) > len(self.lo): ...`** — Rebalance. The
+above two steps could leave `hi` with one more element than
+`lo`. The size invariant requires lo to be at least as big as
+hi. So if hi is bigger, move its top back to lo.
+
+**`heapq.heappush(self.lo, -heapq.heappop(self.hi))`** — Pop
+hi's smallest, push it into lo (as negative for max-heap).
+
+After these three steps:
+- `lo` either equals `hi` in size, or has one extra element.
+- All of lo's values ≤ all of hi's values.
+
+**`def findMedian(self):`**
+
+**`if len(self.lo) > len(self.hi): return -self.lo[0]`** — If
+lo has one extra element, the total count is odd. The
+**median** is the extra element, which is at the top of lo
+(i.e., `-lo[0]` after un-negation).
+
+**`return (-self.lo[0] + self.hi[0]) / 2`** — Otherwise the
+total count is even. The median is the average of the two
+middle elements: lo's max and hi's min. We unnegate lo's top
+and average with hi's top.
+
+**Trace on stream [5, 1, 8, 3, 7]:**
+
+```
+addNum(5):
+  push -5 to lo: lo=[-5], hi=[].
+  push -(-5)=5 to hi: lo=[], hi=[5].
+  hi bigger than lo. Move 5 back: lo=[-5], hi=[].
+findMedian: lo size > hi size. Return -(-5) = 5. ✓
+
+addNum(1):
+  push -1 to lo: lo=[-5, -1], hi=[].
+  push -(-5)=5 to hi: lo=[-1], hi=[5].
+  Sizes equal. No rebalance.
+findMedian: equal sizes. Return (-(-1) + 5)/2 = 3.0. ✓ (median of 1,5)
+
+addNum(8):
+  push -8 to lo: lo=[-8, -1], hi=[5].
+  push -(-8)=8 to hi: lo=[-1], hi=[5, 8].
+  hi bigger. Move 5: lo=[-5, -1], hi=[8].
+findMedian: lo size > hi size. Return -(-5) = 5. ✓ (median of 1,5,8)
+
+addNum(3):
+  push -3 to lo: lo=[-5, -1, -3], hi=[8].
+  push -(-5)=5 to hi: lo=[-3, -1], hi=[5, 8].
+  Sizes equal. Done.
+findMedian: (-(-3) + 5)/2 = 4.0. ✓ (median of 1,3,5,8)
+
+addNum(7):
+  push -7 to lo: lo=[-7, -3, -1], hi=[5, 8].
+  push -(-7)=7 to hi: lo=[-3, -1], hi=[5, 7, 8].
+  hi bigger. Move 5: lo=[-5, -1, -3], hi=[7, 8].
+findMedian: lo size > hi size. Return -(-5) = 5. ✓ (median of 1,3,5,7,8)
+```
+
+**Properties:**
+- **addNum**: *O(log n)* — three heap operations.
+- **findMedian**: *O(1)* — just reads tops.
+- **Memory**: *O(n)* total.
+
+**The pattern generalization:**
+
+Two-heap is a template for many "running statistic" problems
+on streams:
+- **Sliding window median**: similar, but elements expire and
+  need to be removed (use lazy deletion).
+- **K-th largest in a stream**: a min-heap of size K.
+- **Find peaks in a stream**: maintain running min/max.
+
+The trick of "split the data at the statistic of interest" is
+deep. Whenever a streaming problem asks about middle/
+quantile/percentile, reach for heaps.
+''',
             "complexity": "addNum O(log n), findMedian O(1).",
         },
         "deep_concept": r'''

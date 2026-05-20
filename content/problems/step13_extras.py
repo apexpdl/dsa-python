@@ -706,6 +706,112 @@ def diameter_of_binary_tree(root):
     h(root)
     return best[0]
 ''',
+            "walkthrough": r'''
+**Diameter of a binary tree** — the longest path between any
+two nodes. Subtle but elegant: it's just **two heights
+combined at each node**, with a global max.
+
+The diameter doesn't have to pass through the root. It could
+be entirely inside one subtree. So we can't just compute
+`height(left) + height(right)` of the root.
+
+**The insight**: at every node, the longest path **passing
+through that node** is `height(left) + height(right)`. The
+diameter is the **maximum** of this quantity over all nodes.
+
+By combining the diameter computation with a single DFS
+height computation, we avoid a quadratic algorithm.
+
+**`def diameter_of_binary_tree(root):`** — Takes the root,
+returns the diameter (number of edges, not nodes, in the
+longest path).
+
+**`best = [0]`** — A **mutable container** for the running
+maximum. Why a list, not just `best = 0`? Because the inner
+function `h` needs to modify `best` from inside, and Python
+closures don't allow reassigning enclosing variables without
+`nonlocal`. Using a list and mutating `best[0]` sidesteps
+this.
+
+Alternative: use `nonlocal best` and a plain integer. Both
+work.
+
+**`def h(n):`** — Inner recursive helper. Returns the
+**height** of the subtree rooted at `n`. As a side effect,
+updates `best[0]`.
+
+**`if not n: return 0`** — Base case: empty subtree has
+height 0.
+
+**`lh = h(n.left); rh = h(n.right)`** — Recursively compute
+heights of left and right subtrees.
+
+**`best[0] = max(best[0], lh + rh)`** — **The key line.** The
+longest path passing through `n` has `lh` edges going down
+into the left subtree, `rh` edges going down into the right
+subtree, totaling `lh + rh` edges. Update the global best.
+
+**`return 1 + max(lh, rh)`** — Return the height of the
+current subtree: 1 (for the edge from `n` to its taller
+child) plus the height of that taller child.
+
+**Why two return paths?**
+
+The function does **two things** at each node:
+1. **Computes** the height (for return).
+2. **Updates** the running diameter (for side effect).
+
+This is the "**two return values via side effect**" pattern.
+It's idiomatic Python and avoids the verbosity of returning
+a tuple.
+
+**Trace on:**
+```
+       1
+      / \
+     2   3
+    / \
+   4   5
+```
+
+```
+h(4): leaf, lh=rh=0. best=max(0, 0)=0. Return 1.
+h(5): leaf, lh=rh=0. best=max(0, 0)=0. Return 1.
+h(2): lh=h(4)=1, rh=h(5)=1. best=max(0, 1+1)=2. Return 2.
+h(3): leaf, lh=rh=0. best=max(2, 0)=2. Return 1.
+h(1): lh=h(2)=2, rh=h(3)=1. best=max(2, 2+1)=3. Return 3.
+
+Return best[0] = 3.
+```
+
+The diameter is 3, achieved by the path 4 → 2 → 5 → ... wait,
+that's only 2 edges (4-2, 2-5). Let me reconsider.
+
+Actually the longest path is 4 → 2 → 1 → 3, which is 3 edges.
+That matches. The diameter through node `1` is `2 + 1 = 3`
+(2 edges in the left subtree, 1 edge in the right).
+
+**Why "edges" not "nodes"?**
+
+Different problem statements use different conventions. The
+LeetCode version counts edges. If you wanted nodes, the
+formula would be `lh + rh + 1`.
+
+**Properties:**
+- **Time**: *O(n)* — every node visited once.
+- **Space**: *O(h)* — the recursion stack.
+
+**The general pattern:**
+
+Many tree problems fit the "**compute one statistic, track
+another globally**" template:
+- **Diameter**: height + diameter.
+- **Maximum path sum**: best-ending-at-node + best-overall.
+- **House robber III**: rob-include + rob-exclude + best.
+
+Whenever you see "find the maximum [or minimum] of some
+property across all subtrees," reach for this template.
+''',
             "complexity": "Time O(n), space O(h).",
         },
         "deep_concept": r'''
@@ -1374,6 +1480,124 @@ def lowest_common_ancestor(root, p, q):
     if left and right:                     # p in one subtree, q in the other
         return root
     return left if left else right
+''',
+            "walkthrough": r'''
+**Lowest Common Ancestor of a Binary Tree.** *O(n)* time with
+a single DFS. The recursion structure is **gorgeous** — five
+lines, deep idea.
+
+The problem: find the deepest node that has **both** `p` and
+`q` as descendants (or is one of them).
+
+**The mental model**: at every node we ask, "are `p` and `q`
+on opposite sides of me, or on the same side?" If they're on
+opposite sides, **I** am the LCA. If both are on one side,
+the LCA is somewhere deeper in that subtree.
+
+**`def lowest_common_ancestor(root, p, q):`** — Takes the
+root and two target nodes. Returns the LCA.
+
+**`if not root or root is p or root is q: return root`** —
+**Base case.** Three sub-cases:
+1. Empty subtree — return None.
+2. Current node is `p` — return `p` itself (it's an ancestor
+   of itself).
+3. Current node is `q` — return `q`.
+
+Returning `p` or `q` immediately means we don't even check
+this node's descendants. That's fine because if `p` is found
+here and `q` is somewhere below, the LCA is still `p` (the
+deepest ancestor of both is `p` itself).
+
+We use `is` (identity) instead of `==` (value equality)
+because the problem specifies node references, and equal
+values don't imply same node.
+
+**`left = lowest_common_ancestor(root.left, p, q)`** —
+Recursively search the left subtree. Returns:
+- `None` if neither p nor q is in the left subtree.
+- `p` if p is the only one found there.
+- `q` if q is the only one found there.
+- The LCA of p and q **if both are in the left subtree**.
+
+**`right = lowest_common_ancestor(root.right, p, q)`** —
+Same for the right subtree.
+
+**`if left and right: return root`** — Both subtrees returned
+something. That means `p` is on one side and `q` is on the
+other (or one of them is found and the other is too — in
+either case, they're separated by the current node). **The
+current node is the LCA.**
+
+**`return left if left else right`** — Only one side
+returned a witness. Propagate it up. The LCA is wherever the
+witness points to (either p, q, or a deeper LCA found in
+that subtree).
+
+**Why does this work?**
+
+Three cases at every node:
+1. **Both witnesses bubble up** (`left and right`): the node
+   is the LCA. Return self.
+2. **One witness bubbles up**: it's the deepest LCA-or-target
+   found so far. Propagate it up.
+3. **No witness**: neither target is in this subtree. Return
+   None.
+
+The recursion's base case (returning `p` or `q` when we find
+them) plants the witnesses. The combining logic decides when
+to "promote" a node to LCA status.
+
+**Trace on:**
+```
+       3
+      / \
+     5   1
+    / \
+   6   2
+      / \
+     7   4
+```
+LCA of 6 and 4:
+
+```
+LCA(3, 6, 4):
+  left = LCA(5, 6, 4):
+    left = LCA(6, 6, 4) = 6 (base case).
+    right = LCA(2, 6, 4):
+      left = LCA(7, 6, 4) = None.
+      right = LCA(4, 6, 4) = 4 (base case).
+      Only right; return 4.
+    Both left and right: return 5 (LCA).
+  right = LCA(1, 6, 4) = None (neither in right subtree).
+  Only left; return 5.
+```
+
+LCA is 5. ✓
+
+**Why O(n)?**
+
+Each node is visited at most once. The function has constant
+work per node (two comparisons, two recursive calls, one
+conditional). Total: *O(n)*.
+
+**Properties:**
+- **Time**: *O(n)*.
+- **Space**: *O(h)* — recursion stack.
+
+**Variations:**
+- **LCA in BST**: simpler! Use the BST property to descend
+  directly. *O(h)*.
+- **LCA with parent pointers**: walk up from p and q
+  alternately, marking visited nodes.
+- **LCA via Euler tour + RMQ**: *O(n)* preprocess, *O(1)*
+  per query.
+
+The "bubble up the witness" pattern is one of the most
+powerful tree DFS techniques. It generalizes to:
+- **Path between two nodes**.
+- **Distance between two nodes**.
+- **K-ancestor queries**.
 ''',
             "complexity": "Time O(n), space O(h).",
         },

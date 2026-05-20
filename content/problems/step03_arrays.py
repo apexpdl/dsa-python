@@ -825,6 +825,47 @@ version is the canonical answer.
         arr[i] = v
     return len(uniques)
 ''',
+            "walkthrough": r'''
+The brute-ish approach uses a set to deduplicate and a sort to
+re-order, then writes back into the input array.
+
+**`def remove_dups_set(arr: list[int]) -> int:`** — Takes the
+array (which we're allowed to modify), returns the count of
+unique elements.
+
+**`uniques = sorted(set(arr))`** — Two operations packed in
+one line.
+
+`set(arr)` walks through the array once and builds a set —
+which by definition contains no duplicates. For
+`arr = [1, 1, 2, 2, 3]`, `set(arr)` is `{1, 2, 3}`.
+
+`sorted(...)` then takes that set and returns a new list with
+its elements sorted ascending. For `{1, 2, 3}` (which is
+already in sorted order conceptually but sets are unordered),
+we get `[1, 2, 3]`.
+
+This costs *O(n)* to build the set plus *O(k log k)* to sort
+where `k` is the number of unique values. Both are bounded by
+*O(n log n)* total.
+
+**`for i, v in enumerate(uniques):`** — Walk the unique values
+with their positions. `enumerate` gives us both the index
+(`i`) and the value (`v`).
+
+**`arr[i] = v`** — Overwrite the front of `arr` with the
+unique values, in order. We're modifying the input array
+in place, replacing its first `len(uniques)` slots with the
+deduplicated sorted values.
+
+**`return len(uniques)`** — Hand back the count.
+
+This works, but it's wasteful for a problem where the input is
+already sorted. The set throws away ordering information we
+already had, and the sort puts it back. The optimized version
+exploits the sortedness directly via the two-pointer
+slow-and-fast pattern — *O(n)* with no extra memory.
+''',
             "complexity": (
                 "**Time**: *O(n log n)* due to sorting the set. "
                 "**Space**: *O(n)* for the set."
@@ -877,6 +918,67 @@ space.
             arr[slow] = arr[fast]     # write the new unique there
     # Number of unique elements = slow + 1 (because we are 0-indexed).
     return slow + 1
+''',
+            "walkthrough": r'''
+The two-pointer slow-and-fast technique. This is one of the
+most reusable patterns in array problems — memorize the shape.
+
+**`def remove_duplicates(arr: list[int]) -> int:`** — Same
+signature. We mutate the input array in place.
+
+**`if not arr: return 0`** — Edge case. An empty array has
+zero unique elements. The Python idiom `if not arr` is shorter
+than `if len(arr) == 0` and means the same thing for lists
+(empty lists are falsy).
+
+**`slow = 0`** — `slow` is our "write head." It points to the
+last position in the array where we've written a confirmed
+unique value. Initially it points to index 0 — we trust that
+the first element is unique (it has no predecessor to compare
+against, so we keep it by default).
+
+**`for fast in range(1, len(arr)):`** — `fast` is the "read
+head." It walks through every position starting at index 1
+(because index 0 is already trusted). Why start at 1 and not
+0? Because the comparison `arr[fast] != arr[slow]` needs
+something to compare against, and the slow pointer starts at 0.
+
+**`if arr[fast] != arr[slow]:`** — The key test: is the value
+at the read head different from the most-recently-kept value?
+Because the array is sorted, equal values cluster together,
+so the only way to find a new unique is to see a different
+value than the last one we kept.
+
+**`slow += 1`** — A new unique was found. Advance the write
+head by one to reserve the next slot. After this line, the
+write head points to a slot we're about to fill (it was
+previously a duplicate of the value at `slow - 1`, or it was
+the same as `arr[fast]` from a previous iteration).
+
+**`arr[slow] = arr[fast]`** — Write the new unique value into
+the reserved slot. This overwrites whatever was there
+(possibly a duplicate, possibly nothing important).
+
+**`return slow + 1`** — After the loop, `slow` is the index
+of the last unique value. The *count* of unique values is one
+more than the index (because indices start at 0). So we return
+`slow + 1`.
+
+The invariant the algorithm maintains: positions `[0, slow]`
+contain the unique values seen so far, in sorted order.
+Positions `[slow+1, fast]` are "garbage" — we've already
+processed them but they might be duplicates or stale data.
+Positions `[fast, end]` are yet to be examined.
+
+The "write head + read head" pattern works whenever you want
+to filter or compact an array in place. The read head never
+falls behind the write head, so we never overwrite data we
+still need.
+
+Total work: one pass with `fast`, *O(n)*. No extra memory
+beyond the two indices. The set-based approach used *O(n)*
+memory and *O(n log n)* time; this version is strictly
+better on both axes — when the input is sorted.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(1)*."

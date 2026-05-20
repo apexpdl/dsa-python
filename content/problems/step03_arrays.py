@@ -4509,6 +4509,112 @@ longest.
                 best = length
     return best
 ''',
+            "walkthrough": r'''
+**Longest Consecutive Sequence.** *O(n)* time with a hash
+set — even though the algorithm has nested loops! The
+amortized analysis is the clever part.
+
+The problem: given an unsorted array, find the length of the
+longest sequence of consecutive integers present (e.g.,
+`[100, 4, 200, 1, 3, 2]` → 4, because `1, 2, 3, 4` are all
+present).
+
+**The trick**: for each potential **run-starter** (a value
+with no predecessor in the array), extend forward and count.
+
+**`def longest_consecutive(arr: list[int]) -> int:`** — Takes
+the array, returns the longest run length.
+
+**`s = set(arr)`** — Put all values into a hash set. Set
+operations are *O(1)* average. This is *O(n)*.
+
+**`best = 0`** — Track the longest run found.
+
+**`for x in s:`** — Iterate the set. Each iteration considers
+one value.
+
+**`if x - 1 not in s:`** — **Only start extending from
+run-starters.** A run-starter is a value whose predecessor
+isn't in the array — meaning the run begins at this value.
+
+If `x - 1` IS in the set, then `x` is not a starter; it's a
+continuation of a longer run starting at some earlier value.
+We'll handle that run when we visit the starter.
+
+This early-skip is what gives us *O(n)* amortized. Without
+it, for `[1, 2, 3, 4, ..., n]` we'd extend a run of length
+n from value 1, n-1 from value 2, etc. — *O(n²)* total. With
+the skip, only `x = 1` is a starter; the rest are skipped.
+
+**`length = 1; current = x`** — Start a fresh run at x.
+
+**`while (current + 1) in s: current += 1; length += 1`** —
+Extend forward as long as consecutive values exist.
+
+**`if length > best: best = length`** — Track the longest.
+
+**`return best`** — Hand back.
+
+**Why is this O(n)?**
+
+It looks like nested loops — outer loop over set, inner while
+loop. Worst case it's *O(n²)*, right?
+
+No. **Each value is touched at most twice** across the entire
+algorithm:
+1. Once as the outer loop variable.
+2. Once as part of an inner extension (only when we're inside
+   the starter check).
+
+The inner while-loop only fires from run-starters. Each
+non-starter is **never** the head of an inner loop (we skip
+it). So the total work of all inner loops combined is the
+total number of values across all runs = `n`.
+
+Total work: *O(n)* set construction + *O(n)* outer loop +
+*O(n)* combined inner loops = *O(n)*.
+
+**Trace on `arr = [100, 4, 200, 1, 3, 2]`:**
+
+```
+s = {100, 4, 200, 1, 3, 2}.
+
+x=100: 99 not in s → starter. Extend: 101 not in s. Length 1.
+x=4: 3 in s → not a starter. Skip.
+x=200: 199 not in s → starter. Extend: 201 not in s. Length 1.
+x=1: 0 not in s → starter. Extend: 2 in s (current=2, length=2),
+        3 in s (current=3, length=3), 4 in s (current=4, length=4),
+        5 not in s. Length 4. best = 4.
+x=3: 2 in s → not a starter. Skip.
+x=2: 1 in s → not a starter. Skip.
+
+Return 4.
+```
+
+The longest consecutive run is `[1, 2, 3, 4]`.
+
+**Properties:**
+- **Time**: *O(n)* amortized.
+- **Space**: *O(n)* for the set.
+
+**Why not sort?**
+
+Sorting + walking gives *O(n log n)*. Faster than brute
+force but slower than the hash-set approach.
+
+**Why not union-find?**
+
+Union-find with consecutive pairs could also work, *O(n
+α(n))*. The hash-set approach is simpler and asymptotically
+the same.
+
+The "only start from run-starters" trick is a beautiful
+amortized argument. The pattern reappears in: "longest valid
+parentheses," "longest substring of...," and many other
+problems where we naively count *O(n²)* substrings but
+realize each character is the start of at most one optimal
+substring.
+''',
             "complexity": (
                 "**Time**: *O(n)* amortized. **Space**: *O(n)* for "
                 "the set."

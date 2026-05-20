@@ -74,6 +74,48 @@ for i in range(n):
             best = max(best, j - i + 1)
     return best
 ''',
+            "walkthrough": r'''
+The brute force tries every starting index and extends a
+no-repeat substring from there. Restarts the work for each
+start, giving *O(n²)*.
+
+**`def longest_unique_brute(s: str) -> int:`** — Takes a
+string, returns the length of the longest substring with all
+unique characters.
+
+**`n = len(s); best = 0`** — Cache length, initialize the
+running best length.
+
+**`for i in range(n):`** — Outer loop: try each starting
+position.
+
+**`seen = set()`** — Fresh set for this start position. Will
+hold the characters we've included so far.
+
+**`for j in range(i, n):`** — Inner loop: extend the substring
+rightward from `i`.
+
+**`if s[j] in seen: break`** — If the current character is
+already in our set, we've hit a duplicate. The substring
+starting at `i` cannot extend any further without repeating —
+break out and try the next `i`.
+
+**`seen.add(s[j])`** — Otherwise, add the new character.
+
+**`best = max(best, j - i + 1)`** — Update the running best.
+The length is `j - i + 1` (inclusive on both ends).
+
+**`return best`** — Hand back the answer.
+
+The cost: each `i` runs an inner loop that may go all the way
+to the end. Worst case *O(n²)*. For `n = 10⁵`, 10 billion
+operations — slow.
+
+The optimized version uses a **sliding window** that avoids
+restarting from scratch. The key: when we hit a duplicate, we
+don't reset; we just shrink the left side past the duplicate.
+*O(n)* total.
+''',
             "complexity": "**Time**: *O(n²)*. **Space**: *O(k)*.",
         },
         "thought_process": r'''
@@ -123,6 +165,89 @@ index seen.
         # The current window [left..right] is valid; update best.
         best = max(best, right - left + 1)
     return best
+''',
+            "walkthrough": r'''
+The sliding-window O(n) algorithm. Two pointers and a hash
+map together do the job in a single pass.
+
+**`def longest_unique(s: str) -> int:`** — Same signature.
+
+**`last_index: dict[str, int] = {}`** — Maps each character to
+the **most recent index** where it appeared. We'll use this
+to jump the left pointer past duplicates.
+
+**`left = 0`** — The left edge of the current window.
+
+**`best = 0`** — Running maximum window length.
+
+**`for right, ch in enumerate(s):`** — Walk the array. `right`
+is the right edge of the window. We extend the window by one
+each iteration.
+
+**`if ch in last_index and last_index[ch] >= left:`** — Is
+the new character a duplicate **inside the current window**?
+
+Two conditions:
+1. `ch in last_index`: we've seen this character before.
+2. `last_index[ch] >= left`: the previous occurrence is still
+   inside the current window (which spans `[left, right - 1]`
+   before this iteration).
+
+If both hold, including `ch` at position `right` would create
+a duplicate.
+
+**`left = last_index[ch] + 1`** — Jump `left` to one past the
+previous occurrence. This eliminates the duplicate from the
+window in one step.
+
+For example, if `s = "abcabc"` and we're at `right = 3` (the
+second `a`), `last_index['a'] = 0`. We set `left = 1`. Now
+the window is `[1, 3]` = "bca", no duplicates.
+
+**`last_index[ch] = right`** — Update or insert the latest
+index for this character. Future iterations will know exactly
+where the most-recent `ch` was.
+
+**`best = max(best, right - left + 1)`** — Window length is
+`right - left + 1`. Update the running best.
+
+**`return best`** — Hand back.
+
+**Why is this O(n)?**
+
+Each character is examined twice at most: once when `right`
+hits it, and once when `left` skips past it (if it's a
+duplicate). The total work is bounded by `2n = O(n)`.
+
+The hash-map lookups are *O(1)* average. So the entire
+algorithm is *O(n)* time and *O(k)* memory (k = alphabet size).
+
+**Trace it on `s = "abcabcbb"`:**
+```
+right ch  last_index               left  window     best
+0     a   {a:0}                    0     "a"        1
+1     b   {a:0,b:1}                0     "ab"       2
+2     c   {a:0,b:1,c:2}            0     "abc"      3
+3     a   ('a' in window, jump)    1     "bca"      3
+                                          last_index={a:3,b:1,c:2}
+4     b   ('b' in window, jump)    2     "cab"      3
+5     c   ('c' in window, jump)    3     "abc"      3
+6     b   ('b' in window, jump)    5     "cb"       3
+                                          (b was at 4, jump left=5)
+7     b   ('b' in window, jump)    7     "b"        3
+End: best = 3. ✓ (e.g., "abc" at position 0-2)
+```
+
+The window slides smoothly without restarting, and the left
+pointer only ever moves forward. Total movement: at most
+2n = O(n).
+
+This pattern — sliding window with "last seen" hash — is
+canonical. It applies to: longest substring with at most K
+distinct, longest substring with K replacements, longest
+repeating subarray, and many more. The key insight is always
+"shrink from the left only when necessary, never from
+scratch."
 ''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(min(n, k))*.",
         },

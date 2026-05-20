@@ -67,6 +67,59 @@ useful pattern.
     # clean output.
     return " ".join(reversed(s.split()))
 ''',
+            "walkthrough": r'''
+The Pythonic one-liner. Three operations packed into one line.
+Let me unpack.
+
+**`def reverse_words_pythonic(s: str) -> str:`** — Takes a
+string. Returns a string with the words reversed in order.
+
+**`s.split()`** — Split the string into a list of words.
+Called with no argument, `.split()` does three smart things:
+1. Splits on any run of whitespace (one space, multiple
+   spaces, tabs, newlines — all treated as separators).
+2. Drops leading and trailing whitespace.
+3. Returns a list of non-empty strings.
+
+For example, `"   the  sky is   blue   ".split()` returns
+`['the', 'sky', 'is', 'blue']`. This is exactly what we want.
+Note: `s.split(' ')` (with a space argument) would behave
+differently — it would treat multiple spaces as multiple
+delimiters and return empty strings in between. The
+no-argument version is almost always what you want for
+sentence parsing.
+
+**`reversed(...)`** — Returns an iterator that yields the
+elements of the list in reverse order. For `['the', 'sky',
+'is', 'blue']`, this yields `'blue'`, `'is'`, `'sky'`, `'the'`.
+
+We use `reversed()` instead of slicing `[::-1]` because
+`reversed()` is *O(1)* extra memory (it's an iterator), while
+`[::-1]` builds a whole new list. For our use case (passing
+to `join`), the iterator is sufficient.
+
+**`" ".join(...)`** — Joins the iterator's elements into a
+single string, with a single space between each.
+
+For `'blue', 'is', 'sky', 'the'`, this gives `"blue is sky the"`.
+
+So the entire pipeline is: split into words, reverse the
+order, join with spaces. Three operations, three insights.
+
+Total work: *O(n)* time (each character is touched a constant
+number of times). *O(n)* memory for the list of words.
+
+A note on alternative spellings. `' '.join(s.split()[::-1])`
+is equivalent and uses slice reversal. Both are idiomatic
+Python; the `reversed()` version is slightly more memory-
+efficient.
+
+In interviews, this one-liner shows mastery of Python's
+string toolkit. But you should also know the in-place
+algorithm (two reversals: reverse whole string, then reverse
+each word) — that's *O(1)* extra memory and shows up in C++
+or Java interviews where you can't lean on `split`.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(n)*.",
         },
         "thought_process": r'''
@@ -307,6 +360,88 @@ and `a`).
         s_to_t[a] = b
         t_to_s[b] = a
     return True
+''',
+            "walkthrough": r'''
+This is the canonical "bidirectional bijection" pattern. The
+key lesson: when a problem demands a one-to-one mapping, you
+need **two** hash maps, one in each direction. Let me walk
+through every line.
+
+**`def is_isomorphic(s: str, t: str) -> bool:`** — Takes two
+strings, returns True iff they are isomorphic.
+
+Two strings are isomorphic iff characters can be replaced
+one-to-one to make `s` equal `t`. For example, "egg" and
+"add" are isomorphic (e→a, g→d). "foo" and "bar" are not
+(f→b, but then o→a and o→r — same source mapping to two
+different targets, which is invalid).
+
+**`if len(s) != len(t): return False`** — Strings of different
+lengths can't be isomorphic. Early-exit handles this.
+
+**`s_to_t: dict[str, str] = {}`** — Hash map: each character
+of `s` maps to its corresponding character in `t`. The type
+hint is decorative for the reader.
+
+**`t_to_s: dict[str, str] = {}`** — The **reverse** direction.
+Each character of `t` maps back to its corresponding character
+in `s`.
+
+Why two maps? Because the isomorphism is **bijective** — a
+one-to-one correspondence. If two distinct source characters
+map to the same target, the mapping is many-to-one, not a
+bijection. With just `s_to_t`, we couldn't detect this. The
+second map catches it.
+
+**`for a, b in zip(s, t):`** — `zip` pairs up corresponding
+characters. Iteration `i` gives `(s[i], t[i])`. We call them
+`a` and `b` for compactness.
+
+**`if a in s_to_t and s_to_t[a] != b: return False`** —
+**Direction 1 check.** We've previously mapped `a` to
+something; is it still consistent? If `s_to_t[a]` already
+exists and doesn't equal the current `b`, the mapping is
+inconsistent — fail.
+
+**`if b in t_to_s and t_to_s[b] != a: return False`** —
+**Direction 2 check.** Symmetric: we've previously mapped `b`
+back to something; is it the same `a` as now? If a different
+`a` previously mapped to this `b`, two sources are collapsing
+to one target — not a bijection.
+
+**`s_to_t[a] = b; t_to_s[b] = a`** — Record the mapping in
+both directions. After these two lines, both dictionaries are
+consistent for the current pair.
+
+**`return True`** — Loop completed without conflicts. The
+strings are isomorphic.
+
+Trace it on `s = "egg", t = "add"`:
+- Pair `(e, a)`: neither map has `e` or `a`; record
+  `s_to_t = {e: a}, t_to_s = {a: e}`. OK.
+- Pair `(g, d)`: similar; record `g → d, d → g`. OK.
+- Pair `(g, d)`: already recorded consistently. OK.
+- Return True. ✓
+
+Trace it on `s = "foo", t = "bar"`:
+- Pair `(f, b)`: record. OK.
+- Pair `(o, a)`: record. OK.
+- Pair `(o, r)`: `o` already maps to `a`, but now we want it
+  to map to `r`. Direction 1 catches it. Return False. ✓
+
+Trace it on `s = "ab", t = "aa"`:
+- Pair `(a, a)`: record. OK.
+- Pair `(b, a)`: `b` is new in s_to_t, but `a` is already in
+  t_to_s mapping back to `a`, not `b`. Direction 2 catches
+  it. Return False. ✓
+
+Total time: *O(n)*. Memory: *O(k)* where `k` is alphabet size
+(at most 256 for ASCII).
+
+This pattern — bijection requires two-direction checks —
+generalizes to: word pattern matching, "follow the leader"
+problems, and anywhere two domains must be in one-to-one
+correspondence.
 ''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(k)* where k is the alphabet size.",
         },

@@ -642,6 +642,128 @@ def is_balanced(root):
         return 1 + max(lh, rh)
     return dfs(root) != -1
 ''',
+            "walkthrough": r'''
+**Check if a binary tree is height-balanced.** A tree is
+balanced iff for **every node**, the heights of its two
+subtrees differ by at most 1.
+
+The naive approach: for each node, compute left height and
+right height, compare. *O(n²)* because heights are recomputed
+many times.
+
+The optimized approach: **compute height and balance check
+simultaneously** in one DFS. Use a sentinel value (`-1`) to
+mean "unbalanced subtree detected."
+
+**`def is_balanced(root):`** — Takes the root, returns
+True/False.
+
+**`def dfs(n):`** — Inner helper. Returns either:
+- The height of `n`'s subtree (a non-negative integer), OR
+- `-1` if the subtree (or any sub-subtree) is unbalanced.
+
+The sentinel `-1` propagates up: once any descendant is found
+unbalanced, every ancestor immediately returns `-1` too.
+
+**`if not n: return 0`** — Empty subtree has height 0. (Not
+`-1`! That would be misread as the unbalanced sentinel.)
+
+**`lh = dfs(n.left); if lh == -1: return -1`** — Compute left
+height. If it's the unbalanced sentinel, **short-circuit**:
+return -1 immediately. No need to even look at the right
+subtree.
+
+This short-circuit is important. Once we know a subtree is
+unbalanced, the whole tree is unbalanced. Why waste time on
+the rest?
+
+**`rh = dfs(n.right); if rh == -1: return -1`** — Same for
+right.
+
+**`if abs(lh - rh) > 1: return -1`** — **The balance check
+for the current node.** Both subtrees are balanced
+(otherwise we'd have returned -1 already), but maybe this
+node's two subtrees differ by too much.
+
+If they do, this node is the **unbalanced witness**. Return
+-1 to propagate.
+
+**`return 1 + max(lh, rh)`** — The current subtree is
+balanced (both children OK and they match here). Return its
+height for the parent's check.
+
+**`return dfs(root) != -1`** — If the final result is -1,
+some subtree was unbalanced. Otherwise it's a valid height.
+
+**Why one pass?**
+
+The naive approach calls `height` at every node — *O(n)* per
+call across *O(n)* nodes = *O(n²)*.
+
+The combined approach calls `dfs` once per node and computes
+height + balance in *O(1)* combine work. Total *O(n)*.
+
+**Trace on a balanced tree:**
+```
+       3
+      / \
+     9   20
+        /  \
+       15   7
+```
+
+```
+dfs(9): leaf. lh=0, rh=0. |0-0|<=1. Return 1.
+dfs(15): leaf. Return 1.
+dfs(7): leaf. Return 1.
+dfs(20): lh=1, rh=1. |1-1|<=1. Return 1+max(1,1)=2.
+dfs(3): lh=1, rh=2. |1-2|=1<=1. Return 1+max(1,2)=3.
+
+Return 3 != -1 → True.
+```
+
+**Trace on an unbalanced tree:**
+```
+       1
+      /
+     2
+    /
+   3
+```
+
+```
+dfs(3): leaf. Return 1.
+dfs(2): lh=1, rh=0. |1-0|=1<=1. Return 1+max(1,0)=2.
+dfs(1): lh=2, rh=0. |2-0|=2>1. Return -1.
+
+Return -1 != -1 → False. (Unbalanced)
+```
+
+**Properties:**
+- **Time**: *O(n)* — single pass.
+- **Space**: *O(h)* — recursion stack.
+
+**The sentinel pattern** is widely useful. Whenever you have
+a recursive function that needs to return EITHER:
+1. A useful value (height, sum, etc.), OR
+2. A special "failure" marker,
+
+choose a sentinel that can't conflict with a valid value
+(here, `-1` because real heights are ≥ 0). Then propagate it
+via short-circuits.
+
+**Alternative**: return a tuple `(is_balanced, height)`. More
+verbose but more explicit. The sentinel version is idiomatic
+Python.
+
+**Related problems:**
+- **Symmetric tree**: similar two-DFS-in-one pattern.
+- **Univalued tree**: check all nodes have the same value.
+- **Validate BST**: check the BST property recursively.
+
+Tree problems repeatedly use this "**compute property + check
+constraint in one pass with sentinel for failure**" template.
+''',
             "complexity": "Time O(n), space O(h).",
         },
         "deep_concept": r'''

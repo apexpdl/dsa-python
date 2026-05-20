@@ -4710,6 +4710,109 @@ Boyer-Moore Majority Vote. One pass, two scalars.
     # if arr.count(candidate) > len(arr) // 2: return candidate else None
     return candidate  # type: ignore[return-value]
 ''',
+            "walkthrough": r'''
+**Boyer-Moore Majority Vote** — one of the most beautiful
+algorithms in CS. *O(n)* time, *O(1)* memory. Finds the
+majority element (one appearing more than n/2 times) by
+**cancelling pairs**.
+
+**The intuition**: imagine every element of the array as a
+voter. If the majority element appears more than half the
+times, then **even if everyone else votes against it**, the
+majority still has a positive net vote.
+
+The algorithm pairs up unlike voters and "cancels" them
+(one vote for, one against → both disappear). After all
+cancellations, the majority's leftover votes — at least one
+— remain. That's the answer.
+
+**`def majority_element(arr: list[int]) -> int:`** — Takes the
+array, returns the majority element (guaranteed to exist).
+
+**`candidate = None; count = 0`** — Start with no candidate
+and zero votes.
+
+**`for x in arr:`** — Walk every element.
+
+**`if count == 0: candidate = x; count = 1`** — If we have no
+current candidate (vote count zero), adopt the current
+element as our candidate. This "resurrects" the candidate
+slot after a sequence of cancellations.
+
+**`elif x == candidate: count += 1`** — Same as the candidate
+— vote for it. Count goes up.
+
+**`else: count -= 1`** — Different from the candidate — vote
+against. Count goes down.
+
+When `count` reaches 0, the candidate is "ejected" and the
+next element becomes the new candidate.
+
+**`return candidate`** — At the end, `candidate` is the
+majority. (If a majority is guaranteed; otherwise, verify
+with a second pass.)
+
+**Why does this work?**
+
+Pair off voters: one "for the majority" and one "against."
+Each pair cancels. There are at most `n/2 - 1` voters
+against the majority (since majority is `> n/2`). So at most
+`n/2 - 1` cancellation pairs. The majority's surplus —
+`(votes_for) - (n/2 - 1) >= 1` — survives.
+
+The algorithm doesn't literally pair anyone, but the
+accounting via `count` tracks the net effect. When
+`count > 0`, the current candidate is "ahead" net of
+cancellations; when it hits zero, the previous candidate's
+lead has been used up, and we adopt a new candidate.
+
+The majority cannot be displaced permanently — any
+displacement at most cancels one majority vote, and there
+aren't enough non-majority votes to do that across the whole
+array.
+
+**Trace on `arr = [3, 2, 3]`:**
+
+```
+x=3: count=0, set candidate=3, count=1.
+x=2: x != candidate (3). count = 0.
+x=3: count=0, set candidate=3, count=1.
+End: candidate = 3. ✓ (3 appears twice in [3,2,3], 3 > 3/2)
+```
+
+Trace on `arr = [2, 2, 1, 1, 1, 2, 2]`:
+
+```
+x=2: cand=2, count=1.
+x=2: same, count=2.
+x=1: diff, count=1.
+x=1: diff, count=0.
+x=1: count=0, cand=1, count=1.
+x=2: diff, count=0.
+x=2: count=0, cand=2, count=1.
+End: candidate = 2. ✓ (2 appears 4 times in 7 elements, 4 > 3)
+```
+
+**Properties:**
+- **Time**: *O(n)* — one pass.
+- **Space**: *O(1)* — two scalars.
+
+**When the majority is NOT guaranteed**: the algorithm still
+runs, but the final candidate may not be a true majority. A
+**second pass** verifies: count occurrences of the candidate
+and check it's truly `> n/2`.
+
+**Generalization to "more than N/3"**: maintain **two**
+candidates and **two** counters. At most two elements can
+appear more than n/3 times. Same cancellation argument
+generalizes.
+
+For "more than N/K" you need K-1 candidates and K-1 counters.
+
+Boyer-Moore is a **must-know** interview algorithm. The
+cancellation argument is elegant and surprising the first
+time you see it.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },
         "deep_concept": r'''

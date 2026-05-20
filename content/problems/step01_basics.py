@@ -673,6 +673,75 @@ add the new digit on the right**. That is the *only* trick we use.
         n = n // 10
     return sign * reversed_value
 ''',
+            "walkthrough": r'''
+Walk through the function with me, line by line. This is one of
+the most important little loops in basic-maths programming —
+once you internalize it, six or seven later problems become
+trivial.
+
+**`def reverse_number(n: int) -> int:`** — Function signature.
+Takes an integer, returns an integer.
+
+**`reversed_value = 0`** — We are going to *build* the reversed
+number digit-by-digit, starting from zero. Think of
+`reversed_value` as a small piece of paper where we'll write
+each new digit on the right as it arrives. Right now the paper
+is empty (zero).
+
+**`sign = -1 if n < 0 else 1`** — A small but important detail.
+Negative numbers complicate the digit-stripping loop (which
+expects `n > 0`), so we capture the sign first. The expression
+is a Python conditional: "set sign to -1 if n is negative,
+otherwise to 1." This pattern (`x if cond else y`) is Python's
+ternary; it returns one of two values.
+
+**`n = abs(n)`** — We strip the sign and work with the
+absolute value. We saved the sign in the previous line; we'll
+re-apply it at the end. This trick — strip a difficult thing,
+deal with the easier core, re-apply at the end — is a
+recurring pattern in programming.
+
+**`while n > 0:`** — The main loop. Keep going until we've
+peeled off every digit. When `n` finally reaches `0`, all the
+digits have been transferred to `reversed_value`.
+
+**`last_digit = n % 10`** — Extract the rightmost digit. As we
+saw in count-digits, `%` is the modulo operator: it returns
+the remainder after division. `7894 % 10` returns `4`, the
+last digit. We give it the name `last_digit` for clarity.
+
+**`reversed_value = reversed_value * 10 + last_digit`** — Here
+is the magic line, the heart of the algorithm. Let me unpack it.
+
+Suppose `reversed_value` currently holds `49` (we've already
+extracted the `4` then the `9` from `7894`). We just extracted
+`8`. We want `reversed_value` to become `498`. How?
+
+`reversed_value * 10` shifts the existing digits left by one
+position, turning `49` into `490`. Now there's a `0` in the
+ones place, ready to be replaced. We add `last_digit` (`8`) to
+get `498`. The `0` is gone, replaced by our new digit.
+
+This shift-and-add trick is the *opposite* of the `// 10`
+strip-and-shrink trick. Strip-and-shrink removes the rightmost
+digit; shift-and-add appends a new rightmost digit. They are
+mirror operations, and you'll use them together constantly.
+
+**`n = n // 10`** — Drop the digit we just consumed. This is
+the now-familiar shrink operation. Next iteration's `last_digit`
+will be a fresh digit one position to the left of the previous
+one.
+
+**`return sign * reversed_value`** — Re-apply the original
+sign and return. If we started with `-7894`, sign was `-1` and
+this gives us `-4987`. If we started with `7894`, sign was `1`
+and this gives us `4987`.
+
+That's the whole algorithm. Five real lines of work. The key
+mental images: digits coming off the right end of `n` and
+landing on the right end of `reversed_value`. Like passing
+beads off one string and onto another.
+''',
             "complexity": (
                 "**Time**: *O(log₁₀ n)*. One iteration per digit.\n\n"
                 "**Space**: *O(1)*."
@@ -997,6 +1066,54 @@ is one of the joys of basic DSA — earlier work compounds.
     # forwards and backwards.
     return reversed_value == original
 ''',
+            "walkthrough": r'''
+Let's read this line by line. Most of the heavy lifting was
+done in the previous problem (Reverse a Number) — this one
+just adds a comparison at the end.
+
+**`def is_palindrome_number(n: int) -> bool:`** — Takes an
+integer, returns a boolean (True or False). The `bool` return
+type is your signal that this is a yes/no question.
+
+**`if n < 0: return False`** — Negative numbers can't be
+palindromes by the typical convention. Why? Because the minus
+sign would have to match the rightmost digit when "reversed,"
+and digits don't equal minus signs. `-121` reversed conceptually
+would be `121-` which isn't a valid number representation. We
+declare them non-palindromes and move on.
+
+**`original = n`** — Stash the original value. We're about to
+mutate `n` inside the loop (dividing by 10 each iteration), so
+we save a copy first. This is the **most-forgotten line** in
+this algorithm; beginners often compare against `n` at the end
+and wonder why every input returns True or False incorrectly.
+The bug: `n` is zero by then.
+
+**`reversed_value = 0`** — Starting paper for the reversed
+number, just like the previous problem.
+
+**`while n > 0:`** — Same loop as Reverse a Number. Walks every
+digit of `n`.
+
+**`reversed_value = reversed_value * 10 + n % 10`** — The
+shift-and-add we learned in the previous problem. Extracts the
+rightmost digit of the current `n` and appends it to the
+right of `reversed_value`.
+
+**`n = n // 10`** — Shrink `n` for the next iteration.
+
+**`return reversed_value == original`** — The whole point of
+this problem in one line. If reversing the digits gives the
+same number we started with, the digits read identically in
+both directions, which is the definition of a palindrome. We
+return that boolean directly.
+
+Notice how this function is *almost identical* to Reverse a
+Number, just with the comparison appended. That's the lesson:
+once you have a primitive (`reverse_number`), problems that
+depend on it become one line. Senior developers think in
+primitives, not in monolithic procedures.
+''',
             "complexity": (
                 "**Time**: *O(log₁₀ n)*.\n\n"
                 "**Space**: *O(1)*."
@@ -1257,6 +1374,57 @@ disastrous for large numbers.
             g = d
     return g
 ''',
+            "walkthrough": r'''
+Let me walk you through this naive but easy-to-understand
+solution.
+
+**`def gcd_brute(a: int, b: int) -> int:`** — Takes two
+integers and returns their greatest common divisor.
+
+**`g = 1`** — We initialize our answer to `1`. Why `1`? Because
+`1` divides every integer, so we know it's *always* a valid
+candidate. By starting here we guarantee we have at least one
+answer, even if no bigger common divisor exists.
+
+**`for d in range(1, min(a, b) + 1):`** — The main loop. We
+try every possible divisor from `1` up to and including
+`min(a, b)`. Why stop at `min(a, b)`? Think about it: a divisor
+of `a` cannot be larger than `a` itself. Similarly, a divisor
+of `b` cannot be larger than `b`. So a *common* divisor cannot
+exceed *either* — meaning it cannot exceed the smaller. That's
+why `min(a, b)` is the ceiling.
+
+Note the `+ 1` in `range(1, min(a, b) + 1)` — `range` is
+exclusive of its upper bound, so we add 1 to include
+`min(a, b)` in the iteration. This is the fence-post detail
+we keep meeting.
+
+**`if a % d == 0 and b % d == 0:`** — Test if `d` is a common
+divisor of both `a` and `b`. The condition `a % d == 0` says
+"the remainder when `a` is divided by `d` is zero," which is
+the math definition of "`d` divides `a` evenly." We need this
+to be true for both numbers — hence the `and`.
+
+**`g = d`** — Whenever we find a common divisor, we record it.
+We don't break out of the loop yet, because we want the
+**greatest** common divisor — there might be an even bigger one
+later. Since the loop goes upward (`d` increases each
+iteration), the *last* common divisor we record is automatically
+the largest.
+
+**`return g`** — Hand back the final winner.
+
+This algorithm is *correct* but *slow*. We're doing up to
+`min(a, b)` iterations, each with two modulo operations. For
+inputs like `a = b = 1_000_000_000`, that's about a billion
+operations — way too slow for real use. Euclid's algorithm
+(in the optimized section below) cuts this down to about 30
+operations for the same input.
+
+The lesson here: linear search through possible answers is a
+fine first instinct, but always ask "could the answer space be
+exponentially shrunk somehow?" In gcd, the answer is yes.
+''',
             "complexity": (
                 "**Time**: *O(min(a, b))*. Linear in the smaller "
                 "number, which is terrible for large inputs.\n\n"
@@ -1318,6 +1486,71 @@ def lcm(a: int, b: int) -> int:
     # in languages with integer limits. In Python it does not matter
     # but the habit is worth keeping.
     return abs(a // gcd(a, b) * b)
+''',
+            "walkthrough": r'''
+This is one of the most elegant algorithms in computing. Let's
+unpack it line by line.
+
+**`def gcd(a: int, b: int) -> int:`** — Same signature as the
+brute force.
+
+**`a, b = abs(a), abs(b)`** — Normalize to non-negative values.
+The Euclidean algorithm is most cleanly defined on non-negative
+integers; for negatives, the GCD is the same as for their
+absolute values. The tuple assignment `a, b = ...` is Python's
+parallel assignment — both names get their new values
+simultaneously, no temporary variable needed.
+
+**`while b != 0:`** — The loop continues as long as `b` is not
+zero. When `b` becomes zero, we stop. Why? Because the
+mathematical fact behind Euclid's algorithm: `gcd(a, 0) = a` for
+any `a`. So once `b` hits zero, `a` holds the answer.
+
+**`a, b = b, a % b`** — Here is the magic line of the entire
+algorithm. We simultaneously do two things:
+
+1. Replace `a` with the old `b`.
+2. Replace `b` with `a % b` (the remainder of the old `a`
+   divided by the old `b`).
+
+This single statement uses Python's tuple-assignment trick:
+the right side is evaluated *first* using the old values, then
+both names are assigned. So there's no risk of overwriting `a`
+before computing `a % b`.
+
+**Why does this work?** Because of Euclid's theorem:
+`gcd(a, b) = gcd(b, a mod b)`. Each iteration replaces `(a, b)`
+with `(b, a % b)` — same GCD, smaller numbers. The numbers
+shrink rapidly (you can prove they roughly halve every two
+iterations), so the loop runs in *O(log(min(a, b)))* steps.
+
+**`return a`** — When `b` is zero, `a` is the GCD.
+
+Now the LCM helper.
+
+**`def lcm(a: int, b: int) -> int:`** — Compute least common
+multiple.
+
+**`if a == 0 or b == 0: return 0`** — Edge case. LCM with zero
+is zero by convention.
+
+**`return abs(a // gcd(a, b) * b)`** — Compute LCM via the
+identity `a * b = gcd(a, b) * lcm(a, b)`, rearranged to
+`lcm = (a * b) / gcd(a, b)`. We use `//` for integer division.
+
+Notice the order: `a // gcd(a, b) * b`, not `a * b // gcd(a, b)`.
+Why? In Python it doesn't matter (integers are unbounded), but
+in languages like C++ and Java with 32-bit or 64-bit integer
+limits, `a * b` might overflow even though the final answer
+fits. Dividing first by the GCD keeps the intermediate value
+smaller. It's a habit worth keeping even in Python.
+
+The `abs(...)` wrapper handles any lingering sign issues.
+
+That's the whole algorithm: about three lines of real work,
+yet it's one of the oldest algorithms in mathematics (Euclid
+wrote it in his *Elements* around 300 BC). The shrink-by-
+remainder pattern reappears in many later algorithms.
 ''',
             "complexity": (
                 "**Time**: *O(log(min(a, b)))*. Each step at least "

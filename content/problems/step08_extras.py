@@ -128,6 +128,87 @@ So `n > 0 and (n & (n - 1)) == 0` checks power-of-two in O(1).
             "code": r'''def is_power_of_two(n: int) -> bool:
     return n > 0 and (n & (n - 1)) == 0
 ''',
+            "walkthrough": r'''
+The single most beautiful bit trick in CS. **One line.**
+*O(1)*.
+
+**`def is_power_of_two(n: int) -> bool:`** — Takes an integer,
+returns True iff n is a power of 2 (1, 2, 4, 8, 16, ...).
+
+**`return n > 0 and (n & (n - 1)) == 0`** — The whole
+algorithm. Let me unpack the magic.
+
+**The trick: `n & (n - 1)` clears the rightmost set bit.**
+
+In binary:
+- `n = 8 = 1000`
+- `n - 1 = 7 = 0111`
+- `n & (n - 1) = 1000 & 0111 = 0000 = 0`
+
+The "1000" has exactly one set bit. Subtracting 1 turned that
+bit off and turned all bits to its right ON. The AND keeps
+only bits set in **both**, which is none.
+
+Now consider a non-power:
+- `n = 12 = 1100`
+- `n - 1 = 11 = 1011`
+- `n & (n - 1) = 1100 & 1011 = 1000 = 8`
+
+The result is nonzero. So `n & (n - 1) == 0` exactly when `n`
+has only one set bit — which is exactly when `n` is a power
+of 2.
+
+**`n > 0 and ...`** — Guards against the edge case
+`n = 0`. We have `0 & -1` which in Python (with unbounded
+integers) is `0`, technically satisfying the second condition.
+But `0` is **not** a power of 2. So we explicitly exclude it.
+
+(In C/Java with signed integers, `0 - 1 = -1` is all-ones,
+so `0 & (-1) = 0` and the bit check passes — wrong result
+without the `n > 0` guard.)
+
+**Why does subtracting 1 do this?**
+
+In binary subtraction, going from `...1000...0` to
+`...1000...0 - 1`:
+- The rightmost `0`s borrow from the rightmost `1`.
+- The `1` becomes `0`.
+- All the borrowed `0`s become `1`s.
+
+So `1000 → 0111`. The rightmost set bit was "swallowed" and
+all bits to its right turned on.
+
+When we then AND `n` with `n - 1`:
+- Bits **left of** the rightmost set bit: same in both (the
+  borrow didn't reach them). AND keeps them.
+- Rightmost set bit of n: it's 0 in `n - 1`. AND gives 0.
+- Bits **right of** the rightmost set bit: they were 0 in n.
+  AND gives 0 regardless.
+
+Net effect: the rightmost set bit (and only that bit) is
+cleared.
+
+For a power of 2, there's only one set bit. Clearing it gives
+0. For anything else (other than 0), there are other set bits
+that survive, so the result is nonzero.
+
+**This trick generalizes** to count set bits (Brian
+Kernighan's algorithm): repeatedly do `n &= n - 1` until n
+becomes 0; the number of iterations is the count of set bits.
+
+Faster than naive bit-by-bit counting because we only iterate
+once per **set** bit, not once per **possible** bit position.
+
+**Properties:**
+- **Time**: *O(1)*. One subtraction, one AND, two comparisons.
+- **Space**: *O(1)*.
+- **Edge cases**: 0 → False (handled by `n > 0`). 1 → True
+  (one set bit, `1 & 0 = 0`). Negatives → False.
+
+This trick is the foundation of many bit-manipulation
+algorithms: counting set bits, finding the lowest set bit,
+power-of-two checks, and more.
+''',
             "complexity": "**Time**: *O(1)*. **Space**: *O(1)*.",
         },
         "summary": "**Pattern**: `n & (n - 1)` clears the rightmost set bit; equals 0 iff exactly one bit was set.",
@@ -172,6 +253,86 @@ def count_set_bits_py(n: int) -> int:
 # Even better in Python 3.10+:
 def count_set_bits_py310(n: int) -> int:
     return n.bit_count()
+''',
+            "walkthrough": r'''
+Three versions of "count set bits." The first is the
+algorithmic gold standard; the latter two are Python
+shortcuts.
+
+**Version 1: Brian Kernighan's trick**
+
+**`def count_set_bits(n: int) -> int:`** — Takes an integer,
+returns the number of `1` bits in its binary representation.
+
+**`count = 0`** — Running counter.
+
+**`while n > 0:`** — Loop until all bits have been processed.
+
+**`n &= n - 1`** — Clear the **rightmost set bit**. Same
+trick as power-of-two. Each iteration removes exactly one set
+bit.
+
+**`count += 1`** — One bit cleared = one bit was set.
+
+**`return count`** — Total bits set.
+
+**Why is this faster than the naive `for each of 32 bits` approach?**
+
+The naive method checks each bit position (32 or 64
+iterations regardless of n). Kernighan's algorithm runs once
+per **set** bit. For sparse numbers (few bits set), it's much
+faster. For dense numbers, it's the same order.
+
+**Trace on `n = 12 = 1100`:**
+```
+n=12 (1100), count=0.
+n &= n-1: n=12 & 11 = 1100 & 1011 = 1000 = 8. count=1.
+n=8 (1000), still > 0.
+n &= n-1: n=8 & 7 = 1000 & 0111 = 0000 = 0. count=2.
+n=0, exit loop.
+Return 2.
+```
+
+Two set bits in `1100`. ✓
+
+**Version 2: `bin(n).count('1')`**
+
+A Pythonic one-liner. `bin(n)` returns a string like
+`"0b1100"`. Count the `'1'` chars: 2.
+
+This is *O(log n)* time (string construction) but uses string
+operations, so it's slower in practice than Kernighan for
+large n.
+
+**Version 3: `n.bit_count()` (Python 3.10+)**
+
+The cleanest. Uses CPU-native popcount instruction internally
+(on x86, the `POPCNT` instruction does it in one cycle).
+Fastest of all three.
+
+If you're on Python 3.10+, prefer this. Otherwise use
+Kernighan.
+
+**Why is this trick called "Brian Kernighan's"?**
+
+Kernighan (co-author of *The C Programming Language*) wrote
+it up in a 1988 paper. The trick predates him in folklore —
+it's an old chestnut — but his exposition popularized it.
+
+**Properties:**
+- **Time**: *O(popcount)* — proportional to the number of set
+  bits.
+- **Space**: *O(1)*.
+
+**Applications:**
+- Counting "balanced" numbers.
+- Hamming distance: count bits where two numbers differ
+  (XOR them, then count set bits).
+- Bitmask DP: count items in a subset.
+- Network protocols: counting flags.
+
+This pattern — "process one set bit at a time" — appears
+throughout bit-manipulation problems.
 ''',
             "complexity": "**Time**: *O(popcount)*. **Space**: *O(1)*.",
         },

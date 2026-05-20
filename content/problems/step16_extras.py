@@ -222,6 +222,93 @@ def rob(nums):
         prev2, prev1 = prev1, max(prev1, prev2 + x)
     return prev1
 ''',
+            "walkthrough": r'''
+**House Robber I.** The classic "pick or skip with adjacency
+constraint" DP. *O(n)* time, *O(1)* memory.
+
+The problem: houses in a row, each with money inside. Robbing
+two **adjacent** houses triggers the alarm. Maximize money
+robbed without robbing adjacent.
+
+**The DP state**: at each house `i`, we have two choices.
+- **Rob `i`**: gain `nums[i]`, then the best we can do from
+  houses `0..i-2` (skipping `i-1`).
+- **Skip `i`**: gain 0, then the best from `0..i-1`.
+
+So `dp[i] = max(dp[i-1], dp[i-2] + nums[i])`.
+
+We only ever need `dp[i-1]` and `dp[i-2]`, so we **roll** two
+variables.
+
+**`def rob(nums):`** — Takes the array, returns max
+robbable.
+
+**`prev2, prev1 = 0, 0`** — Initial state:
+- `prev2 = dp[-2] = 0` (nothing robbed two houses ago, virtual).
+- `prev1 = dp[-1] = 0` (nothing robbed one house ago, virtual).
+
+We start with all-zeros because before we've seen any house,
+no money has been robbed.
+
+**`for x in nums:`** — Iterate house values.
+
+**`prev2, prev1 = prev1, max(prev1, prev2 + x)`** — **The
+rolling update.** Parallel assignment evaluates the right
+side first, then assigns:
+- New `prev2` = old `prev1` (the new "i-2" is the old "i-1").
+- New `prev1` = `max(old_prev1, old_prev2 + x)`:
+  - `old_prev1`: skip this house, take previous answer.
+  - `old_prev2 + x`: rob this house, add to "two-ago" best.
+
+The max picks the better option.
+
+**`return prev1`** — After processing all houses, `prev1` is
+the final answer.
+
+**Trace on `nums = [2, 7, 9, 3, 1]`:**
+
+```
+prev2=0, prev1=0.
+
+x=2: new prev2=0, new prev1=max(0, 0+2)=2.    (after house 0: max=2)
+x=7: new prev2=2, new prev1=max(2, 0+7)=7.    (after house 1: max=7)
+x=9: new prev2=7, new prev1=max(7, 2+9)=11.   (after house 2: max=11)
+x=3: new prev2=11, new prev1=max(11, 7+3)=11. (after house 3: max=11)
+x=1: new prev2=11, new prev1=max(11, 11+1)=12.(after house 4: max=12)
+
+Return 12.
+```
+
+Best strategy: rob houses 0, 2, 4 (values 2, 9, 1) for total 12.
+
+**Why is parallel assignment necessary?**
+
+If we did `prev2 = prev1; prev1 = max(prev1, prev2 + x)`, then
+in the second line `prev2` is already the **new** value
+(equals `prev1`), giving wrong results. Python's tuple
+assignment evaluates the right side completely before any
+assignment, avoiding this trap.
+
+**Properties:**
+- **Time**: *O(n)*.
+- **Space**: *O(1)*.
+
+**Generalizations:**
+- **House Robber II** (circular): houses arranged in a circle,
+  so first and last are adjacent. Run rob twice — once
+  excluding the first house, once excluding the last — and
+  take the max.
+- **House Robber III** (binary tree): rob nodes such that no
+  parent-child pair is robbed. DFS returning a tuple
+  (rob, skip).
+- **Maximum sum of non-adjacent**: same algorithm.
+- **Delete and Earn**: bucket values into a frequency array,
+  then run House Robber on the frequencies.
+
+The pick-or-skip with adjacency constraint is one of the
+**most common DP shapes** in interviews. Master this and a
+dozen variants become straightforward.
+''',
             "complexity": "Time O(n), space O(1).",
         },
         "deep_concept": "—",

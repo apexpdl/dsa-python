@@ -775,6 +775,126 @@ def knapsack01(values, weights, W):
             dp[cap] = max(dp[cap], dp[cap - w] + v)
     return dp[W]
 ''',
+            "walkthrough": r'''
+The 0/1 Knapsack DP, space-optimized to one dimension. *O(n·W)*
+time, *O(W)* memory. Each item can be taken at most once
+(hence "0/1": include or exclude).
+
+**`def knapsack01(values, weights, W):`** — Takes lists of
+item values and weights (same length), plus the knapsack
+capacity `W`. Returns the maximum total value achievable.
+
+**`dp = [0] * (W + 1)`** — 1D DP array. `dp[c]` will hold the
+best total value achievable with capacity `c`, considering
+the items we've processed so far.
+
+We allocate size `W + 1` because we want indices `0` to `W`
+inclusive. `dp[0]` represents capacity-zero (nothing can fit);
+`dp[W]` represents the full capacity (our final answer).
+
+All entries start at 0 because with zero items processed,
+the max value is 0 regardless of capacity.
+
+**`for v, w in zip(values, weights):`** — Process one item at
+a time. `v` is its value, `w` is its weight.
+
+**`for cap in range(W, w - 1, -1):`** — **Iterate capacity
+DOWNWARD** from `W` to `w` (inclusive on both ends — the `w
+- 1` is exclusive in `range`).
+
+**Why downward?** This is the **most subtle line** in 0/1
+knapsack. Iterating in reverse ensures that when we use
+`dp[cap - w]`, that value comes from the **previous item's**
+DP — not the current item's.
+
+If we iterated upward (`for cap in range(w, W + 1)`), then
+when computing `dp[cap]` we'd use a `dp[cap - w]` that was
+**already updated in this iteration** — meaning we'd be
+including the current item twice. That's **unbounded
+knapsack**, not 0/1.
+
+The downward iteration writes to higher indices first, so
+lower indices remain at their previous-item values when read.
+
+**`dp[cap] = max(dp[cap], dp[cap - w] + v)`** — The choice:
+- Don't take this item: `dp[cap]` stays the same (the
+  "previous-item" value).
+- Take this item: gain value `v`, use weight `w`. The best we
+  could do with the remaining `cap - w` capacity (using
+  previous items) is `dp[cap - w]`. Add `v`.
+
+Take the better of the two.
+
+**`return dp[W]`** — After processing all items, `dp[W]` is
+the optimal answer for the full capacity.
+
+**Trace on values=[60, 100, 120], weights=[10, 20, 30], W=50:**
+```
+Init: dp = [0]*51.
+
+Item 1: (v=60, w=10).
+  Iterate cap from 50 down to 10:
+    cap=50: dp[50] = max(0, dp[40]+60) = 60.
+    cap=49: dp[49] = max(0, dp[39]+60) = 60.
+    ...
+    cap=10: dp[10] = max(0, dp[0]+60) = 60.
+  After item 1: dp[0..9]=0, dp[10..50]=60.
+
+Item 2: (v=100, w=20).
+  Iterate cap from 50 down to 20:
+    cap=50: dp[50] = max(60, dp[30]+100) = max(60, 60+100) = 160.
+    cap=49: dp[49] = max(60, dp[29]+100) = max(60, 60+100) = 160.
+    ...
+    cap=30: dp[30] = max(60, dp[10]+100) = max(60, 60+100) = 160.
+    cap=29: dp[29] = max(60, dp[9]+100) = max(60, 0+100) = 100.
+    ...
+    cap=20: dp[20] = max(60, dp[0]+100) = 100.
+  After item 2: various values.
+
+Item 3: (v=120, w=30).
+  cap=50: dp[50] = max(160, dp[20]+120) = max(160, 100+120) = 220.
+  ...
+  cap=30: dp[30] = max(160, dp[0]+120) = max(160, 120) = 160.
+  ...
+
+Final: dp[50] = 220. Optimal!
+(Take items 1 and 2: weight 30, value 160. Or items 2 and 3:
+ weight 50, value 220. Yes — 220 is the answer.)
+```
+
+**Why is this optimal?**
+
+The DP encodes the decision tree of "for each item, take or
+skip." The number of states is `n × (W + 1)`. Each transition
+is *O(1)*. Total time *O(n·W)*.
+
+The 1D space optimization works because we only ever read
+`dp[cap]` and `dp[cap - w]` — both from the **previous
+item's** DP. The downward iteration preserves those values.
+
+**Properties:**
+- **Time**: *O(n·W)* — pseudo-polynomial. Fast when W is
+  small (which it usually is in practice).
+- **Space**: *O(W)*.
+
+**Why "pseudo-polynomial"?**
+
+Because the complexity depends on the **value** of W, not its
+**bit-length**. For W = 10⁹, the algorithm is impractical
+even though `n` is small. For NP-hardness purposes, 0/1
+knapsack is hard.
+
+**Variations**:
+- **Unbounded knapsack** (item reusable): iterate cap upward.
+- **Bounded knapsack** (each item has a count limit): more
+  complex.
+- **Fractional knapsack**: O(n log n) greedy, not DP.
+- **Subset sum**: knapsack with weights = values.
+
+Knapsack DP is the prototypical "include or exclude" problem.
+Master this template and many subset/partition problems
+become straightforward.
+''',
             "complexity": "Time O(n·W), space O(W).",
         },
         "deep_concept": "—",
@@ -1276,6 +1396,126 @@ def min_distance(w1, w2):
             else:
                 dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
     return dp[n][m]
+''',
+            "walkthrough": r'''
+**Edit distance** (Levenshtein distance) — the canonical
+"three operations" 2D string DP. *O(n·m)* time and memory.
+
+The problem: minimum number of single-character edits
+(**insert**, **delete**, or **replace**) needed to convert
+`w1` into `w2`.
+
+**`def min_distance(w1, w2):`** — Takes two strings. Returns
+the minimum number of edits.
+
+**`n, m = len(w1), len(w2)`** — Cache lengths.
+
+**`dp = [[0]*(m+1) for _ in range(n+1)]`** — 2D table of size
+`(n+1) × (m+1)`. The extra row and column handle the empty-
+prefix base cases. `dp[i][j]` will be the edit distance
+between `w1[..i-1]` (first `i` chars of `w1`) and `w2[..j-1]`
+(first `j` chars of `w2`).
+
+**Base cases:**
+
+**`for i in range(n+1): dp[i][0] = i`** — Converting `w1[..i-1]`
+to the empty string requires **deleting all i characters**.
+So `dp[i][0] = i`.
+
+**`for j in range(m+1): dp[0][j] = j`** — Converting the
+empty string to `w2[..j-1]` requires **inserting all j
+characters**. So `dp[0][j] = j`.
+
+**The double loop:**
+
+**`for i in range(1, n+1): for j in range(1, m+1):`** — Fill
+the table row-by-row, left to right. By the time we compute
+`dp[i][j]`, all three dependent cells are already filled.
+
+**`if w1[i-1] == w2[j-1]:`** — Compare the **last characters**
+of the two current prefixes. (Index `i-1` because `dp[i]` is
+for prefix length `i`.)
+
+**`dp[i][j] = dp[i-1][j-1]`** — **Match case.** If the last
+characters are already the same, no edit is needed for them.
+The cost is whatever it takes to convert the shorter prefixes
+`w1[..i-2]` and `w2[..j-2]`, which is `dp[i-1][j-1]`.
+
+**`else:`** — Last characters differ. We need exactly **one
+edit** to deal with this position. Three options:
+
+**`dp[i-1][j]`** — **Delete** `w1[i-1]`. Now `w1` has length
+`i-1`. The remaining problem is converting `w1[..i-2]` to
+`w2[..j-1]`, costing `dp[i-1][j]`. Plus 1 for the delete.
+
+**`dp[i][j-1]`** — **Insert** `w2[j-1]` into `w1`. Now both
+"end" with `w2[j-1]`, which we conceptually consume. The
+remaining problem is `w1[..i-1]` to `w2[..j-2]`, costing
+`dp[i][j-1]`. Plus 1 for the insert.
+
+**`dp[i-1][j-1]`** — **Replace** `w1[i-1]` with `w2[j-1]`.
+Both ends now match (after the replace), so we consume both.
+Remaining: `dp[i-1][j-1]`. Plus 1 for the replace.
+
+**`dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])`** —
+Take the best of the three.
+
+**`return dp[n][m]`** — Edit distance between the full
+strings.
+
+**Trace on w1 = "horse", w2 = "ros":**
+
+```
+          ""  r   o   s
+   ""      0  1   2   3
+   h       1  1   2   3
+   o       2  2   1   2
+   r       3  2   2   2
+   s       4  3   3   2
+   e       5  4   4   3
+```
+
+Reading: edit_distance("horse", "ros") = 3. Verify:
+1. Replace 'h' with 'r': "rorse"
+2. Delete 'r' (the 4th char): "rose"... hmm, let me redo:
+1. Replace 'h' with 'r': "horse" → "rorse"
+2. Delete 'r' (2nd r): "rorse" → "rose"? No.
+
+Let me re-derive: the standard 3-edit transformation:
+1. horse → rorse (replace h→r)
+2. rorse → rose (delete r at position 2)
+3. rose → ros (delete e)
+Three edits. ✓
+
+**Why does this work?**
+
+The DP encodes the decision tree of "for each ending pair of
+characters, what's the cheapest way to align them?" The
+recurrence covers all possibilities:
+- Match → no edit needed; both ends consumed.
+- Replace → fix the mismatch with one edit; both consumed.
+- Delete from `w1` → `w1` is shortened; only `w1`'s end
+  consumed.
+- Insert into `w1` → `w1` is lengthened to match `w2`'s end;
+  only `w2`'s end consumed.
+
+Every transformation of `w1` into `w2` is a sequence of these
+operations. The DP finds the cheapest sequence.
+
+**Properties:**
+- **Time**: *O(n·m)*.
+- **Space**: *O(n·m)* (can be reduced to *O(min(n, m))*
+  using rolling rows).
+
+**Applications:**
+- Spell checkers (find closest dictionary word).
+- DNA sequence alignment (similar problem, different scoring).
+- File diff tools.
+- Plagiarism detection.
+- Fuzzy text matching.
+
+Edit distance is the gateway to a huge family of "alignment"
+problems in bioinformatics, NLP, and information retrieval.
 ''',
             "complexity": "Time O(n·m).",
         },

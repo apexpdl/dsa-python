@@ -888,6 +888,49 @@ for i in range(n):
             return i
     return -1
 ''',
+            "walkthrough": r'''
+The brute force walks every index and checks if it's a peak.
+Slow but conceptually simple.
+
+**`def find_peak_linear(arr: list[int]) -> int:`** — Takes an
+array (not necessarily sorted) and returns the index of any
+peak element. A peak is a position that's strictly greater
+than both its neighbors. Boundary indices count too — they
+only need to beat their one existing neighbor.
+
+**`n = len(arr)`** — Cache the length.
+
+**`for i in range(n):`** — Check every index from 0 to n-1.
+
+**`left = arr[i - 1] if i > 0 else float('-inf')`** — Get the
+left neighbor's value. If `i == 0`, there is no left neighbor;
+we pretend it's negative infinity so the peak comparison
+always succeeds against the "missing" side. This is a clean
+way to avoid an `if` branch for the boundary case.
+
+**`right = arr[i + 1] if i < n - 1 else float('-inf')`** —
+Symmetric: get the right neighbor or `-inf` if `i` is the last
+index. Together with the left line, this handles boundary
+peaks uniformly.
+
+**`if arr[i] > left and arr[i] > right:`** — Peak condition.
+Strict greater-than on both sides means we have a local
+maximum. Found a peak.
+
+**`return i`** — Return the index immediately. The problem
+says "any peak," so we can return the first one we find.
+
+**`return -1`** — Defensive return. A non-empty array always
+has at least one peak (proof: the global maximum is a peak),
+so this only triggers for an empty input.
+
+Total work: one pass through the array, *O(n)*. The optimized
+version below uses binary search to achieve *O(log n)*, which
+sounds impossible at first — how can binary search work on an
+*unsorted* array? The trick is that "uphill direction" gives
+us a one-bit signal at every midpoint, which is enough to
+halve the search range.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },
         "thought_process": r'''
@@ -934,6 +977,80 @@ a peak.
             hi = mid
     # lo == hi: the converged index is a peak.
     return lo
+''',
+            "walkthrough": r'''
+This is one of the most surprising binary-search problems
+ever: we can binary-search an **unsorted** array! The trick is
+that the slope at the midpoint tells us which half contains a
+peak. Let me walk it through.
+
+**`def find_peak_element(arr: list[int]) -> int:`** — Same
+signature.
+
+**`lo, hi = 0, len(arr) - 1`** — Closed-interval search range.
+Both endpoints valid indices.
+
+**`while lo < hi:`** — Continue while the range has at least
+two elements. When `lo == hi`, we've converged to a single
+index that must be a peak (by the invariant we'll maintain).
+
+**`mid = (lo + hi) // 2`** — Midpoint. With `lo < hi`, we have
+`mid >= lo` and `mid < hi`. So `mid + 1` is always a valid
+index too — that's important for the next comparison.
+
+**`if arr[mid] < arr[mid + 1]:`** — The crucial comparison.
+We compare `arr[mid]` to `arr[mid + 1]`, **not** to
+`arr[mid - 1]`. Why? Because we want to know the slope going
+**right** from `mid`.
+
+If `arr[mid] < arr[mid + 1]`, then the array is going up
+between `mid` and `mid + 1`. The function is strictly
+increasing in this region. Now think: what must happen as we
+continue rightward from `mid + 1`? Eventually the function
+must either (a) keep increasing until index `hi`, in which
+case `hi` itself is a peak (its right neighbor is `-inf`), or
+(b) start decreasing somewhere, in which case the last
+increasing position is a peak. Either way, a peak exists in
+`[mid + 1, hi]`.
+
+**`lo = mid + 1`** — Move the lower bound to exclude `mid` and
+everything left of it. We know the peak is to the right.
+
+**`else: hi = mid`** — `arr[mid] >= arr[mid + 1]`. The slope
+is non-ascending (or flat) heading right. Now `mid` itself
+might be a peak (especially if `arr[mid - 1]` is also less
+than `arr[mid]`, which we don't even need to check). Or some
+position to its left is a peak. Either way, the answer is in
+`[lo, mid]`.
+
+We set `hi = mid` (not `mid - 1`) because `mid` is still a
+candidate. Note this is the closed-interval style mixed with
+a half-open shrink — it works because the while condition is
+`lo < hi`.
+
+**`return lo`** — When the loop ends, `lo == hi` and that
+index is the peak.
+
+The correctness argument is subtle. Let me state it carefully:
+
+**Invariant**: At the start of each iteration, the search
+range `[lo, hi]` contains at least one peak.
+
+**Initial truth**: For the whole array, the global maximum is
+a peak (it beats both neighbors trivially). So a peak exists
+in `[0, n-1]`.
+
+**Preservation**: When we narrow the range, we keep some peak
+inside. The argument above shows that whether we move left or
+right, the peak survives in the new range.
+
+This is a beautiful example of "binary search on a non-trivial
+predicate." The predicate isn't "is `arr[mid]` the target?";
+it's "does the slope point right or left?" And the answer to
+that predicate is enough to halve the search range each step.
+
+*O(log n)* time, *O(1)* memory. The linear version was *O(n)*;
+this is exponentially faster.
 ''',
             "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
         },

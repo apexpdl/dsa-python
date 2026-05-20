@@ -1366,6 +1366,38 @@ Correct and simple. The XOR solution improves the **space** to
             return k
     raise ValueError("no unique element found")
 ''',
+            "walkthrough": r'''
+The hash-table approach. Straightforward and works for any
+problem with "find element with frequency 1."
+
+**`def single_number_hash(arr: list[int]) -> int:`** — Takes
+the array, returns the unique element.
+
+**`from collections import Counter`** — Import Counter, a dict
+subclass specialized for counting. It turns any iterable into
+a `value -> count` mapping in one line.
+
+**`counts = Counter(arr)`** — Build the count map. For
+`arr = [4, 1, 2, 1, 2]`, this produces `{4: 1, 1: 2, 2: 2}`.
+Counter walks the array once internally — *O(n)* time, *O(n)*
+extra memory.
+
+**`for k, v in counts.items():`** — Loop through each
+`(value, count)` pair. The `.items()` method gives us both
+the key (the value from the array) and the value (its count).
+
+**`if v == 1: return k`** — Found the lone element — its count
+is 1. Return its value.
+
+**`raise ValueError("no unique element found")`** — Defensive
+code. The problem guarantees a unique element exists, but if
+the caller passed bad input, we raise a clear error instead
+of silently returning None.
+
+This approach is *O(n)* time but uses *O(n)* memory for the
+counter. The optimized version below uses *O(1)* memory via
+the XOR trick — a beautiful application of bitwise arithmetic.
+''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(n)* for the counter."
             ),
@@ -1411,6 +1443,61 @@ loner survives.
     for x in arr:
         result ^= x
     return result
+''',
+            "walkthrough": r'''
+The XOR trick. Three short lines, but one of the most elegant
+algorithms in all of competitive programming. Let me explain
+the magic.
+
+**`def single_number(arr: list[int]) -> int:`** — Takes the
+array, returns the unique element.
+
+**`result = 0`** — Start the running XOR with 0. We use 0
+because of the identity `x ^ 0 == x` (XOR-ing anything with
+zero gives that thing unchanged). So starting at 0 means our
+first iteration effectively initializes `result` to the first
+element.
+
+**`for x in arr:`** — Walk every element.
+
+**`result ^= x`** — XOR `x` into `result`. The `^=` is
+shorthand for `result = result ^ x`.
+
+**`return result`** — Hand back the answer.
+
+The reason this works is one of the most beautiful facts in
+discrete math. XOR has three crucial properties:
+
+1. **Commutative and associative:** `a ^ b ^ c == c ^ a ^ b`.
+   The order doesn't matter. This means we can imagine
+   rearranging the array into pairs before XOR-ing.
+
+2. **Self-cancellation:** `x ^ x = 0`. Any number XOR-ed with
+   itself is zero. So `5 ^ 5 = 0`, regardless of what `5` is.
+
+3. **Identity with zero:** `x ^ 0 = x`. XOR-ing with zero
+   leaves a value unchanged.
+
+Now imagine `arr = [4, 1, 2, 1, 2]`. Rearrange (allowed by
+property 1): `[1, 1, 2, 2, 4]`. XOR them in this order:
+`1 ^ 1 = 0`, then `0 ^ 2 = 2`, then `2 ^ 2 = 0`, then
+`0 ^ 4 = 4`. The pairs cancel themselves, the unique element
+survives. Property 2 + property 3 handle the rest.
+
+The implementation walks the array in its given order, not in
+the rearranged order. But because of commutativity, it doesn't
+matter — the algebraic result is the same.
+
+This is *O(n)* time, *O(1)* extra memory. No hash table, no
+sorting. Just one running integer and one bitwise operation
+per element. Beautiful.
+
+This XOR trick generalizes: "find the *one* number that
+appears odd times when all others appear even times" — same
+algorithm. The hash version handles arbitrary frequency
+patterns; the XOR version handles only the "all-but-one
+appear an even number of times" specialization, but in
+constant memory.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(1)*."
@@ -2252,6 +2339,49 @@ for `arr[i] + arr[j] == target`. Two nested loops, *O(n²)*.
                 return (i, j)
     return None
 ''',
+            "walkthrough": r'''
+Brute force = try every possible pair. Simple, obvious, slow.
+
+**`def two_sum_brute(arr: list[int], target: int)`** — Takes
+the array and the target sum. Returns the indices as a tuple,
+or `None` if no pair sums to the target.
+
+**`n = len(arr)`** — Cache the length for the two loops below.
+
+**`for i in range(n):`** — Outer loop: pick the first element
+of the pair. `i` ranges from `0` to `n-1`.
+
+**`for j in range(i + 1, n):`** — Inner loop: pick the second
+element of the pair. `j` starts at `i + 1` (not `0`!) for two
+reasons:
+1. We don't want to pair an element with itself (the problem
+   says "two distinct indices").
+2. We avoid counting each pair twice. If we let `j` start at
+   `0`, then both `(i=0, j=1)` and `(i=1, j=0)` would be
+   considered — same pair, just two orderings. Starting `j`
+   after `i` enforces `i < j` and counts each pair once.
+
+**`if arr[i] + arr[j] == target:`** — Check if this pair sums
+to the target.
+
+**`return (i, j)`** — Found it. Return the index pair as a
+tuple.
+
+**`return None`** — If both loops finish without finding a
+pair, no solution exists. (Some problems require a guaranteed
+solution and we'd raise an error here.)
+
+Total work: we examine `n × (n-1) / 2` pairs in the worst
+case. That's *O(n²)*. For `n = 10⁴`, that's 50 million
+operations — slow but tractable. For `n = 10⁶`, it's a
+trillion — completely infeasible. The hash-map optimized
+version below does it in *O(n)*.
+
+This problem is the gateway to the entire "hash trick" family:
+*for each element, ask the hash map a question about the
+past.* Watch how this transforms the algorithm in the
+optimized section.
+''',
             "complexity": (
                 "**Time**: *O(n²)*. **Space**: *O(1)*."
             ),
@@ -2326,6 +2456,61 @@ element, check whether `target - current` is in the dict.
         # element with itself.
         seen[x] = i
     return None
+''',
+            "walkthrough": r'''
+This is one of the most-asked interview problems in existence,
+and the solution is one of the most-loved tricks in DSA. Let
+me walk you through it.
+
+**`def two_sum(arr: list[int], target: int)`** — Same
+signature as the brute force.
+
+**`seen: dict[int, int] = {}`** — A hash map (Python dict)
+that will track every value we've encountered so far, paired
+with the index where we saw it. Initially empty.
+
+**`for i, x in enumerate(arr):`** — Walk the array. `enumerate`
+gives us both the index `i` and the value `x` at that index
+on each iteration. We need the index because the problem asks
+for index pairs.
+
+**`partner = target - x`** — Compute what value would *pair*
+with `x` to hit the target. If `target = 9` and `x = 7`, the
+partner is `2`. We need to find an earlier element equal to
+2 to complete the pair.
+
+**`if partner in seen:`** — The killer question: have we
+**already seen** the partner value somewhere earlier in the
+array? Hash-map lookup is *O(1)* on average — no scanning,
+just a single probe.
+
+**`return (seen[partner], i)`** — Yes, we saw it. The earlier
+occurrence is at index `seen[partner]`; the current one is at
+index `i`. Return both. Note we return the earlier index
+first to keep the pair sorted by position.
+
+**`seen[x] = i`** — Record the current `(value, index)` for
+future iterations. **Important:** this happens **after** the
+`if partner in seen` check. Why? Because if we recorded first
+and then checked, we could find `arr[i]` pairing with itself
+(e.g., if target = 6 and arr[i] = 3, we'd accidentally pair
+index `i` with itself). Recording after the check ensures
+"seen" means "seen in an *earlier* iteration."
+
+**`return None`** — No pair found.
+
+The mental shift: instead of asking "for each element, scan
+forward to find a partner" (which is *O(n²)*), we ask "for
+each element, **does the hash map remember its partner from
+earlier**?" (which is *O(n)*). Hash lookup is free; loop is
+one pass.
+
+The pattern — "for each element, ask the hash map a question
+about the past" — is the single most powerful idiom in array
+problems. It transforms many quadratic algorithms into
+linear ones. You'll see it in: longest substring without
+repeating chars, subarray sum equals K, group anagrams,
+longest consecutive sequence, and on and on.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(n)* for the hash."

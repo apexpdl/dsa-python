@@ -132,6 +132,96 @@ def search_bst(root, target):
         root = root.left if target < root.val else root.right
     return None
 ''',
+            "walkthrough": r'''
+The iterative BST search. Three lines of real work, but it
+encapsulates the entire BST philosophy: **compare and
+descend.**
+
+**`def search_bst(root, target):`** — Takes the root of a BST
+and a target value. Returns the node containing the target,
+or `None` if not found.
+
+**`while root:`** — Continue while we haven't fallen off the
+tree. The `while root:` test is True as long as `root` is not
+`None`. When we hit a leaf's null child, the loop exits with
+`root = None`, meaning "not found."
+
+**`if root.val == target: return root`** — **Found.** Return
+the current node. This is the success case.
+
+**`root = root.left if target < root.val else root.right`** —
+**The descent.** Python's conditional expression: if `target`
+is less than the current value, the target (if it exists) is
+in the left subtree (BST property: everything left is
+smaller). Otherwise it's in the right subtree.
+
+We **reassign** `root` to the chosen child. This is the
+elegant part: we're using `root` as a walker, not the original
+root reference. After many iterations, `root` points to the
+node we're currently examining.
+
+**`return None`** — Loop exited (we walked off the tree).
+Target not in the BST.
+
+**Why is this O(h)?**
+
+`h` is the height of the tree. Each iteration moves one
+level down. The tree has at most `h` levels, so we do at
+most `h` iterations.
+
+For a balanced BST, `h = O(log n)`. For a degenerate
+(skewed) BST, `h = O(n)`.
+
+**The mental model**: BST search is binary search on an
+ordered structure. The BST property guarantees that one of
+the two subtrees doesn't need to be explored. Each comparison
+eliminates half the remaining candidates (on average).
+
+**Trace on a BST:**
+```
+        4
+       / \
+      2   6
+     / \   \
+    1   3   8
+```
+Search for 3:
+- root = 4. 3 < 4 → go left.
+- root = 2. 3 > 2 → go right.
+- root = 3. Match. Return.
+
+Search for 5:
+- root = 4. 5 > 4 → go right.
+- root = 6. 5 < 6 → go left.
+- root = None. Return None.
+
+Both searches take 3 iterations on this 7-node tree (h = 3).
+
+**Why iterative and not recursive?**
+
+Both work. Iterative is preferred here because:
+- One less function-call overhead per level.
+- No recursion stack — *O(1)* memory.
+- The code is no more complex (it's actually shorter than
+  the recursive version).
+
+The recursive version would be:
+```python
+def search_bst_rec(root, target):
+    if not root or root.val == target:
+        return root
+    if target < root.val:
+        return search_bst_rec(root.left, target)
+    return search_bst_rec(root.right, target)
+```
+
+Same algorithm, slightly more verbose, uses *O(h)* stack.
+
+This three-step pattern — **base case** (None or match),
+**comparison**, **descend left/right** — is the template for
+every BST operation. Master it and you can write BST insert,
+delete, min/max, ceil/floor from scratch.
+''',
             "complexity": "Time O(h), space O(1).",
         },
         "deep_concept": "Iterative descent is structurally the same algorithm as binary search on an array, applied to the implicit ordering of a BST.",
@@ -386,6 +476,147 @@ def delete_node(root, key):
         root.val = succ.val
         root.right = delete_node(root.right, succ.val)
     return root
+''',
+            "walkthrough": r'''
+BST deletion is the trickiest of the standard BST operations.
+The challenge: when we delete a node with **two children**, we
+can't just remove it — that would orphan two subtrees. The
+trick is to **swap with the inorder successor**.
+
+Let me walk through this carefully.
+
+**`def delete_node(root, key):`** — Takes the BST root and
+the value to delete. Returns the (possibly new) root of the
+BST after deletion.
+
+The return-the-root pattern is important: the root itself
+might be the one we're deleting, in which case a different
+node becomes the new root.
+
+**`if not root: return None`** — Base case. If we walked off
+the tree, the key isn't here. Return None.
+
+**`if key < root.val: root.left = delete_node(root.left, key)`** —
+Key is in the left subtree. Recursively delete from there.
+**Important**: we reassign `root.left` to whatever the
+recursive call returns. This handles the case where the
+left subtree itself gets restructured.
+
+**`elif key > root.val: root.right = delete_node(root.right, key)`** —
+Symmetric: key is in the right subtree.
+
+**`else:`** — We found the node to delete (`key == root.val`).
+
+Now the three cases:
+
+**Case 1: No left child**
+
+**`if not root.left: return root.right`** — If the node has
+no left child, replace it with its right child (which might
+be None). The parent's `.left` or `.right` (set by the caller
+via the reassignment above) now points to this replacement.
+
+This single line handles both the **leaf** case (right is
+also None) and the **right-child-only** case.
+
+**Case 2: No right child**
+
+**`if not root.right: return root.left`** — Symmetric. Replace
+with the left child.
+
+**Case 3: Two children (the tricky case)**
+
+**`succ = root.right; while succ.left: succ = succ.left`** —
+Find the **inorder successor** — the smallest value greater
+than `root.val`. The smallest in the right subtree is found
+by going as far left as possible from the right child.
+
+For example, in this BST:
+```
+        5
+       / \
+      3   8
+         / \
+        6   9
+         \
+          7
+```
+The inorder successor of 5 is 6 (leftmost in 5's right subtree).
+
+**`root.val = succ.val`** — Copy the successor's value into
+the current node. The current node's identity is now
+`succ.val`; the original `root.val` (the one we wanted to
+delete) is gone.
+
+This is the key trick: we don't actually remove the **node**,
+we replace its **value**.
+
+**`root.right = delete_node(root.right, succ.val)`** — Now we
+need to delete the successor's original location (which still
+exists). Recurse into the right subtree to delete `succ.val`.
+
+The successor has at most one child (it's the leftmost in its
+subtree, so it has no left child). So deleting it falls into
+Case 1, which is straightforward.
+
+**`return root`** — Hand back the (possibly modified) root.
+
+**Why does this work?**
+
+The BST property says: for every node, **left subtree values
+< node value < right subtree values**.
+
+When we swap a node's value with its inorder successor:
+- The new value is the smallest in the right subtree.
+- It's still **greater than** everything in the left subtree
+  (which is unchanged).
+- It's still **less than** everything else in the right
+  subtree (we just removed the smallest).
+
+So the BST property is preserved.
+
+**Trace on the example BST, deleting 5:**
+```
+Before:           After:
+    5                 6
+   / \               / \
+  3   8             3   8
+     / \               / \
+    6   9             7   9
+     \
+      7
+```
+
+Walk:
+1. delete_node(root=5, key=5). Match. Two children case.
+2. succ = 8.right.left? No: succ = 8 first, then check
+   succ.left=6 exists, succ = 6. succ.left=None, stop.
+3. root.val = 6. (Root now has value 6, but the right
+   subtree still contains a 6 that needs removing.)
+4. root.right = delete_node(8, 6). Recurse:
+   - key=6 < val=8: root.right.left = delete_node(6, 6).
+   - delete_node(6, 6): match. Two children? Left=None, so
+     return right=7.
+   - Caller sets 8.left = 7.
+5. Final structure: as shown.
+
+Total time: *O(h)* — one descent for the original key, plus
+one for the successor's deletion (in the same subtree). The
+recursion stack uses *O(h)* memory.
+
+**Why is this the standard algorithm?**
+
+Other options exist (e.g., using the inorder **predecessor**
+from the left subtree, or restructuring with rotations).
+Inorder-successor swap is the standard because:
+1. It's simple to implement.
+2. It works for any BST (no balance assumption).
+3. The successor always has at most one child, so the
+   recursive deletion is in the easy case.
+
+This pattern of "delete via value-swap with successor"
+generalizes to red-black trees and AVL trees with minor
+adjustments.
 ''',
             "complexity": "Time O(h), space O(h) recursion.",
         },

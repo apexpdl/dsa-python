@@ -900,6 +900,101 @@ def can_jump(nums):
             return True
     return True
 ''',
+            "walkthrough": r'''
+**Jump Game I.** The classic greedy reachability problem.
+*O(n)* time, *O(1)* memory. Just track the farthest reach.
+
+The problem: given an array where `nums[i]` is the max jump
+length from position `i`, determine if you can reach the
+last index starting from index 0.
+
+**The greedy insight**: at each step, track the **farthest
+position we can possibly reach** so far. If our current
+position is unreachable, fail. Otherwise update the farthest
+and continue.
+
+**`def can_jump(nums):`** — Takes the array, returns
+True/False.
+
+**`farthest = 0`** — The farthest index we can reach so far,
+starting from position 0.
+
+**`for i in range(len(nums)):`** — Walk every position.
+
+**`if i > farthest: return False`** — **The reachability
+check.** If the current index `i` is beyond our farthest
+reach, we can't even get here — fail.
+
+This catches "stuck on a 0" cases: if `nums = [3, 2, 1, 0,
+4]`, starting at index 0 we can reach indices 1, 2, 3. At
+index 3, `nums[3] = 0`, so farthest stays at 3. When `i = 4`,
+`i > farthest = 3` → we can't reach 4. Return False.
+
+**`farthest = max(farthest, i + nums[i])`** — Update the
+farthest. From position `i`, we can jump up to `i + nums[i]`.
+
+**`if farthest >= len(nums) - 1: return True`** — Early exit.
+If we can already reach the last index, no need to keep
+iterating.
+
+**`return True`** — Loop completed without failure. We've
+reached (or could reach) the end.
+
+**Trace on `nums = [2, 3, 1, 1, 4]`:**
+
+```
+farthest = 0.
+i=0: 0 not > 0. farthest = max(0, 0+2) = 2. 2 < 4.
+i=1: 1 not > 2. farthest = max(2, 1+3) = 4. 4 >= 4. Return True.
+```
+
+**Trace on `nums = [3, 2, 1, 0, 4]`:**
+
+```
+farthest = 0.
+i=0: not > 0. farthest = max(0, 0+3) = 3. 3 < 4.
+i=1: not > 3. farthest = max(3, 1+2) = 3. 3 < 4.
+i=2: not > 3. farthest = max(3, 2+1) = 3. 3 < 4.
+i=3: not > 3. farthest = max(3, 3+0) = 3. 3 < 4.
+i=4: 4 > 3. Return False.
+```
+
+Can't reach the last index. ✓
+
+**Why is the greedy optimal?**
+
+If our current farthest reach is at least `i`, then **any**
+strategy to reach `i` works — we don't need to know which
+intermediate steps we took. The farthest doesn't depend on
+the path.
+
+Formally: `farthest` is monotone non-decreasing. If at some
+point `farthest < i`, we can't proceed (because we couldn't
+reach `i` via any earlier step). Otherwise we can.
+
+**Properties:**
+- **Time**: *O(n)* — one pass.
+- **Space**: *O(1)* — just one scalar.
+
+**Why is this NOT a DP problem?**
+
+A naive DP could be: `dp[i] = True iff dp[j] is True for some
+j with j + nums[j] >= i`. That's *O(n²)*. The greedy
+realization — we only need the **max** of `j + nums[j]`
+across all reachable `j` — collapses it to *O(n)*.
+
+**Variations:**
+- **Jump Game II**: minimum number of jumps. Greedy with
+  "current end" and "farthest" — slightly more complex.
+- **Jump Game III**: arbitrary directions. Needs BFS.
+- **Jump Game IV**: jumps to all indices with the same value.
+  BFS with neighbor groups.
+- **Jump Game V**: more constraints, DP.
+
+Jump Game I is the **simplest greedy reachability** problem.
+The "track farthest reach" pattern reappears in many path
+existence questions.
+''',
             "complexity": "Time O(n), space O(1).",
         },
         "deep_concept": r'''

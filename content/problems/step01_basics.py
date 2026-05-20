@@ -2133,6 +2133,65 @@ then print N. That gives us a tail-style printing — first we print
     # Now append n on the end.
     print(n)
 ''',
+            "walkthrough": r'''
+This is one of the most beautiful tiny recursive functions you
+can write. Three lines of body, but a perfect demonstration of
+the recursion mindset.
+
+**`def print_1_to_n_v1(n: int) -> None:`** — Takes an integer
+`n`. Returns nothing (`None`), because the function's job is to
+*print*, not to compute a value. Print is a side effect.
+
+**`if n <= 0: return`** — The **base case**. Every recursion
+needs a base case — a stopping condition. Without it, the
+recursion would call itself forever and crash with stack
+overflow. What does this base case mean? "If `n` is zero or
+negative, there's nothing to print. Just stop."
+
+Why `n <= 0` and not `n == 0`? Defensive programming. If
+someone calls `print_1_to_n_v1(-5)`, we don't want to infinite
+loop. The condition `n <= 0` covers both the natural base case
+(`n == 0`) and the malformed inputs.
+
+**`print_1_to_n_v1(n - 1)`** — The **recursive call**. This is
+where the leap of faith happens. We call our own function with
+a smaller argument and **trust** that it does its job
+correctly: prints all numbers from 1 to `n - 1` in order.
+We do not look inside this call. We do not trace it manually.
+We trust.
+
+For `n = 5`, this call promises to print:
+```
+1
+2
+3
+4
+```
+We assume it does. The actual mechanism is: our function calls
+itself with 4, which calls itself with 3, which calls itself
+with 2, which calls itself with 1, which calls itself with 0,
+which hits the base case and returns. Then `print(1)` happens
+in the `n=1` frame. Then control returns to the `n=2` frame,
+which prints `2`. And so on. The prints come out in order
+1, 2, 3, 4 — exactly as promised.
+
+**`print(n)`** — After the recursive call finishes printing 1
+through `n - 1`, we just need to add `n` on the end. Print it.
+
+That's the entire function. The whole algorithm in three lines.
+
+The mind game: when reading `print_1_to_n_v1(n - 1)`, do not
+trace what it does. Assume it works. Then ask: "given that it
+prints 1 to `n - 1`, what one more step do I need to print 1
+to `n`?" Answer: print `n`. That insight, applied recursively,
+*is* the function.
+
+This pattern is called "delegate then act." We delegate the
+hard part (printing the small numbers) to a recursive call,
+then we act (print the one big number). The opposite pattern
+— "act then delegate" — would print `n` first, then recurse,
+giving 5, 4, 3, 2, 1 output instead.
+''',
             "complexity": (
                 "**Time**: *O(n)* — n recursive calls.\n\n"
                 "**Space**: *O(n)* — the call stack is n deep."
@@ -2416,6 +2475,56 @@ It is fine and *O(n)*. The recursive version reads the math directly.
         return 1
     # Recursive case: n! = n * (n - 1)!
     return n * factorial(n - 1)
+''',
+            "walkthrough": r'''
+Factorial is the simplest "real" recursive function. Reading
+it line by line:
+
+**`def factorial(n: int) -> int:`** — Takes a non-negative
+integer, returns its factorial (an integer).
+
+**`if n <= 1: return 1`** — The **base case**. The factorial
+of 0 is 1, and the factorial of 1 is also 1. The mathematical
+definition is `0! = 1` (an empty product) and `1! = 1`. We
+catch both with `n <= 1`. Without a base case, the recursion
+would never stop.
+
+Why `<=` instead of `==`? Same defensive thinking as before.
+If someone passes a negative number, we want to return a
+sensible value instead of infinite-looping. Returning 1 for
+negative inputs is wrong mathematically, but it doesn't crash.
+A stricter implementation would raise an exception.
+
+**`return n * factorial(n - 1)`** — The **recursive case**.
+This line is a direct translation of the math definition:
+
+```
+n! = n × (n-1)!
+```
+
+We compute `(n-1)!` by calling ourselves with `n - 1`, then
+multiply by `n`. Trust that the recursive call works.
+
+Trace it on `factorial(4)`:
+- `factorial(4)` returns `4 * factorial(3)`
+- `factorial(3)` returns `3 * factorial(2)`
+- `factorial(2)` returns `2 * factorial(1)`
+- `factorial(1)` returns `1` (base case)
+
+Now the calls unwind:
+- `factorial(2)` = `2 * 1` = `2`
+- `factorial(3)` = `3 * 2` = `6`
+- `factorial(4)` = `4 * 6` = `24`
+
+Each multiplication waits for its recursive call to return.
+The call stack at the deepest point has 4 frames pending,
+each waiting on the next.
+
+A subtle point about stack depth: this version uses *O(n)*
+stack frames. Python's default recursion limit is 1000, so
+`factorial(1000)` would overflow. For very large factorials,
+prefer an iterative version (a simple loop). The iterative
+version is just as fast and uses constant stack.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. One multiplication per recursive "

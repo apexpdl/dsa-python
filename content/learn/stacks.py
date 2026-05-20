@@ -248,5 +248,104 @@ and several other matrix problems. Worth the time.
 
 Stacks are tiny but mighty. The monotonic stack pattern alone
 will save you hours of brute-force coding in the months ahead.
+
+## 11. Monotonic stack — the canonical template
+
+The monotonic stack is the single most powerful pattern in stack
+problems. The template:
+
+> Walk the array. Maintain a stack of indices such that the
+> *values* at those indices are monotone (always increasing, or
+> always decreasing). When the new element violates the
+> monotonicity, pop the offending elements; the new element is
+> the "answer" for those popped indices.
+
+For **next greater element**:
+
+```python
+def next_greater(nums):
+    n = len(nums)
+    ans = [-1] * n
+    stack = []                  # indices, values nums[stack] strictly decreasing
+    for i, x in enumerate(nums):
+        while stack and nums[stack[-1]] < x:
+            ans[stack.pop()] = x
+        stack.append(i)
+    return ans
+```
+
+Each index is pushed once and popped at most once → *O(n)*.
+
+For **next smaller**, flip the comparison. For **previous greater
+/ smaller**, walk right-to-left or maintain a different stack
+direction. The *shape* of the algorithm is identical; the
+direction and comparison change.
+
+**Where monotonic stacks appear:**
+- Next greater / smaller element (and the "previous" variants).
+- Largest rectangle in histogram (find left and right boundaries).
+- Maximal rectangle of 1s in a binary matrix (built on histogram).
+- Trapping rain water (left max + right max via stack).
+- Sum of subarray minimums / maximums.
+- Stock span problem.
+- Remove K digits to make smallest number.
+- Sliding window maximum (using a monotonic deque, the close
+  cousin).
+
+The monotonic stack pattern is so common in interviews that you
+should drill it to reflex. If you see "for each element, find
+the nearest [greater / smaller] [left / right] element," reach
+for the stack.
+
+## 12. Stacks for parsing — recursive descent and expression eval
+
+A stack is the natural data structure for any nested / balanced
+syntax. Examples:
+- **Balanced parens** — push opens, pop on closes, check match.
+- **Decode strings** like "3[a2[bc]]" — push counts and partial
+  strings on opens.
+- **Evaluate reverse-polish notation** — push numbers, pop two
+  on operators.
+- **Infix to postfix conversion** — shunting-yard algorithm uses
+  a stack to reorder operators.
+
+The general principle: when the input has nested structure, the
+stack mirrors the nesting depth.
+
+## 13. Common bugs
+
+**Empty-stack pop.** `stack.pop()` on an empty list raises
+`IndexError`. Always check `if stack:` before popping.
+
+**Comparison direction off.** "Strictly less" vs "less or equal"
+matters. With strict, equal elements pop each other; with
+non-strict, they don't. Decide based on the problem.
+
+**Pushing values instead of indices.** Sometimes you need the
+index (for distance/position answers). Push indices when you
+need both index and value access.
+
+**Confusing previous-greater and previous-greater-or-equal.**
+Read the problem carefully. The decision changes one comparison.
+
+**Forgetting to drain the stack at the end.** If the answer
+depends on "elements never popped," handle them explicitly.
+
+## 14. Mental exercises
+
+1. *Walk `[2, 1, 5, 6, 2, 3]` with the next-greater monotonic
+   stack. What is the final ans array?*
+
+2. *Why is the total work *O(n)*? Each element is pushed once,
+   popped at most once.*
+
+3. *In trapping rain water, why are *both* the left-max and
+   right-max needed at each index? What does each represent?*
+
+4. *In largest rectangle in histogram, what does popping an
+   index mean? What rectangle are we "closing"?*
+
+5. *If you ran a parens-balance check on `"([{}])"`, what would
+   the stack look like after each character?*
 ''',
 }

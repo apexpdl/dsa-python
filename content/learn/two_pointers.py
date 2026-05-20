@@ -295,5 +295,117 @@ After all five, two pointers should feel like a reflex.
 Two pointers is one of the small handful of patterns you will use
 constantly. Practice the three flavors, the monotonicity
 argument, and the duplicate-skipping discipline.
+
+## 10. The three flavors in detail
+
+The two-pointer pattern wears three different costumes. Recognizing
+which one a problem wants is half the work.
+
+### Flavor 1: Opposing pointers (ends inward)
+
+Start with `left = 0` and `right = n - 1`. Move them toward each
+other based on what you see. Used when:
+- The array is **sorted** and you're looking for a pair with a
+  specific sum or relation.
+- You need to **mirror** something — palindrome checks, reverse
+  in place.
+- A "container" / "trapping" geometry has two bounding walls.
+
+```
+[arr ........................... arr]
+ left ->                  <- right
+```
+
+When do you stop? Typically when `left >= right` (they meet or
+cross). Sometimes you stop when one of them satisfies a target
+condition.
+
+### Flavor 2: Same-direction pointers, different speeds
+
+Both pointers start at the left and march rightward. One moves
+faster than the other. Used for:
+- **In-place compaction** — keep the "write" pointer slow, the
+  "read" pointer fast.
+- **Fast / slow linked list** — Floyd's cycle detection, finding
+  the middle.
+- **Sliding window** (a special case where the two pointers
+  bound a window).
+
+```
+read --->
+[. . . . . . . . . . . . . . . .]
+write -->
+```
+
+### Flavor 3: Two pointers in two different arrays
+
+Used when merging or comparing two sorted arrays. Pointer i in
+`A`, pointer j in `B`. Compare `A[i]` to `B[j]`; advance one
+of them based on the comparison.
+
+```
+A: [. . . . . .]   B: [. . . . . .]
+    ^i                  ^j
+```
+
+Used in: merge two sorted arrays, merge sort's merge step,
+intersection of two sorted arrays.
+
+## 11. The monotonicity argument
+
+Two pointers work when **moving a pointer in one direction never
+needs to be undone**. Each pointer makes at most `n` moves, so
+the total work is *O(n)*.
+
+For opposing pointers: at each step, you can prove "moving this
+side inward keeps a valid invariant." Example: in 2-Sum on
+sorted array, if `arr[left] + arr[right] > target`, the right
+pointer must move left (no other choice would help). The proof
+is small but crucial — if you cannot articulate why a move is
+forced, the two-pointer algorithm is not justified.
+
+For same-direction pointers: the slow pointer only advances when
+you "commit" to keeping that index. The fast pointer always
+advances. Both monotone forward, total work *O(n)*.
+
+## 12. Common bugs
+
+**Off-by-one in the loop condition.** `while left < right` (no
+equality) is standard for opposing pointers. `while left <= right`
+allows them to meet at a single element, which sometimes matters
+and sometimes doesn't. Decide deliberately.
+
+**Forgetting to advance both pointers.** A bug like
+`left += 1` and forgetting `right -= 1` creates an infinite
+loop. Always check that *every* iteration makes progress.
+
+**Mishandling duplicates in 3-Sum.** After finding a triple,
+both `left` and `right` need to skip past duplicates. Forgetting
+this gives duplicate triples.
+
+**Confusing "i, j on the same array" with "i, j on different
+arrays."** In the former, you usually maintain `i < j`. In the
+latter, both can be at any position independently.
+
+## 13. Mental exercises
+
+1. *On `[1, 2, 3, 4, 5]`, walk the reverse-in-place. List the
+   value of `left, right` after each iteration.*
+
+2. *On sorted `[1, 2, 3, 4, 6, 8]` with target 10, walk 2-Sum.
+   When does `left` move? When does `right` move? When does
+   the loop end?*
+
+3. *In move-zeros, the slow pointer `write` only advances when
+   you find a non-zero. After processing `[0, 1, 0, 3, 12]`,
+   what is `write`'s final value?*
+
+4. *In Container With Most Water, why is it correct to always
+   move the *shorter* side inward? Why is moving the longer
+   side never helpful?*
+
+5. *Two sorted arrays of size m and n. The merge step of merge
+   sort uses two pointers. What is the total work? Why is it
+   *O(m + n)* and not *O(m · n)*?*
 ''',
 }

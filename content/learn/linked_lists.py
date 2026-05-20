@@ -304,5 +304,108 @@ combine reversal, head replacement, and dummy-head all at once.
 
 Linked lists are the gateway to all pointer-based structures.
 The mental discipline you build here pays off for years.
+
+## 12. Dummy head — the universal life-saver
+
+Many linked-list problems have a special case for the head:
+"what if I delete the first node?" "what if the first node
+matches?" Special-casing creates branchy code. The dummy head
+trick eliminates this:
+
+```python
+dummy = ListNode(0)
+dummy.next = head
+# ... work with prev = dummy and cur = prev.next ...
+return dummy.next       # may have changed
+```
+
+Now the head is just another node, no special case needed. The
+final return is `dummy.next` (which may have been updated).
+Common uses: remove-Nth-from-end, remove-duplicates, partition,
+merge-two-sorted, insertion-sort-list.
+
+## 13. The fast/slow pointer family
+
+Floyd's tortoise and hare. The slow pointer moves one step at
+a time; the fast moves two. Their relative speeds let you
+answer questions without knowing the list's length:
+
+- **Find the middle:** when fast reaches the end, slow is at
+  the middle.
+- **Detect a cycle:** if fast and slow ever meet, there's a
+  cycle.
+- **Find the cycle's start:** after they meet, reset one
+  pointer to head, then move both one step at a time; they
+  meet at the cycle's start.
+- **Nth-from-end:** start fast N nodes ahead, then move both
+  together; when fast reaches the end, slow is at the answer.
+
+All of these run in *O(n)* time and *O(1)* space, with no
+auxiliary data structure.
+
+## 14. Reversing a linked list — in detail
+
+The canonical pattern. Master it; reversal appears in dozens
+of problems.
+
+```python
+def reverse(head):
+    prev = None
+    cur = head
+    while cur:
+        nxt = cur.next         # save next before we overwrite
+        cur.next = prev        # flip the pointer
+        prev = cur             # advance prev
+        cur = nxt              # advance cur
+    return prev                # new head
+```
+
+The dance: three pointers (`prev`, `cur`, `nxt`), each lagging
+one step. We save `nxt` first because the next line overwrites
+`cur.next`. Then we flip, advance prev, advance cur. At the end,
+prev is the new head (the original tail).
+
+**Reversing a sub-range** is the same dance with care at the
+boundaries — connect the pre-reversal "before" node to the new
+head of the reversed segment, and the reversed tail to the
+"after" node.
+
+## 15. Common bugs
+
+**Losing the head reference.** Save the original head before
+mutating; if you forget, you can't return it.
+
+**Forgetting `.next = None` on a new tail.** When extracting
+or splitting, the new tail's `.next` should be `None`, else
+it dangles.
+
+**Off-by-one in N-from-end.** Start fast N nodes ahead, then
+move both. Trace it once on a small example.
+
+**Cycles you didn't expect.** If a problem doesn't mention
+cycles, your "walk until None" is safe. If cycles are possible,
+you must check.
+
+**Recursion on long lists.** Recursive reversal works but
+stacks O(n) frames. For lists of 100,000+, use the iterative
+version.
+
+## 16. Mental exercises
+
+1. *Reverse `1 -> 2 -> 3 -> 4` step by step. What are `prev,
+   cur, nxt` after each iteration?*
+
+2. *Floyd's tortoise and hare: prove (informally) why they
+   must meet inside a cycle. What if there's no cycle?*
+
+3. *Remove the 2nd node from end of `1 -> 2 -> 3 -> 4 -> 5`.
+   Use the fast/slow trick with a dummy head. Where does
+   `slow.next` point after the loop?*
+
+4. *Merge `1 -> 3 -> 5` and `2 -> 4 -> 6` using a dummy head.
+   What is the dummy.next chain at the end?*
+
+5. *Why do linked lists win over arrays for "insert in the
+   middle"? Where do they lose?*
 ''',
 }

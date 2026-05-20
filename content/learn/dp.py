@@ -448,5 +448,127 @@ vary; the recipe stays the same.
 Take a breath. Reread anything that felt slippery. Then go solve
 the five exercises above. DP rewards practice more than reading,
 so the sooner you put hands on keyboard, the better.
+
+## 13. The DP design recipe in full
+
+Every DP problem submits to the same five-step recipe. Drill it
+on each new problem until your fingers do it automatically.
+
+**Step 1: Identify the state.** What information uniquely
+describes a subproblem? Common choices: an index, two indices, a
+"current row + previous choice," "remaining budget," etc.
+
+**Step 2: Write the recurrence.** Express `f(state)` in terms
+of smaller states. There are usually 2-4 candidate transitions
+(include / exclude, left / right, take / skip).
+
+**Step 3: Identify base cases.** What are the smallest
+subproblems whose answer is direct? Set them up so the
+recurrence has something to build on.
+
+**Step 4: Choose memoization or tabulation.** Memoization mirrors
+the recursive shape. Tabulation iterates from base cases upward.
+Both are equivalent in big-O.
+
+**Step 5: Space-optimize.** Many 1D DPs only need O(1) extra
+(rolling-pair). Many 2D DPs only need O(min(m, n)) (rolling
+row). Identify which prior states you actually need.
+
+## 14. The shapes catalog — full reference
+
+DP problems fall into a small number of *shapes*. Learn the
+shapes; once recognized, the recurrence usually writes itself.
+
+**Shape A: Linear / 1D.** State is an index. Examples: fib,
+climbing stairs, frog jump, house robber, max subarray. Time
+*O(n)*, space *O(1)* with rolling.
+
+**Shape B: 2D pair.** State is a pair of indices into two arrays
+or strings. Examples: LCS, edit distance, distinct subsequences,
+wildcard matching. Time *O(n·m)*, space optimization rolls one
+dimension.
+
+**Shape C: Interval / partition.** State is an interval `(i, j)`.
+Recurrence tries every split point. Examples: matrix chain,
+burst balloons, palindromic partitioning II, MCM. Time
+*O(n³)*.
+
+**Shape D: State machine.** State is index + a categorical
+variable (current "mode"). Examples: stock with k transactions,
+ninja's training. Time depends on the state.
+
+**Shape E: Knapsack / subsequence.** State is index + remaining
+capacity (or remaining target). Examples: 0/1 knapsack, subset
+sum, coin change, target sum. Time *O(n·W)*, where W is
+capacity.
+
+**Shape F: Grid / 2D walk.** State is (row, col). Examples:
+unique paths, min path sum, falling path, maximal square. Time
+*O(m·n)*.
+
+**Shape G: LIS / monotone sequence.** State is "longest /
+shortest / count of sequences ending at i with some property."
+Examples: LIS, longest divisible subset, longest string chain,
+number of LIS. Time *O(n²)* naive, *O(n log n)* with bisect.
+
+## 15. Top-down vs bottom-up — which to choose?
+
+Both produce the same answer. Choose based on:
+
+- **Easier to write?** Top-down (memoization) mirrors the
+  natural recursion. Often faster to code under time pressure.
+- **Need space optimization?** Bottom-up is easier to
+  space-optimize. Rolling arrays are the standard technique.
+- **Need partial answers?** Top-down only computes what's
+  needed. Bottom-up computes everything up to the answer.
+- **Stack depth concerns?** Top-down recurses; bottom-up
+  iterates. For very deep recursion, bottom-up is safer.
+
+In interviews, I recommend: start with top-down for clarity,
+then convert to bottom-up if asked to optimize space.
+
+## 16. Common bugs
+
+**Wrong base case.** The most subtle DP bug. Especially in
+counting problems — `dp[0] = 1` (one way to make sum 0, the
+empty set) vs `dp[0] = 0` (no items selected). Decide
+deliberately.
+
+**Off-by-one in transitions.** `dp[i-1]` vs `dp[i+1]`. Sketch
+a tiny example by hand to catch these.
+
+**Forgetting to handle the empty input.** `dp[0]` or `dp[""]`
+often need a special case. Set them up before the loop.
+
+**Mutating state in memoized recursion.** If you memoize a
+function that mutates global state, the memo returns stale
+results on later calls. Memoized functions should be **pure**.
+
+**Wrong loop order in tabulation.** For 2D, sometimes the order
+of i and j matters; sometimes the order within a row matters
+(0/1 vs unbounded knapsack — iterate weight up or down).
+
+**Premature space optimization.** Get the 2D version right
+first. Then optimize to 1D once you can see what's reused.
+
+## 17. Mental exercises
+
+1. *Define the state for "longest common subsequence of two
+   strings." What does `dp[i][j]` mean? Write the recurrence
+   in words.*
+
+2. *0/1 knapsack vs unbounded knapsack: the only code
+   difference is the iteration order on the inner loop. Why?
+   Trace a tiny example.*
+
+3. *Climbing stairs in O(1) space: what two variables do you
+   keep? What is the recurrence?*
+
+4. *MCM has time complexity O(n³). Why? Sketch the recursion
+   tree and count.*
+
+5. *In the "subset sum" DP, you can use a boolean array or an
+   integer array (counting ways). What's the difference in
+   semantics and code?*
 ''',
 }

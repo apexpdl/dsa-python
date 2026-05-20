@@ -280,5 +280,107 @@ the difference trick, you have unlocked a whole sub-family.
 
 Sliding window is a workhorse pattern. It will pay off for years.
 Take the time.
+
+## 11. Fixed-size vs variable-size windows
+
+Two shapes of sliding window. Distinguish them and you've solved
+half the problem.
+
+**Fixed-size window**: the window length is given (e.g., "max
+sum of K consecutive elements"). Walk a right pointer; when the
+window grows beyond K, drop the leftmost element. The window
+stays the same size throughout. Total work *O(n)*.
+
+```python
+def max_sum_k(nums, k):
+    s = sum(nums[:k])              # initial window
+    best = s
+    for i in range(k, len(nums)):
+        s += nums[i] - nums[i - k]  # slide: add right, drop left
+        best = max(best, s)
+    return best
+```
+
+**Variable-size window**: the window length is unknown; we
+expand right and shrink left based on a predicate. The window's
+size varies as the algorithm runs. Used in: longest substring
+satisfying a property, smallest window covering a target,
+subarrays with sum = K (positives only).
+
+```python
+def variable_window_template(nums, condition):
+    L = 0
+    state = ...                    # whatever you track in the window
+    best = 0
+    for R in range(len(nums)):
+        update(state, nums[R])     # expand: add nums[R]
+        while not condition(state):
+            update(state, nums[L], removing=True)
+            L += 1
+        best = max(best, R - L + 1)
+    return best
+```
+
+The "while invariant broken, shrink left" is the heart of the
+variable window. Each index enters and leaves the window at most
+once, so total work is *O(n)*.
+
+## 12. The "at most K" trick
+
+A surprising number of "exactly K" problems decompose into:
+
+```
+count(exactly K) = count(at most K) - count(at most K-1)
+```
+
+For example, "subarrays with exactly K distinct integers"
+becomes two sliding-window queries, each *O(n)*. The reduction
+works because "exactly K" is the difference of two cumulative
+counts. It applies whenever the property is monotone (at most K
+distinct ⊆ at most K+1 distinct).
+
+We covered this in problems "Binary Subarrays with Sum,"
+"Subarrays with K Different Integers," etc. The trick is one of
+the highest-leverage moves in sliding window.
+
+## 13. Common bugs
+
+**Forgetting to update the window state on each move.** Both
+expansion (adding R) and contraction (removing L) must update
+the count/sum/state. Easy to drop one.
+
+**Wrong loop type for the shrink.** "Shrink while invariant
+broken" needs `while`, not `if`. If you only check once, you
+may leave the window in a bad state.
+
+**Off-by-one in window length.** Length of window `[L, R]`
+inclusive is `R - L + 1`. Many problems want the length, not
+the indices.
+
+**Counter not cleaned of zero entries.** When using a frequency
+dict and tracking distinct count, you must `del` keys whose
+count drops to zero, or `len(counter)` will overcount.
+
+**Confusing fixed and variable.** Read the problem twice. "Of
+length K" → fixed. "At most K" → variable.
+
+## 14. Mental exercises
+
+1. *On `[1, 2, 3, 4, 5], k = 3`, walk fixed-size sum. What
+   are the window values after each slide?*
+
+2. *On `"abcabcbb"`, walk longest substring without repeating
+   characters. When does L jump?*
+
+3. *Explain in your own words: why does each index enter and
+   leave the variable window at most once? Why does that give
+   *O(n)*?*
+
+4. *"Exactly 2 distinct elements" = atMost(2) - atMost(1). Walk
+   each on `[1, 2, 1, 2, 3]`. What does each return?*
+
+5. *In Minimum Window Substring, what does the variable
+   `formed` track, and why is it the key to *O(n)* validity
+   checking?*
 ''',
 }

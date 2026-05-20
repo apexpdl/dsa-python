@@ -267,5 +267,122 @@ huge family of problems.
 
 Queues are tiny but they power some of the most useful
 algorithms in the entire curriculum.
+
+## 10. The four flavors of queue
+
+A queue (FIFO) has surprisingly many variants, each unlocking
+different patterns.
+
+**Plain queue (deque)** — `collections.deque` with O(1)
+`append` and `popleft`. The default tool for BFS.
+
+**Priority queue (heap)** — `heapq`. Pops the smallest (or
+largest with negation) element. Used in Dijkstra, top-K, merge
+K sorted lists, task scheduler.
+
+**Monotonic deque** — a deque where you maintain the
+monotonicity of the *values* (not indices). Used in sliding
+window maximum / minimum, shortest subarray with sum ≥ K, and
+the "constrained subsequence" family.
+
+**Circular queue** — fixed-size queue using array + two
+indices. Mostly useful in OS / embedded contexts; rarely needed
+in DSA interview problems.
+
+## 11. BFS — the canonical use of a queue
+
+BFS visits nodes in **layers** — all nodes at distance 1 from
+the start, then all at distance 2, and so on. This guarantees
+*shortest path on unweighted graphs*.
+
+```python
+from collections import deque
+def bfs(start, adj):
+    dist = {start: 0}
+    q = deque([start])
+    while q:
+        u = q.popleft()
+        for v in adj[u]:
+            if v not in dist:
+                dist[v] = dist[u] + 1
+                q.append(v)
+    return dist
+```
+
+**Why does BFS give shortest paths?** Because of the queue's
+FIFO property: nodes are explored in the order they were
+discovered, which corresponds to layer order. The first time
+BFS visits a node, it does so via the shortest path.
+
+**Multi-source BFS** seeds the queue with multiple starting
+points at distance 0. Used in "rotten oranges," "distance of
+nearest 0," and similar "spread from many origins" problems.
+
+## 12. The monotonic deque pattern
+
+Used for **sliding window maximum / minimum** in *O(n)* total
+(not *O(n·k)*). Maintain a deque of indices such that the
+*values* are strictly decreasing (for max) or increasing (for
+min). At each step:
+- Drop indices from the back while they're worse than the new
+  element.
+- Append the new index.
+- Drop the front if it falls outside the window.
+
+The front is always the current window's maximum.
+
+```python
+from collections import deque
+def sliding_window_max(nums, k):
+    dq = deque()
+    out = []
+    for i, x in enumerate(nums):
+        while dq and nums[dq[-1]] <= x:
+            dq.pop()
+        dq.append(i)
+        if dq[0] <= i - k:
+            dq.popleft()
+        if i >= k - 1:
+            out.append(nums[dq[0]])
+    return out
+```
+
+The deque's role: maintain "candidates that could still be the
+window max as it slides." Once a value is dominated by a later,
+larger value, it can never be the max again — drop it.
+
+## 13. Common bugs
+
+**Using a list for a queue.** `list.pop(0)` is *O(n)*. Use
+`collections.deque` instead.
+
+**Mixing front and back operations.** A deque has four:
+`append, appendleft, pop, popleft`. Use the right pair.
+
+**Forgetting to mark visited before enqueueing.** In BFS, mark
+when you *enqueue*, not when you *dequeue*. Otherwise the same
+node may be added many times before being processed.
+
+**Off-by-one in the window expiration check.** `dq[0] <= i - k`
+vs `dq[0] < i - k + 1` — same thing, different style. Pick one.
+
+## 14. Mental exercises
+
+1. *Run BFS on a tree from the root. In what order are nodes
+   visited? How is that different from preorder DFS?*
+
+2. *On `nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3`, walk the
+   monotonic-deque sliding-window-maximum. What does the
+   deque look like at each step?*
+
+3. *Why is multi-source BFS correct? Why don't sources
+   interfere with each other?*
+
+4. *If you used a regular list with `pop(0)` instead of deque
+   for BFS, what is the complexity? Where does the extra cost
+   come from?*
+
+5. *In a queue-based topological sort (Kahn's algorithm), why
+   do we initially enqueue all nodes with in-degree 0?*
 ''',
 }

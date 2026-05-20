@@ -363,5 +363,159 @@ mechanical.
 Backtracking is the brain of "try every option" algorithms.
 Master the skeleton, develop the pruning instinct, and the rest
 is execution.
+
+## 14. The four-step skeleton, drilled
+
+Every backtracking problem fits the same shape. Internalize this
+template by writing it from scratch ten times:
+
+```python
+def backtrack(state):
+    if is_solution(state):
+        record(state)
+        return
+    for choice in legal_choices(state):
+        apply(choice, state)         # commit
+        backtrack(state)             # recurse
+        undo(choice, state)          # rollback
+```
+
+The four steps:
+1. **Base case** — am I done? Record the answer.
+2. **Generate choices** — what options exist from here?
+3. **Apply + recurse** — commit each choice, dive deeper.
+4. **Undo** — roll back so the next sibling branch sees a clean
+   state.
+
+Forgetting step 4 is the #1 bug. The `undo` is the difference
+between backtracking and naive recursion.
+
+## 15. Subsets — the canonical example
+
+The classic. Two choices per element: include or exclude.
+
+```python
+def subsets(nums):
+    out = []
+    cur = []
+    def back(i):
+        if i == len(nums):
+            out.append(cur.copy())  # snapshot
+            return
+        # exclude
+        back(i + 1)
+        # include
+        cur.append(nums[i])
+        back(i + 1)
+        cur.pop()                   # undo
+    back(0)
+    return out
+```
+
+Walk the recursion tree. At depth 0 we branch into 2 children
+(include / exclude `nums[0]`). At depth 1 we branch again. By
+depth n, we have 2^n leaves — one for each subset.
+
+The `cur.copy()` is critical. Without it, `out` would contain
+references to the same list, all empty by the end.
+
+## 16. Permutations — and avoiding duplicates
+
+Permutations are a "choose without replacement" backtracking.
+
+```python
+def permute(nums):
+    out = []
+    cur = []
+    used = [False] * len(nums)
+    def back():
+        if len(cur) == len(nums):
+            out.append(cur.copy())
+            return
+        for i in range(len(nums)):
+            if used[i]: continue
+            used[i] = True
+            cur.append(nums[i])
+            back()
+            cur.pop()
+            used[i] = False
+    back()
+    return out
+```
+
+For **permutations with duplicates** (e.g., `[1, 1, 2]`), sort
+first, then add a "skip duplicates at the same depth" rule:
+
+```python
+nums.sort()
+def back():
+    ...
+    for i in range(len(nums)):
+        if used[i]: continue
+        if i > 0 and nums[i] == nums[i-1] and not used[i-1]:
+            continue           # skip duplicate at same depth
+        ...
+```
+
+The condition `not used[i-1]` says "the previous identical
+element hasn't been chosen at this depth yet" — so picking the
+current one would generate a permutation that the previous one
+already generated.
+
+## 17. Pruning — the secret to fast backtracking
+
+A naive backtracking explores 2^n or n! states. With **pruning**,
+many branches are cut before reaching leaves. Common pruning
+strategies:
+
+- **Early-exit on infeasible state.** If the current path has
+  already violated a constraint, return immediately. Example:
+  N-Queens — if two queens attack, prune.
+- **Bound-based pruning.** Maintain the best answer so far; if
+  the current branch can't beat it, prune.
+- **Sorted choice pruning.** Sort choices to encourage early
+  cuts (e.g., subset-sum: sort descending, take the big numbers
+  first).
+- **Symmetry pruning.** If two choices lead to symmetric
+  configurations, only explore one. Example: N-Queens — first
+  queen in left half only, then mirror.
+
+Pruning can turn a 2^n algorithm into something practical even
+for n = 30. The "branch and bound" technique is pruning
+formalized: maintain a bound, only explore branches that could
+beat it.
+
+## 18. Common bugs
+
+**Missing undo.** Causes branches to contaminate each other.
+
+**Returning state instead of mutating.** Both styles work, but
+mixing them leads to confusion. Pick one.
+
+**Forgetting to snapshot.** When recording the answer, use
+`cur.copy()` (or `list(cur)`) — not `cur` directly.
+
+**Wrong starting index.** "Combinations from index i forward"
+means starting at `i`, not 0. Off-by-one is easy here.
+
+**Permutations vs combinations confused.** Permutations care
+about order; combinations don't. The recursive shapes differ.
+
+## 19. Mental exercises
+
+1. *Generate all subsets of `[1, 2, 3]` by hand. List the
+   order in which the include/exclude algorithm produces them.*
+
+2. *In the permutations algorithm, what's the *purpose* of
+   `used[]`? Could you do it without it?*
+
+3. *For the duplicate-skip rule, walk `[1, 1, 2]` and show why
+   `(1_a, 1_b, 2)` is generated but `(1_b, 1_a, 2)` is not.*
+
+4. *N-Queens for n = 4: how many solutions, and what does the
+   recursion tree look like with column-conflict pruning?*
+
+5. *Why is recording with `cur.copy()` necessary? What happens
+   if you `out.append(cur)` instead?*
 ''',
 }

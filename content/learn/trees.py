@@ -323,5 +323,145 @@ identify "two return values" problems on sight.
 
 Trees are the most natural home for recursion. Master the
 template here and a third of the curriculum becomes mechanical.
+
+## 11. The four basic traversals — when to use which
+
+A binary tree has four standard traversals:
+- **Preorder (root, left, right)** — useful for *copying* a
+  tree, *serializing*, *prefix-expression* trees. Visit comes
+  before recursion.
+- **Inorder (left, root, right)** — on a BST, gives **sorted**
+  output. The single most useful fact about BSTs.
+- **Postorder (left, right, root)** — useful when you need
+  children's results before the parent (compute heights,
+  evaluate expression trees, delete a tree).
+- **Level-order (BFS)** — useful for "by depth" problems: max
+  width, right view, zigzag, deepest leaves.
+
+The first three are DFS variants — they differ only in *when*
+each node emits its value. The fourth is BFS, which uses a
+queue.
+
+## 12. DFS with two return values — the most useful pattern
+
+Many tree problems require the parent to know two things about
+each subtree. The pattern: the recursive function returns a
+*tuple*, and the parent combines them.
+
+```python
+def diameter(root):
+    best = [0]
+    def dfs(n):
+        if not n: return 0           # height of None is 0
+        lh = dfs(n.left)
+        rh = dfs(n.right)
+        best[0] = max(best[0], lh + rh)
+        return 1 + max(lh, rh)
+    dfs(root)
+    return best[0]
+```
+
+Each call returns the **height** ending at this node. The
+**side effect** (updating `best`) records the **diameter**
+seen so far. Two pieces of information flow through one
+recursive function.
+
+This pattern generalizes:
+- Diameter — height + diameter.
+- Balanced — height + is-balanced flag.
+- Largest BST — (min, max, size, is-bst).
+- Maximum path sum — (best ending here, best ever).
+- LCA — (witness, LCA-so-far).
+
+When you see "for each subtree, compute X and Y," reach for
+the two-return-values DFS.
+
+## 13. BFS traversal — the layer-aware loop
+
+```python
+from collections import deque
+def level_order(root):
+    if not root: return []
+    out = []
+    q = deque([root])
+    while q:
+        level = []
+        for _ in range(len(q)):     # capture layer size FIRST
+            n = q.popleft()
+            level.append(n.val)
+            if n.left: q.append(n.left)
+            if n.right: q.append(n.right)
+        out.append(level)
+    return out
+```
+
+The `for _ in range(len(q))` is the trick — capture the level
+size before adding children. Without it, the loop would bleed
+into the next layer.
+
+## 14. Iterative traversals — for when recursion is too deep
+
+If the tree is degenerate (skewed) and tall, recursion might
+overflow. Iterative versions use an explicit stack:
+
+```python
+def inorder_iter(root):
+    out, stack = [], []
+    cur = root
+    while cur or stack:
+        while cur:
+            stack.append(cur)       # go left, push everyone
+            cur = cur.left
+        cur = stack.pop()           # backtrack
+        out.append(cur.val)
+        cur = cur.right             # now go right
+    return out
+```
+
+Preorder and postorder have their own iterative forms; the
+inorder one is the trickiest to remember. We cover all three in
+Step 13.
+
+## 15. Common bugs
+
+**Forgetting the None base case.** A function on trees almost
+always needs `if not node: return ...`. Decide *what* to return
+for None (often 0 for heights, True for is-balanced, [] for
+collections).
+
+**Confusing depth and height.** Depth = distance from root.
+Height = distance to deepest leaf. They are *not* the same.
+Most problems want height.
+
+**Off-by-one in size vs height.** Number of nodes in a path
+of height `h` is `h + 1`. Number of *edges* is `h`. Decide
+which the problem wants.
+
+**Mutating a global state without resetting between test
+cases.** If your DFS uses a list outside the function as
+storage, multiple calls share that storage. Either re-initialize
+or pass it in as a parameter.
+
+**Right-pointer in BST after deletion of a two-child node.**
+The successor swap is the trickiest BST operation. Trace it
+by hand.
+
+## 16. Mental exercises
+
+1. *Sketch a binary tree of 7 nodes. Walk preorder, inorder,
+   postorder. List the visit order for each.*
+
+2. *Why does inorder on a BST give sorted output? Argue from
+   the BST invariant.*
+
+3. *In the diameter function, why is it `lh + rh` (not
+   `lh + rh + 1`)? What does the answer measure — edges or
+   nodes?*
+
+4. *Walk BFS on a tree of depth 3 with branching factor 2.
+   How many nodes does each level contain?*
+
+5. *Why does the iterative inorder need a *while* outer loop
+   plus a *while* inner loop? What does each one capture?*
 ''',
 }

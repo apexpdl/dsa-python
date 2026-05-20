@@ -2302,6 +2302,62 @@ worthwhile, but for general arrays we want better.
                 best = max(best, j - i + 1)
     return best
 ''',
+            "walkthrough": r'''
+Try every subarray, compute its sum, check if it equals K.
+Slow but easy to verify. Let me walk through each line.
+
+**`def longest_subarray_sum_k_brute(arr: list[int], k: int) -> int:`** —
+Takes the array and target sum K, returns the length of the
+longest contiguous subarray summing to K, or 0 if no such
+subarray exists.
+
+**`n = len(arr)`** — Cache the length.
+
+**`best = 0`** — Track the longest valid subarray length found
+so far. Starts at 0 to handle the "no valid subarray exists"
+case.
+
+**`for i in range(n):`** — Outer loop: pick each possible
+starting index `i`.
+
+**`s = 0`** — Reset the running sum for this new starting
+position.
+
+**`for j in range(i, n):`** — Inner loop: extend the subarray
+by including more elements on the right. `j` ranges from `i`
+(a single-element subarray) up to `n - 1` (extending all the
+way to the end).
+
+Notice we start at `j = i`, not `j = i + 1`. Why? Because a
+single-element subarray (containing just `arr[i]`) is a valid
+candidate — it equals K if `arr[i]` itself equals K.
+
+**`s += arr[j]`** — Add the new element to the running sum.
+Crucially, we **don't recompute the sum from scratch** for
+each `j`. Instead, we extend the sum incrementally as `j`
+grows. This makes the inner loop *O(n)* total instead of
+*O(n²)*.
+
+**`if s == k:`** — Found a subarray summing to K. Check its
+length.
+
+**`best = max(best, j - i + 1)`** — The length of the
+subarray from index `i` to `j` inclusive is `j - i + 1`. (The
+"+1" is the standard fence-post adjustment for inclusive
+ranges.) Update `best` if this length beats the previous
+record.
+
+**`return best`** — Hand back the longest length found.
+
+The cost: outer loop runs `n` times. Inner loop runs up to `n`
+times. Total *O(n²)*. For `n = 10⁵`, that's 10 billion
+operations — way too slow.
+
+The optimized version uses **prefix sums + a hash map** to
+collapse this to *O(n)*. The trick: rather than checking every
+pair of indices, check each *prefix sum* against a memoized
+table of earlier prefix sums.
+''',
             "complexity": (
                 "**Time**: *O(n²)*. **Space**: *O(1)*."
             ),
@@ -2361,6 +2417,96 @@ earliest_index_of_that_prefix`.
         if prefix not in first_index:
             first_index[prefix] = i
     return best
+''',
+            "walkthrough": r'''
+The prefix-sum + hash-map combo. Conceptually difficult the
+first time you see it, but the pattern is everywhere in DSA.
+Let me explain carefully.
+
+The mathematical insight: the sum of `arr[j+1..i]` equals
+`prefix[i+1] - prefix[j+1]`, where `prefix[k]` is the sum of
+the first `k` elements (with `prefix[0] = 0` being the empty
+prefix). So `sum(arr[j+1..i]) == k` is equivalent to
+`prefix[i+1] - prefix[j+1] == k`, which rearranges to
+`prefix[j+1] == prefix[i+1] - k`.
+
+In words: at position `i`, we want to find an earlier position
+`j` where the running sum equaled `current_prefix - k`. If
+such a `j` exists, then the subarray from `j+1` to `i`
+inclusive sums to exactly `k`. To find it fast, we store
+prefix sums in a hash map.
+
+**`def longest_subarray_sum_k(arr: list[int], k: int) -> int:`** —
+Same signature as the brute force.
+
+**`first_index = {0: -1}`** — Initialize the hash map. The
+seed `{0: -1}` is the most important line in this function.
+It says: "the running sum was 0 at position `-1`" — i.e.,
+before the array started. This handles subarrays that start
+at index 0.
+
+For example, if `arr[0..2]` sums to `k`, then `prefix - k`
+equals 0 when we hit index 2. Without the seed, the lookup
+would fail. With the seed, we find `0 -> -1`, and the length
+calculation `i - (-1) = i + 1` gives the correct length 3.
+
+**`prefix = 0`** — Running prefix sum, initialized to 0.
+
+**`best = 0`** — Track the longest valid subarray length.
+
+**`for i, x in enumerate(arr):`** — Walk the array with both
+index `i` and value `x`.
+
+**`prefix += x`** — Update the running prefix sum. After this
+line, `prefix` is the sum of `arr[0..i]` inclusive.
+
+**`if prefix - k in first_index:`** — The killer question:
+have we seen the prefix sum `prefix - k` at some earlier
+position? Hash lookup is *O(1)* average.
+
+**`best = max(best, i - first_index[prefix - k])`** — Yes,
+we've seen it. The earlier position is `first_index[prefix - k]`,
+call it `j`. The subarray from index `j + 1` to `i` (inclusive
+of `i`, exclusive of `j`) sums to exactly `k`. Its length is
+`i - j`. Update `best`.
+
+Important: `i - j` is the correct length here, not `i - j + 1`.
+Why? Because the subarray we found goes from index `j + 1` to
+index `i`, inclusive on both ends. That's `i - (j + 1) + 1 = i - j`
+elements. The `+1` and `-(j+1)` cancel out.
+
+**`if prefix not in first_index:`** — Should we record the
+current prefix sum?
+
+**`first_index[prefix] = i`** — Yes, but **only if this is the
+first time we've seen this prefix sum**. We use `not in` to
+check. Why first time? Because we want the **longest**
+subarray. Longer subarrays correspond to **earlier** starting
+points. If two indices have the same prefix sum, keeping the
+**smaller** index gives us the longer potential subarray
+later.
+
+**`return best`** — Hand back the answer.
+
+The total work: one pass through the array, *O(n)* time, with
+each step doing constant hash work. *O(n)* memory for the
+hash map.
+
+The transformation in big-O: *O(n²)* brute force becomes
+*O(n)* via "prefix sums + hash of earlier prefix sums."
+
+This pattern generalizes beautifully:
+- **Subarray sum equals K (counting):** same idea, but instead
+  of `first_index`, store `count[prefix]` and add it to the
+  running total.
+- **Subarray with sum divisible by K:** same shape, but key
+  the hash by `prefix mod K`.
+- **Subarray with XOR equal to K:** same shape, but replace
+  `+` with `^`.
+
+Once you internalize "for each prefix, ask the hash whether
+the complementary prefix appeared earlier," dozens of problems
+crack open.
 ''',
             "complexity": (
                 "**Time**: *O(n)*. **Space**: *O(n)* for the hash."

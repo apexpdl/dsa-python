@@ -669,6 +669,110 @@ def subset_sum_to_k(nums, k):
             dp[s] = dp[s] or dp[s - x]
     return dp[k]
 ''',
+            "walkthrough": r'''
+**Subset Sum to K** — the foundational 0/1 knapsack-style
+boolean DP. *O(n·k)* time, *O(k)* memory.
+
+The problem: given an array of positive integers and a target
+`k`, can some subset sum exactly to `k`?
+
+**The DP state**: `dp[s]` = True iff some subset of the
+**items processed so far** sums to `s`.
+
+The recurrence: when we process a new value `x`:
+- `dp[s]` stays True if it was already True (we don't include x).
+- `dp[s]` becomes True if `dp[s - x]` was True (we include x).
+
+So: `dp[s] = dp[s] or dp[s - x]`.
+
+**`def subset_sum_to_k(nums, k):`** — Takes array and target,
+returns True/False.
+
+**`dp = [False] * (k + 1); dp[0] = True`** — Initialize. The
+empty subset sums to 0, so `dp[0] = True`. All others are
+False until proven True.
+
+**`for x in nums:`** — Process one item at a time.
+
+**`for s in range(k, x - 1, -1):`** — **Iterate s DOWNWARD**
+from `k` to `x` (inclusive).
+
+This downward iteration is **critical**. It's the same trick
+as 0/1 knapsack.
+
+**Why downward?** Because we want `dp[s - x]` to refer to the
+**previous item's** dp value, NOT the current item's. By
+writing to higher `s` first (downward), `dp[s - x]` (lower
+index) remains untouched in this iteration.
+
+If we iterated upward, `dp[s - x]` would have **already** been
+updated with the current item, meaning we'd be using `x`
+twice. That's unbounded sum, not subset (0/1).
+
+**`dp[s] = dp[s] or dp[s - x]`** — Either we already had a
+subset summing to `s` (without `x`), or we can build one by
+adding `x` to a subset summing to `s - x`. Either gives True.
+
+**`return dp[k]`** — Final answer.
+
+**Trace on `nums = [3, 1, 4, 2], k = 6`:**
+
+```
+Init: dp = [T, F, F, F, F, F, F].  (dp[0]=True, others False)
+
+x=3: Iterate s from 6 down to 3.
+  s=6: dp[6] = dp[6] or dp[3] = F or F = F.
+  s=5: dp[5] = dp[5] or dp[2] = F or F = F.
+  s=4: dp[4] = dp[4] or dp[1] = F or F = F.
+  s=3: dp[3] = dp[3] or dp[0] = F or T = T.
+  After x=3: dp = [T, F, F, T, F, F, F].
+
+x=1: s from 6 down to 1.
+  s=6: dp[6] = dp[6] or dp[5] = F or F = F.
+  s=5: dp[5] = dp[5] or dp[4] = F or F = F.
+  s=4: dp[4] = dp[4] or dp[3] = F or T = T.
+  s=3: dp[3] = dp[3] or dp[2] = T or F = T (already).
+  s=2: dp[2] = dp[2] or dp[1] = F or F = F.
+  s=1: dp[1] = dp[1] or dp[0] = F or T = T.
+  After x=1: dp = [T, T, F, T, T, F, F].
+
+x=4: s from 6 down to 4.
+  s=6: dp[6] = F or dp[2] = F. (still F)
+  s=5: dp[5] = F or dp[1] = T. (now T)
+  s=4: dp[4] = T (already).
+  After x=4: dp = [T, T, F, T, T, T, F].
+
+x=2: s from 6 down to 2.
+  s=6: dp[6] = F or dp[4] = T. (now T)
+  s=5: dp[5] = T (already).
+  s=4: dp[4] = T (already).
+  s=3: dp[3] = T (already).
+  s=2: dp[2] = F or dp[0] = T. (now T)
+  After x=2: dp = [T, T, T, T, T, T, T].
+
+Return dp[6] = True.
+```
+
+Yes! Subset summing to 6 exists. (e.g., 3+1+2 = 6.)
+
+**Properties:**
+- **Time**: *O(n·k)*. Pseudo-polynomial in k.
+- **Space**: *O(k)*.
+
+**Variations:**
+- **Partition Equal Subset Sum**: total sum must be even,
+  then subset-sum to total/2.
+- **Count Subsets with Sum K**: replace OR with += to count
+  ways.
+- **Target Sum** (assign + or -): reduce to subset sum on
+  `(total + target) / 2`.
+- **Last Stone Weight II**: subset sum to half the total
+  (find best partition).
+
+The subset-sum DP shape is one of the most reused in the DP
+universe. Master this and many counting / partition problems
+become straightforward.
+''',
             "complexity": "Time O(n·k), space O(k).",
         },
         "deep_concept": "The iterate-down trick prevents counting an item twice (0/1 vs unbounded).",

@@ -76,6 +76,55 @@ def bfs_list(start, graph):
                 q.append(n)
     return order
 ''',
+            "walkthrough": r'''
+This is the WRONG way to implement BFS in Python. It produces
+the correct answer but with a hidden *O(V)* hit per dequeue —
+turning the algorithm into *O(V²)* total. Let me explain.
+
+**`def bfs_list(start, graph):`** — Takes a start node and an
+adjacency graph (dict from node → iterable of neighbors).
+
+**`visited = {start}`** — Set of nodes we've already enqueued.
+Using a **set** means *O(1)* lookups. Initialize with `start`
+because we're about to enqueue it.
+
+**`q = [start]`** — Queue of nodes to process. **Implemented
+as a Python list.** This is where the trouble lies.
+
+**`order = []`** — Accumulator for the BFS visit order.
+
+**`while q:`** — Continue while the queue is non-empty.
+
+**`node = q.pop(0)`** — **This is the bug.** `list.pop(0)`
+removes the first element and shifts every remaining element
+left by one position. That shift is *O(n)* where n is the
+current queue length. In a BFS over V nodes, we do V such
+pops; total work is *O(V²)* just from the dequeues.
+
+For small graphs (V ≤ 1000) this is invisible. For V = 10⁶,
+it's catastrophic — a trillion operations.
+
+**`order.append(node)`** — Record the visit.
+
+**`for n in graph.get(node, ()):`** — Walk every neighbor.
+The `.get(node, ())` returns an empty tuple if `node` isn't in
+the graph dict, avoiding a KeyError.
+
+**`if n not in visited:`** — Skip nodes we've already
+enqueued. The set lookup is *O(1)*.
+
+**`visited.add(n); q.append(n)`** — Mark visited and enqueue.
+
+**`return order`** — Hand back the visit order.
+
+**The fix**: use `collections.deque` instead of a list.
+`deque.popleft()` is *O(1)*. Everything else stays the same.
+That's the optimized version below.
+
+The lesson: **don't use `list.pop(0)` for queues**. It's one
+of the most common performance bugs in Python DSA code. The
+algorithm is correct; the data structure choice is wrong.
+''',
             "complexity": (
                 "**Time**: *O(V × (V + E))* with `pop(0)`. **Space**: *O(V)*."
             ),
@@ -116,6 +165,97 @@ def bfs(start, graph: dict) -> dict:
                 distance[nb] = distance[node] + 1
                 q.append(nb)
     return distance
+''',
+            "walkthrough": r'''
+The canonical BFS. The same algorithm as before but with a
+proper queue. *O(V + E)* time — linear in graph size.
+
+**`from collections import deque`** — Import the deque
+("double-ended queue") class. It supports *O(1)* append and
+popleft, unlike a regular Python list.
+
+**`def bfs(start, graph: dict) -> dict:`** — Takes the start
+node and an adjacency-map graph. Returns a dict mapping each
+reachable node to its distance from `start`.
+
+**`distance = {start: 0}`** — Map from node to its distance.
+We seed it with `start: 0` (the start node is at distance 0
+from itself). This map doubles as our "visited" set — a key
+being present means "we've enqueued this node."
+
+**`q = deque([start])`** — Initialize the queue with `start`.
+The deque constructor accepts any iterable.
+
+**`while q:`** — Process until queue is empty.
+
+**`node = q.popleft()`** — **The crucial O(1) operation.**
+Dequeue the front of the queue. Unlike `list.pop(0)`, this is
+constant time regardless of queue size.
+
+**`for nb in graph.get(node, ()):`** — Walk every neighbor.
+Using `.get(node, ())` returns an empty tuple if `node` has
+no entry in the graph (a sink with no outgoing edges).
+
+**`if nb not in distance:`** — Is `nb` unvisited? `distance`
+serves as both the "visited" set and the answer accumulator.
+
+**`distance[nb] = distance[node] + 1`** — Set the neighbor's
+distance to one more than the current node's. This is the
+**BFS distance update**: each step away from start adds 1.
+
+**`q.append(nb)`** — Enqueue the neighbor for later
+processing. *O(1)* with deque.
+
+**`return distance`** — Hand back the distance map.
+
+**Why does this give shortest paths?**
+
+BFS processes nodes in **distance order**. Layer 0 is just
+`start`. Layer 1 is all nodes one step from `start`. Layer 2
+is all nodes two steps from `start`. Etc.
+
+The reason: a node enters the queue when discovered via its
+first encountered predecessor. Because BFS expands by layers,
+that first predecessor is on the layer immediately below the
+discovered node. So the recorded distance is always the
+**minimum** number of edges.
+
+**Trace on a simple graph:**
+```
+graph = {1: [2, 3], 2: [4], 3: [4, 5], 4: [], 5: []}
+
+Init: distance = {1: 0}, q = deque([1])
+
+Pop 1: neighbors 2 and 3.
+       distance = {1:0, 2:1, 3:1}, q = deque([2, 3])
+
+Pop 2: neighbor 4. (4 not in distance.)
+       distance = {1:0, 2:1, 3:1, 4:2}, q = deque([3, 4])
+
+Pop 3: neighbors 4 (already in distance, skip) and 5.
+       distance = {1:0, 2:1, 3:1, 4:2, 5:2}, q = deque([4, 5])
+
+Pop 4: no neighbors. q = deque([5])
+Pop 5: no neighbors. q = deque([])
+Done.
+
+Final: distance = {1:0, 2:1, 3:1, 4:2, 5:2}.
+```
+
+Each edge is examined a constant number of times (once from
+each end). Each node is enqueued exactly once. Total work
+*O(V + E)*. Memory *O(V)* for the distance map and the queue.
+
+BFS is the foundation of:
+- **Shortest path in unweighted graphs** (this very problem).
+- **Topological sort via Kahn's algorithm**.
+- **Level-order traversal of trees**.
+- **Bipartite checking** (2-color BFS).
+- **Multi-source BFS** (start from all sources at distance 0).
+- **0/1 BFS** (deque with appendleft for free edges).
+
+Master the deque pattern; it's the workhorse of every BFS
+variant.
 ''',
             "complexity": (
                 "**Time**: *O(V + E)*. **Space**: *O(V)* for the "

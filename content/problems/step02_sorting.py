@@ -1162,6 +1162,124 @@ def _merge(a: list[int], b: list[int]) -> list[int]:
     merged.extend(b[j:])
     return merged
 ''',
+            "walkthrough": r'''
+Merge sort. The cleanest example of **divide and conquer** in
+all of DSA. Split, recurse, merge. *O(n log n)* guaranteed.
+
+**The main function: `merge_sort`**
+
+**`def merge_sort(arr: list[int]) -> list[int]:`** — Takes a
+list, returns a new sorted list. (Not in-place. We could
+write an in-place version, but the out-of-place version is
+clearer and easier to reason about.)
+
+**`if len(arr) <= 1: return arr[:]`** — **Base case.** A list
+of 0 or 1 elements is already sorted. Return a copy (with
+`arr[:]`) so the caller's data isn't shared with our output.
+
+**`mid = len(arr) // 2`** — Pick the midpoint. For length 7,
+this is 3. The left half will be `arr[0..2]` (length 3) and
+the right half `arr[3..6]` (length 4). Slightly unbalanced is
+fine — divide-and-conquer handles unbalanced splits.
+
+**`left = merge_sort(arr[:mid])`** — **Recurse on the left
+half.** Trust the recursive call to return a sorted version.
+
+**`right = merge_sort(arr[mid:])`** — **Recurse on the right
+half.** Same trust.
+
+**`return _merge(left, right)`** — **Conquer step.** Merge
+the two sorted halves into one sorted list using the helper.
+
+**The merge helper: `_merge`**
+
+This is where the real work happens.
+
+**`def _merge(a: list[int], b: list[int]) -> list[int]:`** —
+Takes two **already-sorted** lists, returns their merged
+sorted union.
+
+**`merged: list[int] = []`** — Output accumulator.
+
+**`i = j = 0`** — Two pointers, one for each input.
+
+**`while i < len(a) and j < len(b):`** — Continue while both
+lists have elements left to compare.
+
+**`if a[i] <= b[j]:`** — Compare the **fronts** of both lists.
+
+The `<=` (not `<`) is the **stability** trick. When equal
+elements appear in both lists, we prefer the one from `a`
+(the left half). This preserves the original relative order
+of equal elements — making the sort stable.
+
+**`merged.append(a[i]); i += 1`** — Take from `a`, advance.
+
+**`merged.append(b[j]); j += 1`** — Take from `b`, advance.
+
+**`merged.extend(a[i:]); merged.extend(b[j:])`** — When one
+list runs out, the other might have remaining elements. They
+are already sorted, so just append them to the end.
+
+`extend` adds all elements from an iterable. Either `a[i:]`
+or `b[j:]` (or both) is empty by this point — at most one of
+these calls does real work.
+
+**`return merged`** — Hand back the merged result.
+
+**Why is this O(n log n)?**
+
+Draw the recursion tree:
+- Level 0: 1 list of size `n`.
+- Level 1: 2 lists of size `n/2`.
+- Level 2: 4 lists of size `n/4`.
+- ...
+- Level `log n`: `n` lists of size 1.
+
+At each level, the **total work to merge all lists at that
+level** is *O(n)* (because every element of the original
+array is touched exactly once in some merge). There are
+`log n` levels. Total: *O(n log n)*.
+
+**Trace on `[5, 2, 8, 1, 4, 3]`:**
+```
+merge_sort([5, 2, 8, 1, 4, 3])
+├── merge_sort([5, 2, 8])
+│   ├── merge_sort([5]) → [5]
+│   ├── merge_sort([2, 8])
+│   │   ├── merge_sort([2]) → [2]
+│   │   ├── merge_sort([8]) → [8]
+│   │   └── _merge([2], [8]) → [2, 8]
+│   └── _merge([5], [2, 8]) → [2, 5, 8]
+├── merge_sort([1, 4, 3])
+│   ├── merge_sort([1]) → [1]
+│   ├── merge_sort([4, 3])
+│   │   ├── merge_sort([4]) → [4]
+│   │   ├── merge_sort([3]) → [3]
+│   │   └── _merge([4], [3]) → [3, 4]
+│   └── _merge([1], [3, 4]) → [1, 3, 4]
+└── _merge([2, 5, 8], [1, 3, 4]) → [1, 2, 3, 4, 5, 8]
+```
+
+**Properties:**
+- **Time**: *O(n log n)* always — best, average, worst.
+- **Space**: *O(n)* for the merge buffers, plus *O(log n)*
+  recursion stack.
+- **Stable**: Yes (with `<=` in the merge).
+- **Adaptive**: No — runs the same way on any input.
+
+**When is merge sort used?**
+- When you need a **guaranteed** *O(n log n)* worst case.
+- When **stability** matters (e.g., sorting by multiple keys).
+- For sorting **linked lists** (where merge sort is more
+  natural than quick sort).
+- For **external sorting** of huge files that don't fit in
+  RAM — merge sort generalizes elegantly to disk-based merges.
+- As the foundation of **Timsort** (Python's built-in sort),
+  which is a hybrid of merge sort and insertion sort.
+
+Merge sort is the workhorse you can always trust.
+''',
             "complexity": (
                 "**Time**: *O(n log n)*. There are `log n` levels of "
                 "recursion, and each level does *O(n)* merging work. "
@@ -1466,6 +1584,131 @@ def _partition(arr: list[int], lo: int, hi: int) -> int:
     # arr[store] is the pivot, and everything after is >= pivot.
     arr[store], arr[hi] = arr[hi], arr[store]
     return store
+''',
+            "walkthrough": r'''
+Quick sort. Different philosophy than merge sort. Instead of
+splitting *then* sorting, we **partition** around a pivot
+(putting smaller things on the left, larger on the right)
+*then* recurse. The partition is the clever part.
+
+**The driver: `quick_sort`**
+
+**`def quick_sort(arr: list[int]) -> None:`** — In-place sort.
+
+**`_qs(arr, 0, len(arr) - 1)`** — Kick off the recursion on
+the full range `[0, n - 1]` (inclusive).
+
+**The recursive worker: `_qs`**
+
+**`def _qs(arr: list[int], lo: int, hi: int) -> None:`** —
+Sorts `arr[lo..hi]` (inclusive on both ends).
+
+**`if lo >= hi: return`** — **Base case.** A range of 0 or 1
+elements is trivially sorted.
+
+**`p = _partition(arr, lo, hi)`** — Partition the range
+around a pivot. After this call:
+- The pivot is at index `p`.
+- Everything in `arr[lo..p-1]` is **strictly less** than the
+  pivot.
+- Everything in `arr[p+1..hi]` is **>= pivot**.
+
+The pivot is now in its **final sorted position** — it never
+moves again. That's the key insight.
+
+**`_qs(arr, lo, p - 1)`** — Recursively sort the left side.
+
+**`_qs(arr, p + 1, hi)`** — Recursively sort the right side.
+
+Notice we **exclude `p`** from both recursive calls. The
+pivot is already in place.
+
+**The partition: `_partition`**
+
+This is the heart of quick sort. The **Lomuto** partition
+scheme uses the last element as the pivot.
+
+**`pivot = arr[hi]`** — Pick the last element as the pivot.
+
+**`store = lo`** — `store` will track "where the next 'small'
+element should go." Invariant: everything in `arr[lo..store-1]`
+is `< pivot`.
+
+**`for i in range(lo, hi):`** — Walk through every element
+**except** the pivot itself (the loop stops at `hi - 1`).
+
+**`if arr[i] < pivot:`** — Found a "small" element (smaller
+than the pivot).
+
+**`arr[i], arr[store] = arr[store], arr[i]`** — Swap it into
+the "small zone" at position `store`. The element that was at
+`store` (which we know is `>= pivot` because of how `store`
+advances) moves to position `i` — also fine, since it's
+"large" and we're past `store`.
+
+**`store += 1`** — Advance the boundary; the small zone is
+now one element larger.
+
+**`arr[store], arr[hi] = arr[hi], arr[store]`** — After the
+loop, `arr[lo..store-1]` is `< pivot` and `arr[store..hi-1]`
+is `>= pivot`. The pivot is still at `hi`. We swap it into
+position `store`, the **boundary**, which is its correct
+final position.
+
+**`return store`** — Return the pivot's final position so the
+recursive calls know where to split.
+
+**Trace partition on `arr = [3, 7, 4, 1, 9, 2, 6], lo=0, hi=6`:**
+
+```
+pivot = arr[6] = 6. store = 0.
+i=0, arr[0]=3 < 6: swap arr[0] with arr[0] (no-op). store=1.
+i=1, arr[1]=7 not < 6: skip.
+i=2, arr[2]=4 < 6: swap arr[2] with arr[1]. arr=[3,4,7,1,9,2,6]. store=2.
+i=3, arr[3]=1 < 6: swap arr[3] with arr[2]. arr=[3,4,1,7,9,2,6]. store=3.
+i=4, arr[4]=9 not < 6: skip.
+i=5, arr[5]=2 < 6: swap arr[5] with arr[3]. arr=[3,4,1,2,9,7,6]. store=4.
+Loop ends. Swap pivot (arr[6]=6) with arr[4]=9: arr=[3,4,1,2,6,7,9].
+Return store = 4.
+```
+
+Now arr[0..3] = [3,4,1,2] all < 6, arr[5..6] = [7,9] all >= 6,
+arr[4] = 6 in final position. Recurse on [0..3] and [5..6].
+
+**Why is quick sort O(n log n) on average?**
+
+If the pivot reliably splits the array near the middle, the
+recursion tree has depth `log n`, and each level does *O(n)*
+partition work. Total *O(n log n)*.
+
+But the pivot choice matters. With a **bad pivot** (e.g.,
+always the smallest), one side is empty and the other has
+`n - 1` elements. The recursion tree degenerates to a linked
+list of depth `n`, giving *O(n²)* total work.
+
+**The classic killer**: an already-sorted array with last-
+element-as-pivot. Every partition picks the largest, and the
+left side gets everything. *O(n²)* on sorted input!
+
+**Mitigation**: pick the pivot randomly, or use the
+**median-of-three** rule (median of first, last, middle).
+This makes the worst case astronomically unlikely.
+
+**Properties:**
+- **Time**: *O(n log n)* average, *O(n²)* worst.
+- **Space**: *O(log n)* recursion stack on average.
+- **Stable**: No (the swaps can reorder equal elements).
+- **In-place**: Yes (no auxiliary arrays).
+
+**When is quick sort used?**
+- The most common sort in many languages' libraries (C's
+  `qsort`, C++'s `std::sort` is a quicksort/introsort hybrid).
+- When **in-place** sorting is required and memory is tight.
+- When average-case performance and constant factors matter
+  more than worst-case guarantees.
+
+Python doesn't use quick sort by default (uses Timsort, a
+merge sort variant), but most other languages do.
 ''',
             "complexity": (
                 "**Time**: *O(n log n)* average. *O(n²)* worst case "

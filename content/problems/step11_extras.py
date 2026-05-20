@@ -277,6 +277,123 @@ class MaxHeap(MinHeap):
             self.a[i], self.a[largest] = self.a[largest], self.a[i]
             i = largest
 ''',
+            "walkthrough": r'''
+**Implementing a Heap from Scratch.** The fundamental data
+structure behind priority queues, Dijkstra, top-K, and many
+algorithms.
+
+A **heap** is a complete binary tree stored in an array with
+the **heap property**: parent values dominate their children
+(parent ≤ children for min-heap, parent ≥ for max-heap).
+
+**Array representation**: for node at index `i`:
+- Parent: `(i - 1) // 2`.
+- Left child: `2*i + 1`.
+- Right child: `2*i + 2`.
+
+This compact encoding requires no pointers — just array math.
+
+**The MinHeap class**
+
+**`__init__`**: empty list as backing storage.
+
+**`peek()`**: the minimum is always at `a[0]` (the root).
+*O(1)*.
+
+**`push(x)`**:
+1. **Append** `x` to the end (preserves the complete-tree
+   structure).
+2. **Sift up**: the new leaf might be smaller than its
+   parent, violating the heap property. Walk up, swapping
+   with the parent until heap order is restored.
+
+**`_sift_up(i)`**:
+```
+while i > 0:
+    parent = (i - 1) // 2
+    if a[i] < a[parent]: swap, i = parent
+    else: return
+```
+
+The loop terminates because `i` strictly decreases each
+iteration. At most ⌈log₂ n⌉ swaps. *O(log n)*.
+
+**`pop()`** (extract min):
+1. Save the root (`a[0]`).
+2. Move the **last leaf** to the root.
+3. Truncate the array (remove the duplicate last position).
+4. **Sift down**: the new root may be larger than its
+   children. Walk down, swapping with the smaller child.
+
+**`_sift_down(i)`**:
+```
+while True:
+    left, right = 2i+1, 2i+2
+    smallest = i
+    if left < n and a[left] < a[smallest]: smallest = left
+    if right < n and a[right] < a[smallest]: smallest = right
+    if smallest == i: return
+    swap, i = smallest
+```
+
+Always swap with the **smaller** of the two children (or stop
+if both are larger). This preserves the heap property:
+the new parent is smaller than both children.
+
+*O(log n)* — at most log n swaps.
+
+**MaxHeap**: inherits MinHeap, overrides `_sift_up` and
+`_sift_down` to compare with `>` instead of `<`. Result:
+parent dominates children with `>=`.
+
+Alternatively, you can store negated values in a min-heap to
+simulate a max-heap. The class version is clearer for
+teaching.
+
+**Trace push and pop on [3, 1, 4, 1, 5, 9, 2]:**
+
+```
+Build by pushing one by one:
+
+Push 3: a=[3].
+Push 1: a=[3,1]. Sift up: 1<3, swap. a=[1,3].
+Push 4: a=[1,3,4]. Sift up: 4>1, no swap.
+Push 1: a=[1,3,4,1]. Sift up at i=3: parent=1, a[3]=1<a[1]=3, swap. a=[1,1,4,3]. Sift up at i=1: parent=0, a[1]=1 not<a[0]=1, stop.
+Push 5: a=[1,1,4,3,5]. Sift up: 5>1, stop.
+Push 9: a=[1,1,4,3,5,9]. Sift up: 9>4, stop.
+Push 2: a=[1,1,4,3,5,9,2]. Sift up at i=6: parent=2, a[6]=2<a[2]=4, swap. a=[1,1,2,3,5,9,4]. Sift up at i=2: a[2]=2>a[0]=1, stop.
+
+Final heap: a=[1,1,2,3,5,9,4].
+This represents:
+      1
+     / \
+    1   2
+   / \ / \
+  3  5 9 4
+
+Heap property holds: every parent <= its children. ✓
+```
+
+**Properties:**
+- **Push**: *O(log n)*.
+- **Pop**: *O(log n)*.
+- **Peek**: *O(1)*.
+- **Build a heap from n elements**: *O(n log n)* with n
+  pushes. *O(n)* with the **heapify** algorithm (sift down
+  from the last internal node).
+
+**Applications:**
+- **Priority queues**: scheduling, event simulation.
+- **Dijkstra's algorithm**: min-heap of (distance, vertex).
+- **Top-K problems**: heap of size K.
+- **Median from stream**: two heaps.
+- **Merge K sorted lists**: heap of list heads.
+- **Heap sort**: build a max-heap, pop n times.
+
+Heaps are one of the **most important** data structures in
+algorithms. Python provides `heapq` for min-heap behavior;
+this implementation shows how it works under the hood.
+''',
             "complexity": "Push O(log n), pop O(log n), peek O(1).",
         },
         "deep_concept": r'''

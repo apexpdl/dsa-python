@@ -80,6 +80,68 @@ def height_enumerate(root) -> int:
     go(root, 1)
     return best
 ''',
+            "walkthrough": r'''
+A reasonable but verbose first attempt. Walks every node,
+tracks the depth as we go, updates the maximum when we hit a
+leaf. Works correctly but doesn't show the elegant
+"propagate-up" structure that recursion on trees naturally
+supports.
+
+**The TreeNode class**
+
+**`class TreeNode:`** — Standard binary tree node.
+
+**`def __init__(self, val: int = 0, left=None, right=None):`** —
+Constructor with defaults. Lets us write `TreeNode(5)` for a
+leaf, `TreeNode(5, left)` for a left-only, etc.
+
+**`self.val = val; self.left = left; self.right = right`** —
+Store the three fields.
+
+**The height function**
+
+**`def height_enumerate(root) -> int:`** — Takes the root,
+returns the height.
+
+**`if root is None: return 0`** — Empty tree has height 0.
+
+**`best = 0`** — Will track the maximum depth encountered.
+
+**`def go(node, depth):`** — Inner helper. `node` is the
+current node being visited; `depth` is its depth (1-indexed
+in this version).
+
+**`nonlocal best`** — Tell Python this variable lives in the
+enclosing function's scope, not the inner function. Without
+this, `best = max(best, depth)` would create a new local
+`best` and the outer one would never update.
+
+**`if node is None: return`** — Skip null nodes. Equivalent
+to "an empty subtree contributes no depth."
+
+**`if node.left is None and node.right is None:`** — Leaf
+detection.
+
+**`best = max(best, depth); return`** — Update the running
+max. Only leaves can be the **deepest** node — internal nodes
+have children below them with greater depth.
+
+**`go(node.left, depth + 1); go(node.right, depth + 1)`** —
+Recurse into both children with incremented depth.
+
+**`go(root, 1)`** — Start the recursion. Root is at depth 1.
+
+**`return best`** — Return.
+
+This works but feels awkward. We're using a side-effect
+(updating `best`) to communicate across recursive calls. A
+cleaner approach (the optimized version) returns the height
+from each subtree and combines them at the parent.
+
+The cleaner version highlights an important pattern:
+**recursion that returns information up** is more natural for
+tree problems than **recursion that updates external state**.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(h)* recursion.",
         },
         "thought_process": r'''
@@ -111,6 +173,75 @@ Direct recursion. *O(n)* time.
     left_height = max_depth(root.left)
     right_height = max_depth(root.right)
     return 1 + max(left_height, right_height)
+''',
+            "walkthrough": r'''
+This is the canonical tree recursion. Four lines, beautifully
+clear. The "return up" pattern that every tree problem
+benefits from.
+
+**`def max_depth(root) -> int:`** — Takes the root, returns
+the height (max depth from root to deepest leaf).
+
+**`if root is None: return 0`** — **Base case.** An empty
+tree has height 0. This is the natural choice: it means an
+empty left or right subtree contributes 0 to the height of
+its parent.
+
+**`left_height = max_depth(root.left)`** — Recursively
+compute the height of the left subtree. **Trust the recursive
+call** — it returns the correct height of whatever it's given.
+
+**`right_height = max_depth(root.right)`** — Same for the
+right.
+
+**`return 1 + max(left_height, right_height)`** — The height
+of the current subtree is one more than the height of its
+deeper child. The `+ 1` accounts for the current node itself;
+`max(left, right)` picks the deeper of the two children.
+
+**Why does this work?**
+
+The recursion contract is: "Given a tree, return its height."
+The base case handles the empty tree. The recursive case
+says: "If I know the heights of the two children, I can
+compute my own height as `1 + max(left, right)`."
+
+For an empty tree → return 0. For a leaf (both children are
+None) → `left = 0, right = 0`, return `1 + 0 = 1`. For a tree
+with a single left child that's a leaf → root sees
+`left_height = 1, right_height = 0`, returns
+`1 + max(1, 0) = 2`. And so on.
+
+**Trace on a small tree:**
+```
+       3
+      / \
+     9   20
+        /  \
+       15   7
+```
+
+`max_depth(20)` → calls `max_depth(15)` and `max_depth(7)`.
+Both are leaves, returning 1 each.
+`max_depth(20)` returns `1 + max(1, 1) = 2`.
+
+`max_depth(9)` is a leaf → returns 1.
+
+`max_depth(3)` → `1 + max(1, 2) = 3`. Final answer: 3.
+
+Total work: each node is visited exactly once. The function
+does *O(1)* work per visit (two recursive calls, an add, a
+max). Total *O(n)* time.
+
+Stack space: *O(h)* where `h` is the height of the tree.
+Worst case (skewed tree, like a linked list shape):
+*O(n)*. Best case (perfectly balanced): *O(log n)*.
+
+The lesson: **let the recursion return what the parent needs.**
+For trees, "what the parent needs" is usually a property of
+the subtree (height, count, sum, validity flag). The function
+contract becomes simple: "input → subtree property output."
+The pattern collapses many tree problems to 3-5 lines.
 ''',
             "complexity": (
                 "**Time**: *O(n)* — each node visited once.\n\n"

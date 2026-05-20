@@ -490,6 +490,124 @@ def level_order(root):
         out.append(level)
     return out
 ''',
+            "walkthrough": r'''
+**Level Order Traversal** — BFS on a binary tree.
+*O(n)* time, *O(width)* memory.
+
+The output: a list of lists, one inner list per tree level,
+each containing the node values at that level.
+
+**`from collections import deque`** — Use deque for *O(1)*
+appends and popleft.
+
+**`def level_order(root):`** — Takes the root, returns the
+level-order list of lists.
+
+**`if not root: return []`** — Edge case: empty tree.
+
+**`out = []`** — Accumulator for all levels.
+
+**`q = deque([root])`** — BFS queue, seeded with the root.
+
+**`while q:`** — Process while there are nodes to visit.
+
+**`level = []`** — Collector for the current level's values.
+
+**`for _ in range(len(q)):`** — **The level-by-level
+processing trick.** Capture the current queue size **before**
+the loop, then iterate that many times. Each iteration pops
+one node from the queue and adds its children.
+
+By the time the for-loop finishes, all nodes at the current
+level have been popped and all their children (the next
+level) have been enqueued. The queue now contains exactly
+the next level.
+
+The key here: we use `len(q)` **once**, captured at the start
+of the for-loop. Even though we add to `q` during the loop,
+the loop's count is fixed.
+
+**`node = q.popleft()`** — Dequeue. *O(1)* with deque.
+
+**`level.append(node.val)`** — Record this node in the
+current level.
+
+**`if node.left: q.append(node.left)`** — Enqueue left
+child (if it exists).
+
+**`if node.right: q.append(node.right)`** — Enqueue right
+child.
+
+**`out.append(level)`** — After processing all nodes at this
+level, save the level.
+
+**`return out`** — Hand back all levels.
+
+**Trace on:**
+```
+       3
+      / \
+     9   20
+        /  \
+       15   7
+```
+
+```
+q = [3]. out = [].
+
+Outer iter 1: len(q) = 1.
+  Pop 3. level = [3]. Enqueue 9, 20.
+  q = [9, 20]. out = [[3]].
+
+Outer iter 2: len(q) = 2.
+  Pop 9. level = [9]. (9 is a leaf, no children.)
+  Pop 20. level = [9, 20]. Enqueue 15, 7.
+  q = [15, 7]. out = [[3], [9, 20]].
+
+Outer iter 3: len(q) = 2.
+  Pop 15. level = [15]. (leaf)
+  Pop 7. level = [15, 7]. (leaf)
+  q = []. out = [[3], [9, 20], [15, 7]].
+
+Loop ends.
+Return [[3], [9, 20], [15, 7]].
+```
+
+**Why BFS for level-order?**
+
+BFS explores nodes **in distance order**. The root is at
+distance 0. Its children are at distance 1. Grandchildren at
+distance 2. This **is** the level order.
+
+DFS doesn't naturally give level order — it goes deep first.
+You can do level-order via DFS with a depth parameter (see
+many tree problems), but BFS is the natural fit.
+
+**Properties:**
+- **Time**: *O(n)* — each node visited once.
+- **Space**: *O(width)* where width is the max number of
+  nodes at any level. For a balanced tree, ≈ n/2 leaves at
+  the deepest level — so *O(n)* worst case.
+
+**Why is the `len(q)` snapshot necessary?**
+
+Without it, the for-loop would also process nodes added
+during iteration — bleeding into the next level. By
+snapshotting `len(q)` at the start, we cleanly separate
+levels.
+
+**Variations:**
+- **Reverse level order**: same algorithm, reverse the
+  output.
+- **Zigzag level order**: alternate left-to-right and right-
+  to-left per level.
+- **Right view**: take the **last** node of each level.
+- **Maximum width**: track distance between leftmost and
+  rightmost nodes per level (more complex).
+
+Level-order BFS is the workhorse for any "process by depth"
+tree problem.
+''',
             "complexity": "Time O(n), space O(width) where width = max nodes at any level.",
         },
         "deep_concept": r'''

@@ -362,6 +362,120 @@ def oranges_rotting(grid):
                 q.append((ni, nj, t+1))
     return -1 if fresh > 0 else minutes
 ''',
+            "walkthrough": r'''
+**Rotting Oranges** — the canonical **multi-source BFS** on a
+grid. *O(m·n)* time.
+
+The problem: a 2D grid where 0 = empty, 1 = fresh orange, 2 =
+rotten orange. Every minute, each rotten orange rots its 4
+orthogonal neighbors. Return the minimum minutes to rot all
+fresh oranges, or -1 if impossible.
+
+**The key insight**: this is BFS, but with **multiple
+starting points** (every initially-rotten orange). Seed the
+queue with all of them at time 0.
+
+**`from collections import deque`** — Queue for BFS.
+
+**`def oranges_rotting(grid):`** — Takes the grid.
+
+**`m, n = len(grid), len(grid[0])`** — Cache dimensions.
+
+**`q = deque(); fresh = 0`** — Initialize the BFS queue and a
+counter for fresh oranges.
+
+**`for i, j: ...`** — Walk the grid once.
+
+**`if grid[i][j] == 2: q.append((i, j, 0))`** — **Seed all
+rotten oranges** into the queue at time 0. Each queue entry
+is (row, col, time).
+
+**`elif grid[i][j] == 1: fresh += 1`** — Count fresh oranges
+so we know how many to rot.
+
+**`minutes = 0`** — Track the final answer (max time of any
+rot).
+
+**`while q:`** — BFS loop.
+
+**`i, j, t = q.popleft()`** — Dequeue.
+
+**`minutes = max(minutes, t)`** — Update the max time. The
+final value of `minutes` is the time the last rot happens.
+
+**`for di, dj in ((1,0),(-1,0),(0,1),(0,-1)):`** — Iterate
+4-directional neighbors using **direction vectors**. Each
+vector represents (row delta, col delta).
+
+**`ni, nj = i+di, j+dj`** — Compute neighbor coordinates.
+
+**`if 0 <= ni < m and 0 <= nj < n and grid[ni][nj] == 1:`** —
+Bounds check + freshness check.
+
+**`grid[ni][nj] = 2`** — Mark as rotten in-place. This also
+serves as our "visited" marker — once rotted, never
+re-enqueued.
+
+**`fresh -= 1`** — One fewer fresh orange remaining.
+
+**`q.append((ni, nj, t+1))`** — Enqueue with incremented
+time.
+
+**`return -1 if fresh > 0 else minutes`** — If any fresh
+remained un-rotted, return -1. Else return the final time.
+
+**Why multi-source BFS?**
+
+Single-source BFS would give the distance from one fixed
+start. Multi-source BFS gives the distance from the
+**nearest** of any source. By seeding the queue with all
+sources at time 0, each cell gets the minimum time to be
+reached.
+
+This is mathematically equivalent to adding a virtual
+super-source connected to all real sources with edges of
+weight 0, then doing single-source BFS.
+
+**Trace on `grid = [[2,1,1],[1,1,0],[0,1,1]]`:**
+
+```
+Init: q = [(0,0,0)]. fresh = 6.
+
+Pop (0,0,0). minutes=0. Rot (0,1) and (1,0): both freshly
+become 2. fresh=4. q = [(0,1,1), (1,0,1)].
+
+Pop (0,1,1). minutes=1. Rot (0,2) and (1,1).
+  fresh = 2. q = [(1,0,1), (0,2,2), (1,1,2)].
+Pop (1,0,1). minutes=1. Rot ... (already rotten).
+  q stays.
+Pop (0,2,2). minutes=2. No fresh neighbors.
+Pop (1,1,2). minutes=2. Rot (2,1). fresh=1. q = [(2,1,3)].
+Pop (2,1,3). minutes=3. Rot (2,2). fresh=0. q = [(2,2,4)].
+Pop (2,2,4). minutes=4. No fresh neighbors.
+
+fresh = 0. Return minutes = 4.
+```
+
+**Properties:**
+- **Time**: *O(m·n)* — every cell visited at most once.
+- **Space**: *O(m·n)* worst case for the queue.
+
+**Why does this work as multi-source BFS?**
+
+Because BFS explores in distance order from the queue
+contents. With multiple sources at distance 0, every cell
+discovers the **minimum** distance from any source — which
+is what we want for "minimum time to rot."
+
+**Variations of multi-source BFS:**
+- **01-Matrix** (distance to nearest 0): seed all 0s.
+- **Walls and Gates**: seed all gates.
+- **As far from land as possible**: seed all land cells.
+
+The **multi-source BFS** template is one of the most
+powerful patterns in grid problems. Whenever you have
+multiple equally-valid starting points, this is the tool.
+''',
             "complexity": "Time O(m·n), space O(m·n).",
         },
         "deep_concept": "Multi-source BFS is the trick whenever you have multiple starting points and want the minimum distance from *any* source.",

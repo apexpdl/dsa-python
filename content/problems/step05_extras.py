@@ -198,6 +198,104 @@ all strings; stop on first mismatch.
                 return strs[0][:i]
     return strs[0]
 ''',
+            "walkthrough": r'''
+**Longest Common Prefix** of a list of strings — the
+canonical "vertical scan" pattern. *O(S)* where S = total
+characters across all strings.
+
+The problem: find the longest prefix common to all strings in
+the list. `["flower", "flow", "flight"]` → "fl".
+
+**Two approaches:**
+1. **Horizontal scan**: compare strings pairwise. Compute LCP
+   of strs[0] and strs[1], then LCP with strs[2], etc.
+2. **Vertical scan**: walk character positions. Check that
+   all strings have the same char at position 0, then 1, etc.
+   Stop at the first mismatch or first short string.
+
+The vertical scan is what we implement here. It's slightly
+faster in practice because it can **early-exit on the very
+first mismatch** rather than completing each pairwise LCP.
+
+**`def longest_common_prefix(strs: list[str]) -> str:`** —
+Takes a list of strings, returns the LCP.
+
+**`if not strs: return ""`** — Edge case: empty list has no
+common prefix.
+
+**`for i in range(len(strs[0])):`** — Walk character positions
+of the **first** string. `i` is a candidate position.
+
+We pick the first string arbitrarily — any string would do.
+The LCP cannot be longer than any individual string.
+
+**`ch = strs[0][i]`** — The expected character at position
+`i`. We require all other strings to match this.
+
+**`for s in strs[1:]:`** — Check every other string.
+
+**`if i >= len(s) or s[i] != ch:`** — Two failure cases:
+1. `i >= len(s)`: this string is shorter than the current
+   position. LCP can't extend further.
+2. `s[i] != ch`: this string has a different char at this
+   position. LCP stops here.
+
+Either way, return the LCP of length `i` — that is,
+`strs[0][:i]`.
+
+**`return strs[0][:i]`** — All chars before position `i`
+matched across all strings. Those chars form the LCP.
+
+**`return strs[0]`** — If the outer loop completes without
+returning, every char of `strs[0]` matched across all
+strings. The LCP is the whole first string.
+
+**Trace on `strs = ["flower", "flow", "flight"]`:**
+
+```
+i=0, ch='f': "flow"[0]='f' OK, "flight"[0]='f' OK.
+i=1, ch='l': "flow"[1]='l' OK, "flight"[1]='l' OK.
+i=2, ch='o': "flow"[2]='o' OK, "flight"[2]='i' ≠ 'o'.
+            Return "flower"[:2] = "fl".
+```
+
+**Trace on `strs = ["abc", "abc", "abc"]`:**
+
+```
+i=0,1,2: all match.
+Outer loop completes.
+Return "abc".
+```
+
+**Trace on `strs = ["abc", "ab"]`:**
+
+```
+i=0,1: match.
+i=2, ch='c': "ab"[2] — but i=2 >= len("ab")=2. Return "abc"[:2] = "ab".
+```
+
+**Properties:**
+- **Time**: *O(S)* where S = sum of lengths. Worst case is
+  when all strings share a long prefix.
+- **Space**: *O(1)* extra (the return slice is allocated but
+  not part of working memory).
+
+**Why is this O(S)?**
+
+Each character is examined at most once (the moment we
+detect a mismatch, we exit). The total characters examined
+across all strings is bounded by the total length.
+
+**Variations:**
+- **Longest common suffix**: walk from the back.
+- **Longest common substring** (not prefix): much harder,
+  needs DP or suffix structures.
+- **LCP of multiple strings using a trie**: insert all
+  strings, find the deepest unbranching path.
+
+For practical use, the vertical-scan version is clean,
+correct, and efficient. Memorize the shape.
+''',
             "complexity": "**Time**: *O(S)*. **Space**: *O(1)*.",
         },
         "thought_process": "Walk character positions across all strings; stop when any differs or runs out.",
@@ -245,6 +343,69 @@ other concatenated with itself.
         return False
     # Every rotation of a is a substring of a + a.
     return b in (a + a)
+''',
+            "walkthrough": r'''
+**Is String a Rotation of Another** — a beautiful two-line
+solution. The trick: **every rotation of S appears as a
+substring of S+S**.
+
+The problem: is `b` a rotation of `a`? E.g., `"erbottlewat"`
+is a rotation of `"waterbottle"`.
+
+**The insight**: visualize `a = "waterbottle"` written on a
+strip of paper, then wrap it into a circle. A rotation
+"starts reading from a different position." If we **unroll**
+the circle twice — write `a` followed by `a` again — every
+possible rotation appears as a contiguous substring.
+
+For `a = "abc"`: `a + a = "abcabc"`. Substrings of length 3
+are `"abc"`, `"bca"`, `"cab"`, `"abc"`. Exactly the rotations.
+
+**`def is_rotation(a: str, b: str) -> bool:`** — Takes two
+strings.
+
+**`if len(a) != len(b): return False`** — A rotation
+preserves length. Different lengths → not a rotation.
+
+This guard also rules out a subtle bug: `b in (a + a)` is
+True for any substring of `a + a`, not just rotations. The
+length check ensures `b` matches a length-`|a|` slice.
+
+**`return b in (a + a)`** — Concatenate and check
+membership. Python's `in` operator on strings checks for
+**substring**.
+
+For `a = "waterbottle"`, `b = "erbottlewat"`:
+- `a + a = "waterbottlewaterbottle"`.
+- Is `"erbottlewat"` in there? Yes, starting at index 3.
+- Return True. ✓
+
+**Properties:**
+- **Time**: *O(n × m)* with Python's naive substring search,
+  or *O(n + m)* with KMP-style algorithms (which Python's
+  CPython uses for built-in `in` on strings).
+- **Space**: *O(n)* for the concatenation.
+
+**Why does this trick work?**
+
+A rotation of `a` by `k` positions is
+`a[k:] + a[:k]`. Within `a + a`, the substring starting at
+index `k` of length `|a|` is exactly `a[k:k+|a|]`. As long as
+`k < |a|`, this substring is `a[k:] + a[:k]` — a rotation.
+
+For `k` in `[0, |a|)`, all `|a|` rotations appear as
+substrings. Beyond that, the substrings start repeating
+(periodic).
+
+**Variations:**
+- **Smallest rotation lexicographically**: Booth's algorithm
+  in *O(n)*.
+- **Compare two strings under rotation equivalence**: hash
+  both, sort the hashes.
+
+The `S + S` trick is one of those one-liner ideas that makes
+you smile when you see it. It exploits the cyclic structure
+of rotations via a simple concatenation.
 ''',
             "complexity": "**Time**: *O(n * m)* with naive search; *O(n + m)* with KMP.",
         },

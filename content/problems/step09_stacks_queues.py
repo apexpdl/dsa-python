@@ -62,6 +62,45 @@ The stack solution is *O(n)* and reads like a story.
         s = s.replace("()", "").replace("[]", "").replace("{}", "")
     return s == ""
 ''',
+            "walkthrough": r'''
+A correct but inefficient approach. Repeatedly cancel
+adjacent matched pairs until no more can be cancelled. The
+string is balanced iff it shrinks to empty.
+
+**`def is_balanced_replace(s: str) -> bool:`** — Takes a
+string of brackets, returns True if balanced.
+
+**`prev = None`** — Used to detect when the loop has reached
+a fixed point (no more changes possible).
+
+**`while prev != s:`** — Continue while the previous and
+current string differ — meaning the last replacement actually
+changed something.
+
+**`prev = s`** — Remember the current value before replacing.
+
+**`s = s.replace("()", "").replace("[]", "").replace("{}", "")`** —
+Three `.replace` calls in sequence. Each removes **all**
+non-overlapping occurrences of a matched pair. After all three
+replaces, every adjacent matched pair anywhere in the string
+has been removed.
+
+For example, `"(())"`. First iteration:
+- Replace `()` → `"()"`. The inner `()` was removed.
+- The new string still has `()`, so the next iteration finds
+  it and removes it too. Result: `""`.
+
+**`return s == ""`** — If the string was reduced to empty,
+every bracket had a partner. Balanced.
+
+The cost: each `.replace` is *O(n)*. We may need up to `n/2`
+iterations (one for each level of nesting). Total *O(n²)*
+worst case. For `n = 10⁵`, that's 10 billion operations —
+way too slow.
+
+The optimized stack-based version does it in *O(n)* with a
+single pass.
+''',
             "complexity": (
                 "**Time**: *O(n²)* worst case. **Space**: *O(n)*."
             ),
@@ -110,6 +149,93 @@ Single pass with a stack of openers.
             stack.pop()
     # Anything left unmatched fails.
     return not stack
+''',
+            "walkthrough": r'''
+The canonical stack-based bracket-matching algorithm. One
+pass, *O(n)*. Memorize the shape — it's the simplest possible
+stack application.
+
+**`def is_balanced(s: str) -> bool:`** — Takes a bracket
+string, returns True if balanced.
+
+**`matches = {")": "(", "]": "[", "}": "{"}`** — A dictionary
+mapping each closing bracket to its expected opener. When we
+encounter a `)`, we check that the most-recent opener on the
+stack is `(`. Same for `]` and `}`.
+
+**`stack: list[str] = []`** — A Python list used as a stack.
+We'll push openers and pop them as we see matching closers.
+
+**`for ch in s:`** — Walk every character.
+
+**`if ch in "([{":`** — Is this character an opening bracket?
+The membership test `ch in "([{"` is *O(k)* where k is the
+length of the string `"([{` — which is just 3, so effectively
+constant.
+
+**`stack.append(ch)`** — Push the opener onto the stack. We
+remember it because the next closer of the matching type
+should pair with this.
+
+**`else:`** — `ch` is a closer. We need to check it matches
+the most-recent unmatched opener.
+
+**`if not stack or stack[-1] != matches[ch]:`** — Two failure
+modes:
+1. `not stack`: the stack is empty. There's nothing for this
+   closer to pair with — we have a "rogue" closing bracket.
+2. `stack[-1] != matches[ch]`: the most-recent opener
+   doesn't match this closer's expected opener. For example,
+   stack has `(`, we see `]`. Mismatched pair.
+
+Either way, fail immediately.
+
+**`stack.pop()`** — Good match. Pop the opener (it's been
+paired and consumed).
+
+**`return not stack`** — At the end, the stack should be
+empty. If it's not, some openers had no matching closer.
+`not stack` is True iff the stack is empty.
+
+**Why does this work?**
+
+The stack mirrors the nesting structure of the brackets.
+Whenever you open a new bracket, it goes "on top" of the
+nesting. The most-recent unmatched opener is at the top of the
+stack — which must be what the next closer pairs with.
+
+If brackets were like `()[]{}`, no stack needed (just walk
+sequentially). The challenge is nested brackets like
+`([{}])` — the closer ordering depends on the depth, and the
+stack tracks exactly that.
+
+Trace it on `"([{}])"`:
+```
+ch  action               stack
+(   push                  ['(']
+[   push                  ['(', '[']
+{   push                  ['(', '[', '{']
+}   matches { → pop       ['(', '[']
+]   matches [ → pop       ['(']
+)   matches ( → pop       []
+End: stack empty → True
+```
+
+Trace it on `"([)]"`:
+```
+ch  action               stack
+(   push                  ['(']
+[   push                  ['(', '[']
+)   top is [ ≠ ( → False  (return immediately)
+```
+
+Total time: *O(n)*, one push or pop per character. Memory:
+up to *O(n)* in the worst case (all openers, then all closers).
+
+The pattern — "use a stack to track nested structure" —
+applies to parsing expressions, validating XML/HTML,
+implementing recursive descent without explicit recursion,
+and many other problems.
 ''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(n)*.",
         },
@@ -348,6 +474,46 @@ end. *O(n²)*.
                 break
     return out
 ''',
+            "walkthrough": r'''
+The brute force tries every index and scans forward for the
+first greater element.
+
+**`def next_greater_brute(nums: list[int]) -> list[int]:`** —
+Takes the array, returns an array of same length where
+`out[i]` is the next greater element after position `i`, or
+`-1` if none.
+
+**`n = len(nums)`** — Cache length.
+
+**`out = [-1] * n`** — Initialize all answers to `-1`
+("no next greater found"). If we find one, we'll overwrite.
+
+**`for i in range(n):`** — Outer loop: each index `i` is the
+position whose answer we're trying to find.
+
+**`for j in range(i + 1, n):`** — Inner loop: scan forward
+from `i + 1` looking for the first element strictly greater
+than `nums[i]`.
+
+**`if nums[j] > nums[i]:`** — Found a greater element.
+
+**`out[i] = nums[j]; break`** — Record it and **break out**
+of the inner loop. We want the **first** greater element, not
+the maximum.
+
+**`return out`** — Hand back the answers.
+
+The cost: outer loop runs `n` times. Inner loop can run up to
+`n` times in the worst case (when no greater element exists,
+or it's at the very end). Total *O(n²)*. For sorted
+descending input, the inner loop always scans to the end —
+truly *O(n²)*.
+
+The optimized version uses a **monotonic stack** to achieve
+*O(n)*. The trick is to flip our perspective: instead of
+asking "for each i, what's the next greater?", we ask "as we
+walk, which earlier i's am I the next-greater-for?"
+''',
             "complexity": "**Time**: *O(n²)*. **Space**: *O(n)* for output.",
         },
         "thought_process": r'''
@@ -397,6 +563,97 @@ Monotonic decreasing stack. *O(n)* time.
             answer[idx] = nums[i]
         stack.append(i)
     return answer
+''',
+            "walkthrough": r'''
+The **monotonic stack** pattern, line by line. This is one of
+the most important DSA patterns; many later problems
+(trapping rain water, histogram rectangle, stock span) reduce
+to it.
+
+**`def next_greater(nums: list[int]) -> list[int]:`** — Same
+signature.
+
+**`n = len(nums)`** — Cache length.
+
+**`answer = [-1] * n`** — Default every answer to `-1`.
+We'll overwrite when we find a next-greater.
+
+**`stack: list[int] = []`** — A stack of **indices** (not
+values). The invariant: the values at those indices are in
+**strictly decreasing** order from bottom to top of the stack.
+That's why it's called a "monotonic decreasing stack."
+
+**Why store indices, not values?** Because we need to write
+to `answer[idx]` when we find a greater element. Storing the
+index lets us do that.
+
+**`for i in range(n):`** — Walk every position.
+
+**`while stack and nums[stack[-1]] < nums[i]:`** — The
+**resolution loop**. As long as the value at the top of the
+stack is strictly less than the current value, we've found
+the "next greater" for that stacked element.
+
+The `stack[-1]` is the index at the top (we never pop without
+checking it first). `nums[stack[-1]]` is its value.
+
+**`idx = stack.pop()`** — Pop the resolved index.
+
+**`answer[idx] = nums[i]`** — Record that `nums[i]` is the
+next greater for `idx`.
+
+The while loop may pop **many** stacked indices in one
+iteration of the outer for loop — every index whose value was
+less than `nums[i]` gets resolved at once.
+
+**`stack.append(i)`** — Push the current index. It's still
+waiting for **its** next-greater.
+
+**`return answer`** — Hand back.
+
+**Why O(n) amortized?**
+
+Look at the inner while loop. It can run many times in one
+outer iteration. So why isn't the total *O(n²)*?
+
+**Each index is pushed exactly once and popped at most once.**
+The total work across **all** while-iterations over the entire
+algorithm is at most `n` pops. So the total cost of all the
+while-loops combined is *O(n)*. Plus the *O(n)* outer for
+loop, the total is *O(n)*.
+
+This is **amortized analysis**: even though individual
+iterations of the outer loop can do up to *O(n)* work,
+averaging over all iterations gives *O(1)* per iteration.
+
+Trace it on `[2, 1, 2, 4, 3]`:
+```
+i=0 (val 2): stack empty, push 0. stack=[0].
+i=1 (val 1): nums[0]=2 > 1, no pops. push 1. stack=[0,1].
+i=2 (val 2): nums[1]=1 < 2, pop 1, set ans[1]=2. stack=[0].
+            nums[0]=2 not < 2 (equal), stop. push 2. stack=[0,2].
+i=3 (val 4): nums[2]=2 < 4, pop 2, set ans[2]=4. stack=[0].
+            nums[0]=2 < 4, pop 0, set ans[0]=4. stack=[].
+            stack empty, push 3. stack=[3].
+i=4 (val 3): nums[3]=4 > 3, no pops. push 4. stack=[3,4].
+End: ans = [4, 2, 4, -1, -1]. ✓
+```
+
+The stack at the end contains indices 3 and 4, which never
+found a greater element — their answers remain `-1`.
+
+The monotonic stack pattern generalizes:
+- **Next smaller**: flip `<` to `>` in the while condition.
+- **Previous greater/smaller**: scan in reverse.
+- **Largest rectangle in histogram**: at each pop, the popped
+  bar's "domain" is determined by the new top of stack on the
+  left and current i on the right.
+- **Trapping rain water**: stack tracks "left walls" with
+  decreasing heights.
+- **Sum of subarray minimums**: previous-smaller + next-smaller
+  defines each element's "domain of dominance."
+
+Master the template once; the variations are all small twists.
 ''',
             "complexity": "**Time**: *O(n)* amortized. **Space**: *O(n)*.",
         },

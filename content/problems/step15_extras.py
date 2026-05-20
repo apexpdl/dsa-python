@@ -937,6 +937,132 @@ def kahn(V, adj):
                 q.append(v)
     return order if len(order) == V else []   # empty = cycle exists
 ''',
+            "walkthrough": r'''
+**Kahn's Algorithm** for **topological sort**. *O(V + E)*.
+The BFS-based topo sort, named after A. B. Kahn (1962).
+
+The problem: given a **DAG (directed acyclic graph)**, output
+the vertices in an order such that every directed edge
+`u → v` appears with `u` before `v`. This is a **topological
+ordering**.
+
+**The Kahn's algorithm idea**: a vertex with **in-degree 0**
+has no prerequisites — it can come first in the topo order.
+Output it, then "remove" it from the graph (decrement
+in-degrees of its neighbors). Repeat.
+
+**`from collections import deque`** — Queue for BFS.
+
+**`def kahn(V, adj):`** — Takes the vertex count and
+adjacency list. Returns a topo ordering, or an empty list if
+the graph has a cycle.
+
+**`indeg = [0] * V`** — Initialize an in-degree array.
+
+**`for u in range(V): for v in adj[u]: indeg[v] += 1`** —
+Compute in-degrees by walking every edge.
+
+**`q = deque(u for u in range(V) if indeg[u] == 0)`** —
+**Seed the queue with all in-degree-0 vertices.** These are
+the "sources" — vertices with no prerequisites.
+
+**`order = []`** — Accumulator for the topo order.
+
+**`while q:`** — Process while the queue is non-empty.
+
+**`u = q.popleft()`** — Take the next ready vertex.
+
+**`order.append(u)`** — Output it.
+
+**`for v in adj[u]:`** — For each successor `v` of `u`...
+
+**`indeg[v] -= 1`** — Removing `u` reduces `v`'s in-degree
+by 1. (Symbolically. We don't actually modify the graph.)
+
+**`if indeg[v] == 0: q.append(v)`** — If `v` now has no
+remaining prerequisites, it's ready to be output. Enqueue it.
+
+**`return order if len(order) == V else []`** — **Cycle
+detection.** If we managed to output every vertex, we have a
+valid topo order. If `len(order) < V`, some vertices were
+never enqueued — they have a non-zero in-degree even after
+processing everyone else. That means they're in a **cycle**,
+where each node waits for the next.
+
+**Why does this work?**
+
+Topological order means: for every directed edge `u → v`, `u`
+must come **before** `v`. Equivalently, every node must come
+**after** all of its prerequisites.
+
+Kahn's algorithm enforces this directly: a node is only
+output when all its prerequisites have been output (in-degree
+reaches 0).
+
+**Trace on:**
+```
+edges: 5→0, 5→2, 4→0, 4→1, 2→3, 3→1
+```
+```
+indeg = [2, 2, 1, 1, 0, 0].
+q = [4, 5]. order = [].
+
+Pop 4: order=[4]. Neighbors 0,1. indeg[0]=1, indeg[1]=1.
+Pop 5: order=[4,5]. Neighbors 0,2. indeg[0]=0 → enqueue 0. indeg[2]=0 → enqueue 2.
+q = [0, 2].
+Pop 0: order=[4,5,0]. No neighbors.
+Pop 2: order=[4,5,0,2]. Neighbor 3. indeg[3]=0 → enqueue 3.
+q = [3].
+Pop 3: order=[4,5,0,2,3]. Neighbor 1. indeg[1]=0 → enqueue 1.
+q = [1].
+Pop 1: order=[4,5,0,2,3,1]. No neighbors.
+q empty.
+
+len(order) = 6 = V. Return [4, 5, 0, 2, 3, 1].
+```
+
+Valid topo order (one of several possible).
+
+**Why is this O(V + E)?**
+
+Each vertex is enqueued and processed once: *O(V)*. Each
+edge is examined once when its source is processed: *O(E)*.
+Total *O(V + E)*.
+
+**Properties:**
+- **Time**: *O(V + E)*.
+- **Space**: *O(V)* for the queue and indegree array.
+
+**Cycle detection via Kahn:**
+
+If the graph has a cycle, the vertices in the cycle never
+have in-degree 0 (each is the prerequisite of another in the
+cycle). They're never enqueued, never output. `len(order)`
+ends up less than V.
+
+This is one of the **cleanest cycle detection algorithms**
+for directed graphs.
+
+**Applications:**
+- **Course scheduling**: find an order to take courses
+  satisfying prerequisites.
+- **Build systems** (make, cargo, bazel): compile files in
+  dependency order.
+- **Task scheduling** with dependencies.
+- **Linker symbol resolution**.
+- **Spreadsheet recalculation**: evaluate cells in dependency
+  order.
+
+Kahn's algorithm is **simpler to understand** than DFS-based
+topo sort and is the recommended teaching version.
+
+**Alternative**: DFS-based topo sort. Do post-order DFS;
+reverse the post-order. Also *O(V + E)*. Use DFS when:
+- The graph is sparse and DFS is natural.
+- You're already doing DFS for other reasons.
+
+Both versions appear in interviews.
+''',
             "complexity": "Time O(V + E).",
         },
         "deep_concept": "Kahn's also detects cycles: if final `len(order) != V`, the graph has a cycle (some vertex never reached in-degree 0).",

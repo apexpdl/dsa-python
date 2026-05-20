@@ -815,6 +815,124 @@ next-smaller on the fly.
         stack.append(i)
     return best
 ''',
+         "walkthrough": r'''
+**Largest Rectangle in Histogram** — a landmark monotonic
+stack problem. *O(n)* time. Confusing the first time you see
+it; gorgeous once it clicks.
+
+The idea: for each bar at index `i`, the largest rectangle
+**using this bar as its shortest height** spans from `(left
+boundary + 1)` to `(right boundary - 1)`, where:
+- `left boundary` = nearest bar to the left **strictly shorter**
+  than `heights[i]`.
+- `right boundary` = nearest bar to the right strictly shorter
+  than `heights[i]`.
+
+So we need previous-smaller and next-smaller for every bar.
+The monotonic stack computes both implicitly in one pass.
+
+**`def largest_rectangle(heights: list[int]) -> int:`** —
+Takes the histogram heights, returns the area of the largest
+rectangle that fits inside.
+
+**`heights = heights + [0]`** — **Sentinel trick.** Append a
+zero at the end. This forces the stack to flush at the very
+end — every remaining bar gets its "right boundary" set to
+the sentinel position. Without it, bars still in the stack
+when the loop ends would never get processed.
+
+We could also avoid the sentinel by adding a cleanup loop
+after the for-loop. The sentinel is cleaner.
+
+**`stack = []`** — Monotonic **increasing** stack of indices.
+Indices in the stack point to bars whose heights are
+**strictly increasing** from bottom to top.
+
+**`best = 0`** — Track the largest rectangle found.
+
+**`for i, h in enumerate(heights):`** — Walk every bar
+(including the sentinel).
+
+**`while stack and heights[stack[-1]] > h:`** — While the top
+of the stack is **taller** than the current bar, pop it. The
+current bar (at index `i`) is the **next smaller** for the
+popped index.
+
+We use `>` not `>=`. This means equal heights don't pop each
+other — which would over-count area for the right cases.
+
+**`top = stack.pop()`** — Pop the index whose right boundary
+we just found.
+
+**`left = stack[-1] if stack else -1`** — After popping, the
+new top of the stack is the **previous smaller** for `top`.
+If the stack is empty, `top` extended all the way to the
+start of the array — use `-1` as a virtual left boundary.
+
+**`width = i - left - 1`** — Width of the rectangle with
+`heights[top]` as the height. The rectangle spans positions
+`left + 1` to `i - 1` (inclusive), so its width is
+`(i - 1) - (left + 1) + 1 = i - left - 1`.
+
+**`best = max(best, heights[top] * width)`** — Update the
+best area found.
+
+**`stack.append(i)`** — Push the current index. It now waits
+for **its** next-smaller bar.
+
+**`return best`** — Hand back the largest rectangle.
+
+**Trace on `heights = [2, 1, 5, 6, 2, 3]`:**
+
+With sentinel: `[2, 1, 5, 6, 2, 3, 0]`.
+
+```
+i=0, h=2: stack empty, push 0. stack=[0].
+i=1, h=1: stack[-1]=0, h[0]=2 > 1. Pop 0.
+         left = -1 (stack empty). width = 1-(-1)-1 = 1. area = 2*1=2.
+         stack=[]. Now push 1. stack=[1].
+i=2, h=5: h[1]=1 not > 5. Push 2. stack=[1, 2].
+i=3, h=6: h[2]=5 not > 6. Push 3. stack=[1, 2, 3].
+i=4, h=2: h[3]=6 > 2. Pop 3.
+         left=2. width=4-2-1=1. area=6*1=6. best=6.
+         h[2]=5 > 2. Pop 2.
+         left=1. width=4-1-1=2. area=5*2=10. best=10.
+         h[1]=1 not > 2. Push 4. stack=[1, 4].
+i=5, h=3: h[4]=2 not > 3. Push 5. stack=[1, 4, 5].
+i=6, h=0 (sentinel): h[5]=3 > 0. Pop 5.
+         left=4. width=6-4-1=1. area=3*1=3.
+         h[4]=2 > 0. Pop 4.
+         left=1. width=6-1-1=4. area=2*4=8.
+         h[1]=1 > 0. Pop 1.
+         left=-1. width=6-(-1)-1=6. area=1*6=6.
+         stack=[]. Push 6.
+End. best = 10.
+```
+
+Largest rectangle has area 10 — bars at indices 2 and 3
+(heights 5, 6) treated as height 5 across width 2.
+
+**Why O(n)?**
+
+Each index is pushed exactly once and popped at most once.
+The inner while loop can run many times in a single outer
+iteration, but the total pops across all iterations is
+bounded by `n`. So total work is *O(n)* — amortized analysis.
+
+**Properties:**
+- **Time**: *O(n)* amortized.
+- **Space**: *O(n)* for the stack.
+
+**Applications:**
+- Maximal Rectangle in a Binary Matrix (apply this per row).
+- Maximum Area in a Histogram-like structure.
+- Skyline-related problems.
+
+This is one of the most elegant uses of a monotonic stack.
+Once you understand it, the maximal-rectangle-in-matrix
+problem reduces to "for each row, build a histogram and call
+this function."
+''',
          "complexity": "**Time**: *O(n)*. **Space**: *O(n)*."
      },
      "summary": "**Pattern**: monotonic stack + sentinel 0 to flush remaining bars."},

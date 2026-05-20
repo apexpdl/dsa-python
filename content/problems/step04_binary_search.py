@@ -474,6 +474,42 @@ version. But binary search drops the cost to *O(log n)*.
             return i
     return len(arr)
 ''',
+            "walkthrough": r'''
+The linear baseline. Walk the array, return the first index
+where the value is at least `x`.
+
+**`def lower_bound_linear(arr: list[int], x: int) -> int:`** —
+Takes a sorted array and a target value. Returns the smallest
+index `i` such that `arr[i] >= x`. If no such index exists,
+returns `len(arr)`.
+
+This convention — return `len(arr)` for "not found, target is
+larger than everything" — is what Python's `bisect_left` does.
+It's chosen because it makes the function's return value
+interpretable as "the position where `x` would be inserted to
+keep the array sorted."
+
+**`for i, v in enumerate(arr):`** — Walk each element with
+both index and value.
+
+**`if v >= x: return i`** — As soon as we find an element
+at least as large as `x`, return its index. Because the array
+is sorted, this is guaranteed to be the **smallest** such
+index — any earlier index has a strictly smaller value.
+
+The `>=` (not `>`) is what makes this a **lower bound** and
+not an upper bound. Subtle but important: if `arr = [1, 2, 2, 3]`
+and `x = 2`, lower_bound returns 1 (the first 2); upper_bound
+would return 3 (one past the last 2). Memorize this distinction.
+
+**`return len(arr)`** — If the loop completes without finding
+a qualifying element, every element was less than `x`. The
+"insertion point" is at the end of the array, which is index
+`len(arr)`.
+
+This is *O(n)* time. The optimized version below uses binary
+search to achieve *O(log n)*.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },
         "thought_process": r'''
@@ -531,6 +567,88 @@ def upper_bound(arr: list[int], x: int) -> int:
         else:
             hi = mid
     return lo
+''',
+            "walkthrough": r'''
+Half-open binary search. This style is what Python's `bisect`
+module uses internally, and it's the cleanest formulation
+for lower_bound / upper_bound problems.
+
+**Version 1: lower_bound**
+
+**`def lower_bound(arr: list[int], x: int) -> int:`** — Same
+signature as the linear version, just faster.
+
+**`lo, hi = 0, len(arr)`** — Initialize the search range as
+**half-open**: `[lo, hi)`. Note that `hi = len(arr)`, not
+`len(arr) - 1`. The range can be empty if `lo == hi`. Indices
+in `[lo, hi)` are the still-possible answers.
+
+The half-open convention is important. Read it carefully:
+- `lo` is a valid candidate index.
+- `hi` is **not** — it's "one past the last candidate."
+
+This convention has two benefits: (1) empty range is just
+`lo == hi`, no off-by-one. (2) Returning `len(arr)` for "not
+found" falls out naturally — when the search collapses to
+`lo == hi == len(arr)`, that's the answer.
+
+**`while lo < hi:`** — Continue while the range is non-empty.
+Strict `<`, not `<=`, because the range is half-open.
+
+**`mid = (lo + hi) // 2`** — Midpoint. Note: when `lo < hi`,
+`mid` is always in `[lo, hi)` (specifically, `lo <= mid < hi`).
+So `arr[mid]` is always a valid access.
+
+**`if arr[mid] < x:`** — The middle element is strictly
+smaller than the target. Therefore everything from `lo` to
+`mid` is too small (sortedness!). The answer must be strictly
+to the right of `mid`.
+
+**`lo = mid + 1`** — Move `lo` past `mid`. The `+ 1` is
+correct because we know `mid` itself doesn't qualify.
+
+**`else: hi = mid`** — `arr[mid] >= x`. `mid` is a valid
+candidate (the value is at least `x`). But there might be an
+even smaller index that also qualifies — perhaps
+`arr[mid-1] >= x` too. We can't yet rule out `mid`, but we
+can rule out everything from `mid + 1` to `hi - 1`.
+
+So we set `hi = mid` (not `mid - 1`!). The half-open
+convention means `hi` excludes the position, so this keeps
+`mid` as a candidate while excluding everything to its right.
+
+This is the key difference between closed and half-open: in
+closed-interval style we use `hi = mid - 1`; in half-open we
+use `hi = mid`. Mixing them up is the most common binary-
+search bug.
+
+**`return lo`** — When the loop exits, `lo == hi`. The half-
+open range has collapsed to empty. The single remaining
+candidate (or `len(arr)` if no candidate exists) is `lo`.
+
+**Version 2: upper_bound**
+
+The structure is identical; only the comparison flips.
+
+**`if arr[mid] <= x: lo = mid + 1`** — Note `<=` instead of
+`<`. We're looking for "strictly greater than x," so values
+equal to `x` are also "too small" and we must keep searching
+right.
+
+**`else: hi = mid`** — `arr[mid] > x`, so it's a valid
+candidate. Keep it in range.
+
+The difference between lower_bound and upper_bound is a
+single character — `<` vs `<=`. But the semantics differ:
+- lower_bound: first index where value >= x (includes ties).
+- upper_bound: first index where value > x (excludes ties).
+
+If you have a sorted array and want to count how many times
+`x` appears: `upper_bound(x) - lower_bound(x)`.
+
+These two functions are the atomic building blocks of almost
+every "binary search in a range" problem. Master them and
+hundreds of problems become two-liners.
 ''',
             "complexity": "**Time**: *O(log n)*. **Space**: *O(1)*.",
         },

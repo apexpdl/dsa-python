@@ -539,6 +539,75 @@ prune immediately whenever a new queen attacks any earlier queen.
     go(0)
     return out
 ''',
+            "walkthrough": r'''
+The naive backtracking. We pick a column for every row first,
+then check validity at the leaf. Inefficient but easy to
+understand.
+
+**`def solve_n_queens_naive(n: int) -> list[list[str]]:`** —
+Takes board size, returns all valid N-Queens configurations as
+lists of strings.
+
+**`out = []`** — Accumulator for solutions.
+
+**`cols = [0] * n`** — `cols[i]` is the column of the queen
+placed in row `i`. We allocate an array of size `n` and fill
+it during recursion.
+
+**`def check() -> bool:`** — Validation function. Checks that
+all `n` queens (one per row, columns given by `cols`) are
+mutually non-attacking.
+
+**`for i in range(n): for j in range(i + 1, n):`** — Compare
+every pair (`i`, `j`) with `i < j`.
+
+**`if cols[i] == cols[j]: return False`** — Two queens in the
+same column. Conflict.
+
+**`if abs(cols[i] - cols[j]) == abs(i - j): return False`** —
+Two queens on the same diagonal. The math: queens at
+`(i, cols[i])` and `(j, cols[j])` are on a diagonal iff the
+horizontal and vertical distances are equal. `abs(...)` gives
+us the distance, regardless of direction.
+
+**`return True`** — No pair conflicts; valid configuration.
+
+**`def go(row: int) -> None:`** — Recursive helper to pick a
+column for each row.
+
+**`if row == n:`** — We've placed `n` queens (one per row).
+
+**`if check():`** — Only emit if valid.
+
+**`out.append([...])`** — Render the configuration as the
+required string format. For each row, "." × (col positions
+before queen) + "Q" + "." × (col positions after queen).
+
+**`return`** — Done with this leaf.
+
+**`for c in range(n):`** — Try every column for the current
+row.
+
+**`cols[row] = c`** — Record the choice.
+
+**`go(row + 1)`** — Recurse to the next row.
+
+Notice: **no undo step** for `cols[row] = c` — because the
+next iteration just overwrites it. We don't need explicit
+backtracking for the `cols` array since each row is
+independent.
+
+The cost: `n^n` leaves in the search tree (n columns per row,
+n rows). For n = 8, that's 16 million. For n = 12, 8.9 billion.
+Way too slow without pruning.
+
+The optimized version prunes **during the recursion**:
+whenever placing a queen would attack an earlier queen, we
+skip that branch immediately. Three sets (columns,
+diagonal-1, diagonal-2) make the conflict check *O(1)* per
+queen. This brings practical runtime way down — solving
+n = 12 in well under a second.
+''',
             "complexity": (
                 "**Time**: *O(N^N)* without pruning. **Space**: *O(N)*."
             ),
@@ -601,6 +670,102 @@ Backtracking with three sets for constant-time conflict checks.
 
     go(0)
     return out
+''',
+            "walkthrough": r'''
+The optimized N-Queens with aggressive pruning. Constant-time
+conflict checks via three sets. Practical even for n = 13.
+
+**Setting up the constraints**
+
+**`cols: set[int] = set()`** — Tracks which columns are
+already occupied by a queen. If column `c` is in this set, no
+new queen can go in column `c`.
+
+**`diag1: set[int] = set()`** — Tracks occupied
+top-left-to-bottom-right diagonals. Every cell on such a
+diagonal has the same `row - col`. So we use `row - col` as
+the diagonal's identifier.
+
+**`diag2: set[int] = set()`** — Tracks occupied
+top-right-to-bottom-left diagonals. These have constant
+`row + col`.
+
+The diagonal identification is the **key insight**. Without
+it, checking "does this position attack any earlier queen"
+would require scanning all previously placed queens — *O(n)*
+per check. With the sets, every check is *O(1)*.
+
+**`board = [["."] * n for _ in range(n)]`** — A 2D grid
+initialized to all "." characters. We'll mark "Q" where
+queens go.
+
+**Note the `[["."] * n for _ in range(n)]` idiom.** Do
+**not** write `[["."] * n] * n` — that creates `n`
+references to the **same** list. The list comprehension
+makes a fresh list each iteration.
+
+**`out: list[list[str]] = []`** — Accumulator for solutions.
+
+**The recursive go function**
+
+**`if row == n:`** — Base case. We've placed a queen in every
+row. Snapshot the board and return.
+
+**`out.append(["".join(r) for r in board])`** — Convert each
+row from a list of single characters to a string. The
+LeetCode format expects strings like `"..Q."` per row.
+
+**`for col in range(n):`** — Try every column for this row.
+
+**`if col in cols or (row - col) in diag1 or (row + col) in diag2: continue`** —
+**Pruning.** Skip this column if placing a queen there would
+attack any earlier queen along a column or either diagonal.
+
+The three checks together encode "does the new queen at
+(row, col) attack any previously placed queen?" — answered in
+*O(1)* time, no scanning.
+
+**`cols.add(col); diag1.add(row - col); diag2.add(row + col)`** —
+Record the new queen's three constraints. After these lines,
+no future queen can land in this column or on these diagonals.
+
+**`board[row][col] = "Q"`** — Place the queen visually.
+
+**`go(row + 1)`** — Recurse to the next row.
+
+**`cols.remove(col); diag1.remove(row - col); diag2.remove(row + col); board[row][col] = "."`** —
+**The undo.** When the recursive call returns, we must remove
+all four marks so this row's column choice doesn't bleed into
+sibling branches.
+
+This is **classic backtracking**: do, recurse, undo. Every
+"apply" must have a matching "remove."
+
+**`go(0)`** — Start at row 0.
+
+**`return out`** — All solutions found.
+
+**Why is pruning so effective?**
+
+In the naive version, every leaf of an `n^n` search tree gets
+checked. Most of these leaves are invalid configurations that
+the algorithm doesn't know about until the end.
+
+With pruning, we abandon entire subtrees the moment a
+conflict appears. In practice, the search tree is **massively**
+smaller. For n = 8, instead of 16 million leaves, we visit
+about 2,000 — a 4-orders-of-magnitude speedup.
+
+The lesson: **prune at the highest possible level.** Each
+queen placed wrong invalidates the *entire* rest of the row
+tree below it. By detecting conflicts immediately at
+placement time, we save exponential work.
+
+The N-Queens problem is the gold standard for teaching
+constraint-driven backtracking. Master this template and you
+have the tools for Sudoku solver, crossword filling, graph
+coloring, and many other CSP (constraint satisfaction
+problem) variations.
 ''',
             "complexity": (
                 "**Time**: still exponential in the worst case, but "

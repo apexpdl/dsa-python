@@ -138,6 +138,123 @@ def kmp_search(text, pattern):
             j = lps[j - 1]
     return out
 ''',
+            "walkthrough": r'''
+**KMP (Knuth-Morris-Pratt)** — the canonical *O(n + m)*
+substring search. Famous for its elegance and deep
+"failure function" idea.
+
+The problem: find all occurrences of `pattern` in `text`.
+
+The naive approach: at every position in text, try to match
+the pattern. Worst case: *O(n × m)*. Bad for huge inputs.
+
+The KMP insight: when a mismatch occurs after partially
+matching, we don't need to **restart** from scratch. The
+**already-matched prefix** of pattern tells us how far we
+can safely "shift" before testing again. The `lps` array
+precomputes these shifts.
+
+**`lps[i]` = the length of the longest proper prefix of
+pattern[0..i] that is also a suffix of pattern[0..i].**
+
+A "proper" prefix excludes the whole string. For
+`pattern = "abab"`, `lps = [0, 0, 1, 2]`:
+- lps[0] = 0 (no proper prefix/suffix).
+- lps[1] = 0 (prefix "a" ≠ suffix "b").
+- lps[2] = 1 ("a" is both a prefix of "aba" and a suffix).
+- lps[3] = 2 ("ab" is both prefix and suffix of "abab").
+
+**Phase 1: Build the LPS array.**
+
+**`m = len(pattern); lps = [0] * m; k = 0`** — Initialize.
+`k` tracks "how long is the current best prefix-suffix
+match."
+
+**`for i in range(1, m):`** — For each position `i` in
+pattern (starting at 1 because lps[0] is always 0).
+
+**`while k > 0 and pattern[i] != pattern[k]:`** — Extend the
+current prefix-suffix by one character (`pattern[k]`). If
+that fails (mismatch with `pattern[i]`), **back off** to a
+shorter prefix-suffix using the already-computed lps. Repeat
+until we find a match or run out.
+
+**`k = lps[k - 1]`** — Back off using the previous lps. This
+is the "failure function" jump.
+
+**`if pattern[i] == pattern[k]: k += 1`** — On match, extend.
+
+**`lps[i] = k`** — Record the lps for position i.
+
+**Phase 2: Scan the text using lps.**
+
+**`out = []; j = 0`** — `j` tracks how many pattern chars
+match so far.
+
+**`for i, c in enumerate(text):`** — Walk text.
+
+**`while j > 0 and c != pattern[j]:`** — Mismatch! Back off
+using lps to a shorter still-valid prefix. Repeat.
+
+**`if c == pattern[j]: j += 1`** — Match — extend the
+matched prefix.
+
+**`if j == m:`** — Full pattern matched! Record the position.
+
+**`out.append(i - m + 1)`** — The match starts at index
+`i - m + 1`.
+
+**`j = lps[j - 1]`** — Slide back to look for the next match.
+
+**`return out`** — All starting positions.
+
+**Why O(n + m)?**
+
+In both phases, the inner while loop can run many times in a
+single iteration of the outer loop. But the **total** number
+of while iterations across the entire algorithm is bounded
+by the outer loop's total iterations (each while step
+decreases `j` or `k`, while the outer increments balance).
+So it's amortized linear.
+
+Total: *O(m)* for LPS construction, *O(n)* for the search.
+
+**Trace LPS for `pattern = "ABABAB"`:**
+
+```
+Init: lps = [0,0,0,0,0,0]. k=0.
+
+i=1, pattern[1]='B' vs pattern[0]='A': no match. k stays 0. lps[1]=0.
+i=2, pattern[2]='A' vs pattern[0]='A': match. k=1. lps[2]=1.
+i=3, pattern[3]='B' vs pattern[1]='B': match. k=2. lps[3]=2.
+i=4, pattern[4]='A' vs pattern[2]='A': match. k=3. lps[4]=3.
+i=5, pattern[5]='B' vs pattern[3]='B': match. k=4. lps[5]=4.
+
+lps = [0, 0, 1, 2, 3, 4].
+```
+
+Now search "ABABABCABABABA" for this pattern. KMP finds
+matches at positions 0, 2, 6, 8 (or similar) without ever
+backtracking the `i` pointer in text.
+
+**Properties:**
+- **Time**: *O(n + m)* — linear total.
+- **Space**: *O(m)* for the LPS array.
+
+**Why KMP matters:**
+- **First** linear-time substring search algorithm (1977).
+- **Used in**: text editors (find-and-replace), search
+  engines (indexed substring matching), bioinformatics
+  (DNA sequence search), network intrusion detection.
+- **Related**: Z algorithm (different "failure function"),
+  Boyer-Moore (skips ahead from the END of pattern), Rabin-
+  Karp (rolling hash).
+
+KMP is one of the **algorithmic crown jewels** in CS. Its
+elegance comes from the realization that "I've already
+matched some of the pattern" is information that should not
+be wasted.
+''',
             "complexity": "Time O(n + m).",
         },
         "deep_concept": "The LPS array captures the *self-similarity* of the pattern. When matching fails at pattern[j], we know that the last lps[j-1] chars of what we've matched in text *already* match a prefix of pattern — so we can skip ahead without re-checking.",

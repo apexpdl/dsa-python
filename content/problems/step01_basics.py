@@ -1781,6 +1781,48 @@ This is *O(n)*. For `n = 10⁹` that is a billion divisions. Too slow.
     # No divisor found; n is prime.
     return True
 ''',
+            "walkthrough": r'''
+Let's walk through this slowly. This algorithm is direct
+translation of the definition of "prime number" into code.
+
+**`def is_prime_brute(n: int) -> bool:`** — Takes an integer,
+returns True or False.
+
+**`if n < 2: return False`** — The definition of prime requires
+`n > 1`. By convention, 0, 1, and negative numbers are not
+prime. We catch these cases first and return False, because
+the loop below would either give a wrong answer or run zero
+times.
+
+**`for d in range(2, n):`** — Try every potential divisor from
+`2` up to `n - 1`. Why start at `2`? Because `1` divides
+everything; if we tested `d = 1`, the check `n % d == 0` would
+always be true and we'd wrongly conclude every number is
+composite. And why stop at `n - 1`? Because `n` itself divides
+`n` evenly, so testing `d = n` would also be a false alarm.
+The valid "non-trivial" divisors live in the range `(1, n)`
+exclusive — exactly what `range(2, n)` gives us.
+
+**`if n % d == 0:`** — Test whether `d` divides `n` evenly.
+The modulo operator returns the remainder; if the remainder is
+zero, division is exact.
+
+**`return False`** — As soon as we find *any* non-trivial
+divisor, we know `n` is composite. There's no need to keep
+looking — return False immediately. This is called "early
+exit" and it's a common pattern.
+
+**`return True`** — If the loop completes without finding any
+divisor, then `n` has no non-trivial divisors. Its only
+divisors are 1 and itself. That's the definition of prime;
+return True.
+
+This is *O(n)* time. For small inputs it's fine. For
+`n = 1,000,000,000`, this would require a billion iterations,
+each doing a modulo. Way too slow. The optimized version
+brings this down to about 30,000 iterations using a beautiful
+mathematical insight (see below).
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },
         "thought_process": r'''
@@ -1825,6 +1867,67 @@ them divides `n`, it is composite. Otherwise it is prime.
             return False
         i += 2
     return True
+''',
+            "walkthrough": r'''
+Let's read this optimized version. It has several small tricks
+that compound into a dramatically faster algorithm.
+
+**`def is_prime(n: int) -> bool:`** — Same signature.
+
+**`if n < 2: return False`** — Same edge case as before. 0, 1,
+and negatives are not prime.
+
+**`if n < 4: return True`** — Handle the small primes 2 and 3
+explicitly. Why a separate case? Because the upcoming
+optimization tests *odd* numbers starting at 3 and the *even*
+divisor 2 is handled separately. If we didn't special-case 2
+and 3, the algorithm would skip them.
+
+**`if n % 2 == 0: return False`** — Eliminate even numbers in
+one shot. Every even number greater than 2 is composite (it
+has 2 as a divisor besides 1 and itself). By removing all
+evens here, we avoid wasting iterations on them later.
+
+**`i = 3`** — We start testing divisors at 3. We've already
+handled the case `d = 2` (by checking `n % 2`), so we start
+at the next odd number.
+
+**`while i * i <= n:`** — This is the killer optimization. The
+condition says "while `i` squared is at most `n`," which is
+equivalent to "while `i` is at most `sqrt(n)`." We avoid
+calling `math.sqrt(n)` explicitly because:
+1. It's slightly slower than multiplication.
+2. It returns a float, introducing potential precision errors.
+3. Squaring `i` is exact integer arithmetic.
+
+But why is `sqrt(n)` the right stopping point? Here's the
+beautiful argument: if `n` has any non-trivial divisor `d`,
+then `n / d` is also a divisor. One of these two must be at
+most `sqrt(n)`. (Because if both were greater than `sqrt(n)`,
+their product would exceed `n`, contradiction.) So if no
+divisor exists up to `sqrt(n)`, no divisor exists at all. We
+only need to scan to `sqrt(n)`, not to `n`. This cuts the
+work from *O(n)* to *O(sqrt(n))* — a billion becomes 30,000.
+
+**`if n % i == 0: return False`** — Same check as before.
+Found a divisor? Composite.
+
+**`i += 2`** — Increment by 2 to skip the even numbers (which
+can't be prime divisors of an odd `n` — if `n` is odd, no
+even divides it). This roughly halves the inner-loop work.
+
+**`return True`** — If we got here, no divisor was found.
+Prime.
+
+So the optimized version has three layers of speedup over the
+brute force:
+1. Stop at `sqrt(n)` instead of `n`. (Biggest win.)
+2. Skip all even candidates. (Constant-factor 2x.)
+3. Use `i * i <= n` instead of `math.sqrt`. (Tiny win, but
+   safer numerically.)
+
+Combined, this is the standard interview-grade primality test.
+For inputs up to about 10^12 it runs in microseconds.
 ''',
             "complexity": (
                 "**Time**: *O(sqrt(n))*. **Space**: *O(1)*."

@@ -565,6 +565,119 @@ while accumulating.
             right -= 1
     return total
 ''',
+         "walkthrough": r'''
+**Trapping Rain Water** — a famous interview problem. Two
+pointers, *O(n)* time, *O(1)* memory. Beats the *O(n)*-memory
+"compute left max and right max arrays" approach.
+
+The problem: given a histogram of bar heights, compute how
+much rainwater can be trapped in the dips after rain.
+
+The water at any position `i` is determined by:
+`min(max_height_to_left_of_i, max_height_to_right_of_i) - height[i]`,
+or zero if that's negative.
+
+**The two-pointer insight**: instead of computing left_max
+and right_max arrays explicitly (*O(n)* space), we walk two
+pointers from both ends, **always processing the side with
+the smaller current height**. Why? Because we then know the
+other side's max bound exists and is ≥ our processing side's
+max.
+
+**`def trap(height: list[int]) -> int:`** — Takes heights,
+returns total trapped water.
+
+**`left, right = 0, len(height) - 1`** — Pointers at both
+ends of the array.
+
+**`left_max = right_max = 0`** — Running maxes from each
+direction. As we process each bar, we know the highest bar
+seen on that side so far.
+
+**`total = 0`** — Accumulator for total trapped water.
+
+**`while left < right:`** — Continue while the pointers
+haven't crossed.
+
+**`if height[left] < height[right]:`** — The left bar is
+shorter. We process from the left.
+
+**Why is this safe?** Because on the right side there exists
+**some** bar (specifically `height[right]`) at least as tall
+as `height[left]`. So the left side's water is bounded by
+`left_max`, not by anything on the right.
+
+**`if height[left] >= left_max: left_max = height[left]`** —
+Update the running max from the left side.
+
+**`else: total += left_max - height[left]`** — The current
+left bar is shorter than `left_max`, so water sits on top of
+it up to height `left_max`. The depth of water is
+`left_max - height[left]`. Add it to total.
+
+**`left += 1`** — Move the left pointer inward.
+
+**`else: ...`** — Symmetric for the right side.
+
+**`return total`** — Hand back the total trapped water.
+
+**Trace on `height = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]`:**
+
+```
+left=0, right=11. h[0]=0 < h[11]=1. Process left.
+  0 >= 0, left_max=0. left=1.
+left=1, right=11. h[1]=1 not < h[11]=1. Process right.
+  1 >= 0, right_max=1. right=10.
+left=1, right=10. h[1]=1 not < h[10]=2. Process right.
+  2 >= 1, right_max=2. right=9.
+left=1, right=9. h[1]=1 not < h[9]=1. Process right.
+  1 < 2, total += 2-1 = 1. total=1. right=8.
+left=1, right=8. h[1]=1 not < h[8]=2. Process right.
+  2 >= 2, right_max=2. right=7.
+left=1, right=7. h[1]=1 < h[7]=3. Process left.
+  1 >= 0, left_max=1. left=2.
+left=2, right=7. h[2]=0 < h[7]=3. Process left.
+  0 < 1, total += 1-0 = 1. total=2. left=3.
+left=3, right=7. h[3]=2 < h[7]=3. Process left.
+  2 >= 1, left_max=2. left=4.
+left=4, right=7. h[4]=1 < h[7]=3. Process left.
+  1 < 2, total += 2-1 = 1. total=3. left=5.
+left=5, right=7. h[5]=0 < h[7]=3. Process left.
+  0 < 2, total += 2-0 = 2. total=5. left=6.
+left=6, right=7. h[6]=1 < h[7]=3. Process left.
+  1 < 2, total += 2-1 = 1. total=6. left=7.
+left=7, right=7. Loop ends.
+Return 6.
+```
+
+Six units of water — matches the known answer for this
+classic example.
+
+**Why does this work?**
+
+At any moment, we're at left or right and processing the
+shorter side. The shorter side's water is determined by its
+running max (`left_max` or `right_max`). The opposite side's
+max only needs to be **at least** the running max — which is
+guaranteed because we picked the shorter side to process.
+
+**Properties:**
+- **Time**: *O(n)*. Each position is visited once.
+- **Space**: *O(1)*. Just four scalars.
+
+**Other approaches:**
+- **Brute force**: for each position, scan left and right for
+  the max. *O(n²)*.
+- **Two arrays**: precompute left_max[i] and right_max[i],
+  then sum up `min(left_max[i], right_max[i]) - height[i]`.
+  *O(n)* time, *O(n)* memory.
+- **Monotonic stack**: maintain a decreasing stack of bar
+  indices; pop when a taller bar arrives, computing trapped
+  water as we pop. *O(n)* with stack.
+
+The two-pointer version is the most elegant and uses the
+least memory.
+''',
          "complexity": "**Time**: *O(n)*. **Space**: *O(1)*."
      },
      "summary": "**Pattern**: two pointers + running max from each side; add water from the smaller side."},

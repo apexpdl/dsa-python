@@ -386,6 +386,21 @@ body {
   border: 1px solid var(--accent-soft);
 }
 
+.code-walkthrough {
+  margin: 16px 0;
+  padding: 16px 20px;
+  background: var(--bg-callout);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+.code-walkthrough h4 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .code-block { margin: 16px 0; }
 .code-block pre {
   background: var(--code-bg);

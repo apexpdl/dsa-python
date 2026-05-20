@@ -52,6 +52,12 @@
     <div class="code-block">
       <pre><code class="language-python">{{ problem.brute_force.code }}</code></pre>
     </div>
+    {% if problem.brute_force.walkthrough %}
+    <div class="prose code-walkthrough">
+      <h4>Reading the brute force code, line by line</h4>
+      {{ problem.brute_force.walkthrough | md }}
+    </div>
+    {% endif %}
     <div class="prose complexity">{{ problem.brute_force.complexity | md }}</div>
   </section>
   {% endif %}
@@ -70,6 +76,12 @@
     <div class="code-block">
       <pre><code class="language-python">{{ problem.optimized.code }}</code></pre>
     </div>
+    {% if problem.optimized.walkthrough %}
+    <div class="prose code-walkthrough">
+      <h4>Reading the optimized code, line by line</h4>
+      {{ problem.optimized.walkthrough | md }}
+    </div>
+    {% endif %}
     <div class="prose complexity">{{ problem.optimized.complexity | md }}</div>
   </section>
   {% endif %}

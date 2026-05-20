@@ -71,6 +71,49 @@ This is correct but exponential — same problem as naive Fibonacci.
     # Recursive case: the last move was 1 step or 2 steps.
     return climb_brute(n - 1) + climb_brute(n - 2)
 ''',
+            "walkthrough": r'''
+The naive recursive solution. Direct translation of the
+problem definition: "to reach step n, the last move was
+either 1 step (from n-1) or 2 steps (from n-2)." But like
+naive Fibonacci, it has overlapping subproblems and is
+exponential.
+
+**`def climb_brute(n: int) -> int:`** — Takes the number of
+steps, returns the number of distinct ways to climb.
+
+**`if n <= 1: return 1`** — Base cases bundled together.
+- `n = 0`: already at the top, 1 way (do nothing).
+- `n = 1`: one step from the bottom, 1 way (take the 1 step).
+
+Why are both base cases 1? It's a counting problem, and there
+is exactly one way to handle each base case. Choosing 1 (not
+0) for `n = 0` is what makes the recurrence work cleanly.
+
+**`return climb_brute(n - 1) + climb_brute(n - 2)`** — The
+recursive case. To reach step `n`:
+- Either we took a 1-step move from step `n-1`. The number of
+  ways to reach `n-1` is `climb_brute(n - 1)`.
+- Or we took a 2-step move from step `n-2`. The number of
+  ways to reach `n-2` is `climb_brute(n - 2)`.
+
+These two cases are **disjoint** (the last move is uniquely
+either a 1 or a 2) and **complete** (every path ends with one
+of these two moves). So total ways = sum.
+
+This is **exactly Fibonacci**! `climb(n) = climb(n-1) +
+climb(n-2)` is the Fibonacci recurrence shifted by one. With
+base cases `climb(0) = climb(1) = 1`, we get the standard
+sequence 1, 1, 2, 3, 5, 8, 13, ...
+
+The cost: each call makes two recursive calls. The recursion
+tree has roughly `2^n` leaves. So *O(2^n)* time, *O(n)* stack
+depth.
+
+For `n = 30`, that's a billion calls. For `n = 45`, the
+universe ends. The fix (in the optimized version) is
+**memoization** or **tabulation** — store the answers we've
+already computed.
+''',
             "complexity": "**Time**: *O(2^n)*. **Space**: *O(n)* call stack.",
         },
         "thought_process": r'''
@@ -123,6 +166,76 @@ Space-optimized bottom-up: track only the last two values.
         # ways(i) = ways(i - 1) + ways(i - 2).
         prev2, prev1 = prev1, prev1 + prev2
     return prev1
+''',
+            "walkthrough": r'''
+The space-optimized iterative version. *O(n)* time, *O(1)*
+memory. The pattern is identical to Fibonacci — and that's
+the point: climbing stairs IS Fibonacci.
+
+**`def climb_stairs(n: int) -> int:`** — Same signature.
+
+**`if n <= 1: return 1`** — Same base case handling.
+
+**`prev2, prev1 = 1, 1`** — Two variables hold the rolling
+window of subproblem values. Initially:
+- `prev2` represents `ways(0) = 1`.
+- `prev1` represents `ways(1) = 1`.
+
+We don't store the entire history — just the most recent two
+values, because the recurrence only needs those two.
+
+**`for _ in range(2, n + 1):`** — Loop from `i = 2` to `i = n`
+inclusive. Each iteration computes `ways(i)` from `ways(i-1)`
+and `ways(i-2)`.
+
+**`prev2, prev1 = prev1, prev1 + prev2`** — The magic line.
+Python's parallel assignment evaluates the right side fully
+*before* assigning, so we can do both updates atomically.
+
+After this line:
+- New `prev2` = old `prev1` = `ways(i-1)` for the *new* i.
+- New `prev1` = old `prev1 + prev2` = `ways(i-1) + ways(i-2)`
+  = `ways(i)`.
+
+This "slides the window" forward by one position. Beautiful.
+
+**`return prev1`** — After the loop completes, `prev1` holds
+`ways(n)`. Return it.
+
+**Trace on n = 5:**
+```
+prev2  prev1  iteration
+1      1      (initial; n=0 and n=1 values)
+1      2      i=2: prev1+prev2 = 1+1 = 2.   (ways(2) = 2)
+2      3      i=3: prev1+prev2 = 2+1 = 3.   (ways(3) = 3)
+3      5      i=4: prev1+prev2 = 3+2 = 5.   (ways(4) = 5)
+5      8      i=5: prev1+prev2 = 5+3 = 8.   (ways(5) = 8)
+
+Return prev1 = 8.
+```
+
+For n = 5, there are 8 ways to climb. Verify: 1+1+1+1+1,
+1+1+1+2, 1+1+2+1, 1+2+1+1, 2+1+1+1, 1+2+2, 2+1+2, 2+2+1 — 8.
+Correct!
+
+**The big-picture lesson on DP optimization:**
+
+The naive recursive DP was *O(2^n)*. Adding memoization (a
+dict from `n` to result) brings it to *O(n)* time but *O(n)*
+memory. Tabulation with a full array `dp[0..n]` is also
+*O(n)* time *O(n)* memory.
+
+But here we only need the **last two values** at any time. So
+we don't need an array — two scalars suffice. This is **space
+optimization** of DP, and it's possible whenever the
+recurrence only looks at a small window of recent
+subproblems. Common cases:
+- Linear DPs with `dp[i] = f(dp[i-1])` only need 1 variable.
+- Linear DPs with `dp[i] = f(dp[i-1], dp[i-2])` need 2.
+- 2D grid DPs often need just one row at a time.
+
+Once you see this pattern, you can space-optimize most DPs
+mechanically.
 ''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },
@@ -389,6 +502,78 @@ exponential without memoization but linear once we cache.
         return max(go(i - 1, j), go(i, j - 1))
     return go(len(a), len(b))
 ''',
+            "walkthrough": r'''
+The recursive (non-memoized) LCS. Correct but exponential due
+to repeated subproblems. Sets up the recurrence cleanly so
+the tabulated version is mechanical.
+
+**`def lcs_recursive(a: str, b: str) -> int:`** — Takes two
+strings, returns the length of their longest common
+subsequence.
+
+**`def go(i: int, j: int) -> int:`** — Nested helper. `go(i,
+j)` computes the LCS of `a[0..i-1]` and `b[0..j-1]` — the
+**first i** characters of `a` and the **first j** characters
+of `b`.
+
+We use lengths (1-indexed) rather than indices because empty
+prefixes need a clean representation: `go(0, j) = 0` and
+`go(i, 0) = 0`.
+
+**`if i == 0 or j == 0: return 0`** — **Base case.** If
+either prefix is empty, the LCS is empty (length 0). Nothing
+to align.
+
+**`if a[i - 1] == b[j - 1]:`** — Check the **last** characters
+of each prefix (indices `i-1` and `j-1`). If they match, we
+extend the LCS by this character.
+
+**`return 1 + go(i - 1, j - 1)`** — Drop both characters and
+recurse on the remaining prefixes. Add 1 for the matched pair.
+
+**`return max(go(i - 1, j), go(i, j - 1))`** — Characters
+differ. We can't include both, so we must skip at least one.
+Try skipping `a[i-1]` (recurse with `i - 1, j`) and skipping
+`b[j-1]` (recurse with `i, j - 1`), take the better. Skipping
+both at once (`go(i-1, j-1)`) is also tried implicitly via
+either path.
+
+**`return go(len(a), len(b))`** — Kick off with the full
+prefixes.
+
+**Why is this exponential?**
+
+The recursion tree branches into 2 subcalls per mismatch.
+Worst case (all different): 2^(n+m) leaves. The reason: many
+of those subcalls are recomputing the same `(i, j)` pair —
+overlapping subproblems.
+
+For `a = "abcde"`, `b = "ace"`:
+```
+go(5, 3) — a[4]='e' vs b[2]='e': match → 1 + go(4, 2)
+   go(4, 2) — a[3]='d' vs b[1]='c': mismatch → max(go(3, 2), go(4, 1))
+      go(3, 2) — a[2]='c' vs b[1]='c': match → 1 + go(2, 1)
+         go(2, 1) — a[1]='b' vs b[0]='a': mismatch → max(go(1,1), go(2,0))
+            go(1, 1) — a[0]='a' vs b[0]='a': match → 1 + go(0,0) = 1
+            go(2, 0) = 0
+         → max(1, 0) = 1
+      → 1 + 1 = 2
+      go(4, 1) — a[3]='d' vs b[0]='a': mismatch → max(go(3,1), go(4,0))
+         ... eventually returns 1.
+   → max(2, 1) = 2
+→ 1 + 2 = 3. Answer: 3.
+```
+
+Notice `go(3, 2)` and `go(4, 1)` and others can be computed
+multiple times in larger inputs — that's the source of the
+exponential blowup. Memoization saves each result once
+(*O(n × m)* distinct subproblems) and reuses it. That's the
+optimized version below.
+
+The recursion itself encodes the **DP recurrence**. Once
+you have a correct (if slow) recursion, the DP is just
+adding a cache.
+''',
             "complexity": (
                 "**Time**: *O(2^(n+m))* without memoization. "
                 "**Space**: *O(n + m)* recursion."
@@ -432,6 +617,91 @@ thing in two minutes.
                 # No match: drop one character from one side.
                 dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
     return dp[n][m]
+''',
+            "walkthrough": r'''
+The bottom-up tabulated LCS. *O(n × m)* time and memory.
+Solid and visualizable — you can draw the table on paper.
+
+**`def lcs(a: str, b: str) -> int:`** — Same signature.
+
+**`n, m = len(a), len(b)`** — Cache lengths.
+
+**`dp = [[0] * (m + 1) for _ in range(n + 1)]`** — Build a
+2D table of size `(n+1) × (m+1)`, all zeros.
+
+The dimensions are **(n+1) × (m+1)**, not `n × m`. Why? To
+include a row and column for the **empty prefix**. `dp[0][j]`
+represents "LCS of empty `a` with first `j` characters of
+`b`" — which is always 0. Similarly `dp[i][0] = 0`. Having
+these rows/columns makes the recurrence work without special
+cases.
+
+**`for i in range(1, n + 1):`** — Outer loop: process each
+prefix of `a`. We start at 1 because row 0 is the base case
+(empty `a`).
+
+**`for j in range(1, m + 1):`** — Inner loop: process each
+prefix of `b`.
+
+**`if a[i - 1] == b[j - 1]:`** — Compare the **last
+characters** of the current prefixes. Note: index `i - 1`
+into `a` corresponds to the i-th character (because `dp[i]`
+represents prefix of length `i`).
+
+**`dp[i][j] = 1 + dp[i - 1][j - 1]`** — Match. The LCS
+includes this matched character. Look at the diagonal cell
+`dp[i-1][j-1]` (LCS of shorter prefixes), add 1.
+
+**`else: dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])`** — No
+match. Skip a character from one side and take the better
+result. `dp[i-1][j]` corresponds to dropping `a[i-1]`;
+`dp[i][j-1]` corresponds to dropping `b[j-1]`.
+
+**`return dp[n][m]`** — The full-length answer is in the
+bottom-right cell.
+
+**Trace on `a = "abcde", b = "ace"`:**
+
+```
+        ""  a   c   e
+    ""  0   0   0   0
+    a   0   1   1   1     (a matches a → diagonal+1)
+    b   0   1   1   1     (b no match → max of left/up)
+    c   0   1   2   2     (c matches c)
+    d   0   1   2   2
+    e   0   1   2   3     (e matches e)
+```
+
+Read the bottom-right: 3. Answer: 3. The LCS string is
+"ace" — visible by tracing back through the table from
+bottom-right, following "diagonal on match, max on mismatch."
+
+**Why does this work?**
+
+Each cell `dp[i][j]` answers a self-contained subproblem:
+"LCS of `a[0..i-1]` and `b[0..j-1]`." The recurrence
+expresses the answer in terms of three smaller subproblems
+that are already computed (top, left, top-left diagonal).
+Because we iterate in increasing order of `i` and `j`, all
+dependencies are ready when needed.
+
+**The big-picture lesson**
+
+LCS is the **archetypal 2D string DP**. The shape `dp[i][j]`
+= "some answer for prefix pair (i, j)" with the match-vs-
+mismatch transition appears in:
+- **Edit distance**: same shape, three transitions for
+  insert/delete/replace.
+- **Distinct subsequences**: same shape, different recurrence.
+- **Shortest common supersequence**: built on top of LCS.
+- **Wildcard / regex matching**: same shape with extra logic
+  for `*` and `?`.
+
+Master LCS deeply and a dozen later problems become almost
+mechanical.
+
+The space can be optimized to *O(min(n, m))* by keeping only
+two rows (current and previous). The time stays *O(n × m)*.
 ''',
             "complexity": "**Time**: *O(nm)*. **Space**: *O(nm)*.",
         },

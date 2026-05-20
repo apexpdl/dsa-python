@@ -538,6 +538,52 @@ a node twice, you have a cycle. *O(n)* time, *O(n)* extra space.
         node = node.next
     return False
 ''',
+            "walkthrough": r'''
+The straightforward "remember everything we've seen" approach.
+Works correctly but uses *O(n)* memory.
+
+**`def has_cycle_hash(head) -> bool:`** — Takes the head of
+a linked list, returns True if the list contains a cycle.
+
+**`seen = set()`** — A set of node objects we've already
+visited. Note we're storing **node references**, not values.
+Two different nodes can have the same value, so we can't
+detect cycles by value alone — we need object identity.
+
+Python sets use object identity (by default) for hashing
+mutable objects like our `ListNode`. So `node in seen` returns
+True only if **this exact node** has been added before.
+
+**`node = head`** — Walker, starting at the head.
+
+**`while node is not None:`** — Continue while there are
+nodes to examine. If the list is finite (no cycle), this loop
+terminates when we hit the final `None`. If there's a cycle,
+we never reach None — but we'll hit a node we've seen before
+and break out.
+
+**`if node in seen: return True`** — The cycle detection.
+Hash-set lookup is *O(1)* average. If the current node was
+already visited, we've gone around a loop — cycle confirmed.
+
+**`seen.add(node)`** — Record the current node before moving
+on.
+
+**`node = node.next`** — Advance.
+
+**`return False`** — Loop exited cleanly (hit None), meaning
+no cycle.
+
+Total: *O(n)* time, *O(n)* memory for the set. The optimized
+version (Floyd's tortoise and hare) uses *O(1)* memory — see
+below.
+
+Why hash a node object? Python objects are hashable by default
+using their memory address (`id()`). So two `ListNode`
+instances with the same value but different addresses are
+considered distinct — which is exactly what we want for cycle
+detection.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(n)*.",
         },
         "thought_process": r'''
@@ -600,6 +646,85 @@ def find_cycle_start(head):
         p = p.next
         slow = slow.next
     return p
+''',
+            "walkthrough": r'''
+**Floyd's tortoise and hare** — one of the most beautiful
+algorithms in computer science. Constant memory, linear time.
+
+**`def has_cycle(head) -> bool:`** — Takes the head, returns
+True if a cycle exists.
+
+**`slow = fast = head`** — Initialize two pointers both at
+the head. They'll move at different speeds.
+
+**`while fast is not None and fast.next is not None:`** — The
+loop condition. We need both `fast` and `fast.next` to be
+non-None because we're about to do `fast.next.next`. If
+either is None, we've reached the end (no cycle).
+
+The order matters here: `fast is not None` is checked first.
+Python's short-circuit evaluation means `fast.next` is only
+evaluated if `fast` is not None — avoiding an `AttributeError`.
+
+**`slow = slow.next`** — Advance `slow` by one step.
+
+**`fast = fast.next.next`** — Advance `fast` by **two** steps.
+
+**`if slow is fast: return True`** — If the two pointers
+collide (are now at the same node), there's a cycle. We use
+`is` (identity) instead of `==` because we're comparing node
+objects, not values.
+
+**Why does this detect cycles?** Imagine the linked list with
+a cycle as a long tail leading into a circular track. The
+tortoise enters the circular track and walks around it. The
+hare, moving at twice the speed, also enters the circle (in
+fewer steps). Once both are inside, the hare gains one step
+per iteration on the tortoise (because relative speed is
+2 - 1 = 1). The hare must eventually lap the tortoise — that
+is, they must collide.
+
+The math: if the cycle has length `L`, the hare catches up at
+the rate of one position per iteration. So after at most `L`
+iterations inside the cycle, they meet.
+
+**`return False`** — Fast reached None without meeting slow.
+No cycle.
+
+**Bonus: finding the cycle's start**
+
+The `find_cycle_start` function uses a beautiful mathematical
+trick.
+
+**Phase 1**: Detect the meeting point inside the cycle. Same
+as `has_cycle`, but instead of returning True, we `break` to
+remember the meeting point.
+
+**The `else: return None`** — Python's loop-`else` clause.
+This runs only if the `while` exited normally (condition
+became False), not if we `break`-ed out. If the loop ended
+normally, no cycle.
+
+**Phase 2**: Reset one pointer to the head, then advance both
+at the **same speed**. They meet at the cycle's start.
+
+The proof: let `a` = distance from head to cycle start, `b` =
+distance from cycle start to meeting point, `L` = cycle
+length. When they met, `slow` had walked `a + b` steps and
+`fast` had walked `2(a + b)` steps. Fast went around the
+cycle some number of times: `2(a + b) = a + b + nL`, which
+simplifies to `a + b = nL`. So `a = nL - b`. If we now reset
+one pointer to the head and advance both one step at a time,
+the head-pointer will travel `a` steps to reach the cycle
+start, and the meeting-point pointer will travel `nL - b`
+steps, which lands it at the cycle start too.
+
+The conclusion: they meet exactly at the cycle start. *O(n)*
+time, *O(1)* memory.
+
+This algorithm has a generalization called **Brent's
+algorithm**, slightly faster in practice but the same big-O.
+The Floyd version is more famous and what interviewers expect.
 ''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },

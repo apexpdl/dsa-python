@@ -312,5 +312,187 @@ Binary search is *the* lever that turns "linear scan" into
 "logarithmic look-up." Spend the practice time on the
 boundary-convention discipline and the "BS on answer" lifting
 move. Both pay dividends for years.
+
+## 12. The half-open interval convention in depth
+
+Let me say more about *why* binary search code is so bug-prone.
+The root cause is **boundary conventions**. Different textbooks
+and different code use:
+- `lo <= hi` with `hi = n - 1` (inclusive both sides)
+- `lo < hi` with `hi = n` (left inclusive, right exclusive)
+- `lo < hi` with `hi = n - 1` (closed on left, closed on right)
+
+These are *all valid* and *all give correct answers* if used
+consistently. They are *all wrong* if mixed up. The cure is: pick
+**one** convention and use it everywhere. I recommend the second
+— `lo < hi` with `hi = n` (half-open right). It is also what
+Python's `bisect` module uses, what slicing uses, and what `range`
+uses. Once you absorb the half-open principle from arrays, you
+gain consistency across the language.
+
+In the half-open convention:
+- The search range is `[lo, hi)`, meaning `lo` is included, `hi`
+  is excluded.
+- An empty range is `lo == hi`.
+- The midpoint is `mid = (lo + hi) // 2`. It satisfies
+  `lo <= mid < hi` when the range is non-empty.
+- To exclude `mid` from the future search going right: `lo = mid + 1`.
+- To exclude `mid` from the future search going left: `hi = mid`.
+
+This is the "search for the smallest index ≥ target" template,
+which generalizes to almost any monotonic predicate.
+
+```python
+def lower_bound(arr, target):
+    lo, hi = 0, len(arr)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if arr[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+```
+
+After the loop, `lo == hi == answer`. The function returns the
+smallest index `i` such that `arr[i] >= target` (or `len(arr)`
+if no such index exists). This is exactly `bisect_left`.
+
+**Upper bound**, the smallest `i` such that `arr[i] > target`:
+
+```python
+def upper_bound(arr, target):
+    lo, hi = 0, len(arr)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if arr[mid] <= target:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+```
+
+The only difference is `<` vs `<=`. Both run in *O(log n)*. The
+number of occurrences of `target` in a sorted array is
+`upper_bound - lower_bound`.
+
+## 13. Binary search on the answer — full template
+
+The "binary search on the answer" trick deserves its own
+template because it shows up in dozens of problems. The shape:
+
+> You want to find the minimum (or maximum) value of some
+> parameter X such that a predicate `feasible(X)` is true.
+
+If `feasible` is **monotonic** in X — once true, stays true for
+larger X (or smaller X) — you can binary-search the answer.
+
+```python
+def min_x_satisfying(lo, hi, feasible):
+    # Find the smallest X in [lo, hi] such that feasible(X) is True.
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if feasible(mid):
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo if feasible(lo) else -1   # -1 = no feasible X
+```
+
+The hard work is **defining `feasible`**. Examples:
+
+- **Koko Eating Bananas** (LC 875). Parameter X = eating speed.
+  `feasible(X)` = can Koko finish in time at speed X?
+- **Aggressive Cows.** Parameter X = minimum spacing.
+  `feasible(X)` = can we place all cows with at least X spacing?
+- **Capacity to Ship Packages** (LC 1011). Parameter X = ship
+  capacity. `feasible(X)` = can we ship within D days?
+- **Split Array Largest Sum** (LC 410). Parameter X = max sum
+  per piece. `feasible(X)` = can we split into K pieces with
+  max ≤ X?
+- **Median of Two Sorted Arrays** (LC 4). Parameter X =
+  partition index. `feasible(X)` = is the partition valid?
+
+The lift from "search a sorted array" to "search the parameter
+space" is the most important conceptual jump in binary search.
+Once you see it, dozens of hard problems become straightforward.
+
+## 14. Rotated and bitonic arrays
+
+A **rotated sorted array** is what you get when you take a sorted
+array and rotate it by some unknown amount. Example: original
+`[1, 2, 3, 4, 5, 6, 7]` rotated by 3 becomes `[5, 6, 7, 1, 2, 3, 4]`.
+The array is not globally sorted, but it has the property that
+*at least one of the halves is sorted* at any binary-search step.
+
+To search a rotated array in *O(log n)*:
+
+```python
+def search_rotated(nums, target):
+    lo, hi = 0, len(nums) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if nums[mid] == target: return mid
+        if nums[lo] <= nums[mid]:                  # left half sorted
+            if nums[lo] <= target < nums[mid]:
+                hi = mid - 1
+            else:
+                lo = mid + 1
+        else:                                       # right half sorted
+            if nums[mid] < target <= nums[hi]:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+    return -1
+```
+
+The trick: figure out which half is sorted, then check if `target`
+lies inside it. If yes, search there. If no, search the other half.
+
+## 15. Common bugs in binary search
+
+**Mixing conventions.** Half-open and closed conventions don't
+mix. Pick one and stick to it within a function.
+
+**Infinite loop.** Caused by `lo = mid` when `mid == lo`. The
+fix: `lo = mid + 1` when the answer cannot be at `mid`, and the
+mid calculation `mid = (lo + hi) // 2` (which rounds down) so
+that `mid < hi` when `lo < hi`.
+
+**Integer overflow on `(lo + hi) // 2`.** In Python this doesn't
+happen (integers are unbounded). In C/Java, prefer
+`lo + (hi - lo) // 2` to be safe.
+
+**Returning the wrong bound.** After the loop, the result is `lo`
+(which equals `hi`). Carefully decide whether that index is *the
+answer*, *the answer's successor*, or *out of range*. Trace by
+hand on a tiny input.
+
+**Stale `mid`.** Don't keep using `mid` after updating `lo` or
+`hi` — recompute on each iteration.
+
+**Searching an unsorted array.** Binary search needs *some* form
+of monotonicity. If your array isn't sorted (and isn't a
+parameter-search), binary search will not work.
+
+## 16. Mental exercises
+
+1. *Trace lower_bound on `[1, 2, 4, 4, 5, 7], target = 4`. What
+   are `lo` and `hi` at each step? What does the function
+   return?*
+
+2. *Same array, upper_bound on target 4. What does it return?
+   How many 4s are in the array, and how do you compute that
+   from the two bounds?*
+
+3. *On the rotated array `[6, 7, 1, 2, 3, 4, 5]`, search for 3.
+   Trace the algorithm: which half is sorted at each step?*
+
+4. *Define the predicate `feasible(X)` for "place K cows in
+   stalls such that the minimum spacing is at least X." For a
+   given X, how do you check feasibility in *O(n)*?*
+
+5. *Why is binary search *O(log n)*? Show why each iteration
+   halves the search space.*
 ''',
 }

@@ -328,5 +328,233 @@ sort?" for every array problem you see.
 
 Sorting is foundational. Spend the time. The "sort first" reflex
 pays off for years.
+
+## 13. Stability — what it means and when it matters
+
+A sorting algorithm is **stable** iff items with equal keys keep
+their relative order. Example: sort `[(Alice, 25), (Bob, 25),
+(Carol, 30)]` by age. A stable sort would output
+`[(Alice, 25), (Bob, 25), (Carol, 30)]`. An unstable sort might
+swap Alice and Bob.
+
+When does stability matter?
+- **Multi-pass sorting** — sort by secondary key, then by primary.
+  A stable sort on the primary key preserves the secondary order
+  within ties.
+- **User-facing displays** — when ties exist, the original order
+  often has meaning.
+- **Specific algorithms** — radix sort requires its inner sort
+  to be stable.
+
+Python's `sorted()` and `list.sort()` are **stable** (Timsort).
+You can rely on this. Many other languages have unstable defaults;
+look it up before assuming.
+
+## 14. Timsort — Python's sort, demystified
+
+CPython uses Timsort, invented by Tim Peters in 2002. It is a
+hybrid of merge sort and insertion sort:
+- It scans the input for **runs** — already-sorted (or
+  reverse-sorted) consecutive segments.
+- Short runs are extended with insertion sort.
+- Runs are then merged together using a smart merge schedule.
+
+Why is this fast? Because real-world data is rarely random. Logs
+are nearly sorted by timestamp; user lists are often partially
+sorted by recency. Timsort recognizes existing order and reuses
+it, achieving *O(n)* on already-sorted input (try sorting a
+sorted list and a random list — the sorted one is faster).
+
+You don't need to understand Timsort to use it. You should know:
+- It is *O(n log n)* worst case.
+- It is *O(n)* on already-sorted input.
+- It is stable.
+- It uses *O(n)* extra space.
+
+For DSA problems, just call `sorted()`. Don't reimplement.
+
+## 15. Sorting custom objects
+
+`sorted()` and `list.sort()` accept a `key` argument:
+
+```python
+people = [("Alice", 30), ("Bob", 25), ("Carol", 30)]
+people.sort(key=lambda p: p[1])         # by age
+# [('Bob', 25), ('Alice', 30), ('Carol', 30)]
+```
+
+For multi-key sorts, return a tuple — Python compares tuples
+lexicographically:
+
+```python
+people.sort(key=lambda p: (p[1], p[0]))    # by age, then by name
+# [('Bob', 25), ('Alice', 30), ('Carol', 30)]
+```
+
+To sort some keys ascending and others descending, negate the
+ones you want flipped:
+
+```python
+people.sort(key=lambda p: (-p[1], p[0]))   # age DESC, then name ASC
+```
+
+For non-numeric keys that you want descending, sort twice (using
+stability):
+
+```python
+people.sort(key=lambda p: p[0])             # by name
+people.sort(key=lambda p: -p[1])            # by age DESC; ties keep name order
+```
+
+This works because Timsort is stable.
+
+## 16. When NOT to sort
+
+Sorting costs *O(n log n)*. Some problems can be solved in
+*O(n)*. Don't pay for sorting if you can avoid it:
+
+- **Find the max:** *O(n)*. Don't sort to find the largest.
+- **Top-K (k small):** *O(n log k)* with a heap, faster than
+  *O(n log n)*.
+- **Count occurrences:** *O(n)* with a Counter. Sorting wastes
+  time.
+- **Already partitioned:** if the array is, e.g., 0s then 1s,
+  a single pass can confirm order without sorting.
+
+Reflexive "sort first" can mask easier solutions. After you have
+the sort-based idea, ask: *do I really need full sort, or would
+a single pass suffice?*
+
+## 17. The Dutch National Flag problem
+
+A famous in-place partition by three values (e.g., sort 0s, 1s,
+and 2s). Three pointers: `lo`, `mid`, `hi`. Walk `mid` forward;
+swap with `lo` (and advance both) on a 0; swap with `hi` (and
+shrink `hi`) on a 2; just advance `mid` on a 1.
+
+```python
+def dutch_flag(arr):
+    lo = mid = 0
+    hi = len(arr) - 1
+    while mid <= hi:
+        if arr[mid] == 0:
+            arr[lo], arr[mid] = arr[mid], arr[lo]
+            lo += 1; mid += 1
+        elif arr[mid] == 2:
+            arr[mid], arr[hi] = arr[hi], arr[mid]
+            hi -= 1                # don't advance mid — new value unknown
+        else:
+            mid += 1               # 1: leave it
+```
+
+*O(n)* time, *O(1)* extra. The trick is the **three-region**
+invariant: `[0..lo-1]` are 0s, `[lo..mid-1]` are 1s,
+`[hi+1..n-1]` are 2s, and `[mid..hi]` is unknown. Each iteration
+shrinks the unknown region.
+
+## 18. Counting sort — when keys are bounded
+
+Comparison sort is *Ω(n log n)*. Non-comparison sorts can do
+better when the input has structure. **Counting sort** runs in
+*O(n + k)* when the values lie in `[0, k]`:
+
+```python
+def counting_sort(arr, k):
+    count = [0] * (k + 1)
+    for x in arr: count[x] += 1
+    out = []
+    for v, c in enumerate(count):
+        out.extend([v] * c)
+    return out
+```
+
+For `k = O(n)`, this is *O(n)*. For `k = O(n log n)`, it's no
+better than comparison sort.
+
+Counting sort is a building block for **radix sort**, which sorts
+integers by digits (or bits) in *O(n · digits)*. Useful when n is
+huge and the integers are bounded.
+
+## 19. Heaps as priority queues
+
+A heap is a "partially sorted" structure: it gives you the min
+(or max) in *O(1)*, and supports insert / remove-min in
+*O(log n)*. When you only need the K smallest (or largest)
+elements out of n, a heap of size K gives *O(n log K)* — faster
+than full sort if K is small.
+
+Python's `heapq` module provides min-heap operations on a list:
+
+```python
+import heapq
+h = []
+heapq.heappush(h, 5)
+heapq.heappush(h, 1)
+heapq.heappush(h, 3)
+print(heapq.heappop(h))         # 1 (smallest)
+```
+
+For max-heap behavior, push negated values. We cover heaps in
+detail in Step 11. For sorting purposes, the relevant facts are
+*nlargest* and *nsmallest*:
+
+```python
+heapq.nlargest(3, [5, 1, 3, 8, 2])      # [8, 5, 3]
+heapq.nsmallest(3, [5, 1, 3, 8, 2])     # [1, 2, 3]
+```
+
+Both are *O(n log k)*, often beating full sort + slice.
+
+## 20. Common bugs in sorting code
+
+**Forgetting the key argument.** `sorted(strings)` sorts
+lexicographically. `sorted(strings, key=len)` sorts by length.
+If your data has structure, use `key`.
+
+**Mutating during sort.** `list.sort()` rearranges in place; if
+other code is iterating the list, things get weird. Either
+finish the sort before iterating, or use `sorted()` (which
+returns a new list).
+
+**Comparing types that don't compare.** Python 3 raises
+`TypeError` on `sorted([1, "a"])`. Make sure all elements are
+comparable, or convert to a common type.
+
+**Sorting and forgetting the original indices.** If you need to
+recover original positions, sort `enumerate(arr)`:
+
+```python
+indexed = sorted(enumerate(arr), key=lambda p: p[1])
+```
+
+Now `indexed[i] = (original_position, value)`.
+
+**Sorting the wrong axis on a 2D array.** `sorted(matrix)` sorts
+the **rows** as a whole. To sort each row independently,
+`for row in matrix: row.sort()`.
+
+**Re-sorting too often.** If you sort inside a loop, you might
+be paying *O(n² log n)* when *O(n log n)* would suffice. Sort
+once at the top.
+
+## 21. Mental practice exercises
+
+1. *Sort `[5, 2, 8, 1, 9, 3]` by hand using bubble sort. What
+   does the array look like after each pass?*
+
+2. *Same array. Walk merge sort: what are the sub-arrays at each
+   level of the recursion?*
+
+3. *Why is Python's sort *O(n)* on `[1, 2, 3, 4, 5]` but
+   *O(n log n)* on random data? What property of Timsort
+   exploits the sortedness?*
+
+4. *Sort `[("a", 3), ("b", 1), ("c", 3), ("a", 2)]` first by the
+   number ascending, then by the letter ascending. What's the
+   one-line `sort` call?*
+
+5. *You need the K smallest elements out of an array of n = 10^6
+   integers. K = 10. Compare: full sort vs heap-of-size-K. Which
+   is faster, and by how much?*
 ''',
 }

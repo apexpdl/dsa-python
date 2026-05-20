@@ -429,5 +429,311 @@ Take a breath. Reread anything that felt fast. Then go do the
 five exercises. Hashing rewards practice — more than recursion,
 more than DP. The reflex of "could a dict do this?" comes only
 from solving twenty or thirty hash problems in a row.
+
+## 15. The complement-search pattern in deep detail
+
+I keep mentioning this one, so let me spell it out. The
+**complement-search** pattern is the single most-asked hashing
+trick. The shape:
+
+> Given an array `nums` and a target `T`, find any pair `(i, j)`
+> such that `nums[i] + nums[j] == T`.
+
+The naive *O(n²)* approach tries every pair. The hash version
+is one of the most beautiful tricks in DSA:
+
+```python
+def two_sum(nums, target):
+    seen = {}                              # value -> index
+    for i, x in enumerate(nums):
+        need = target - x                  # what value would pair with x?
+        if need in seen:                   # have we seen it already?
+            return [seen[need], i]
+        seen[x] = i                        # record x at index i
+    return [-1, -1]
+```
+
+Walk this slowly. For each new value `x`, we don't look forward
+through the rest of the array — we look **backward** through the
+hash map and ask, *"Did I already see the value that would
+complete me?"* Because hash lookup is *O(1)*, that question is
+free. We answer it n times, total *O(n)*.
+
+This pattern generalizes to **three-sum, four-sum, k-sum**, with
+variations. It generalizes to "find two indices `i < j` such
+that `nums[j] - nums[i] == K`" (just store earlier values, ask
+for `x - K`). It generalizes to "find two strings `s1, s2` such
+that `concat(s1, s2)` is a palindrome" (store reversed-prefix
+hashes). The pattern is: **for each element, ask the hash map a
+question about its past.**
+
+When you face an array problem and find yourself writing a
+nested loop, stop. Ask: *what would the inner loop be looking
+for?* If the answer is a simple function of the outer element,
+a hash map can replace the inner loop entirely. *O(n²) → O(n)*.
+
+## 16. The prefix-sum + hash map combo
+
+This combo deserves its own section because it is the most
+common *medium-difficulty* hash pattern. The shape:
+
+> Given an array and an integer K, count (or find) subarrays
+> whose sum equals K.
+
+The naive *O(n²)* approach tries every pair (i, j). The clever
+approach uses the identity:
+
+```
+sum(nums[i..j]) == prefix[j+1] - prefix[i]
+```
+
+So `sum(nums[i..j]) == K` is the same as
+`prefix[j+1] - prefix[i] == K`, which is the same as
+`prefix[i] == prefix[j+1] - K`. As we walk, for each new
+`prefix[j+1]`, we ask the hash map: *how many earlier prefixes
+equal `prefix[j+1] - K`?* Each such earlier prefix corresponds
+to a subarray ending at `j` with sum exactly K.
+
+```python
+def subarray_sum_count(nums, k):
+    count = {0: 1}                         # the empty prefix has sum 0, counted once
+    running = 0
+    total = 0
+    for x in nums:
+        running += x
+        total += count.get(running - k, 0) # how many prefixes match?
+        count[running] = count.get(running, 0) + 1
+    return total
+```
+
+Trace on `nums = [1, 2, 3, 0, 3], k = 3`:
+
+```
+x  running  need=running-k  count_of_need  total    seen_so_far
+1     1          -2              0          0        {0:1, 1:1}
+2     3           0              1          1        {0:1, 1:1, 3:1}
+3     6           3              1          2        {0:1, 1:1, 3:1, 6:1}
+0     6           3              1          3        {0:1, 1:1, 3:1, 6:2}
+3     9           6              1          4        {0:1, 1:1, 3:1, 6:2, 9:1}
+```
+
+Answer: 4 subarrays. Verify manually: `[1,2]`, `[3]`, `[3,0]`,
+`[3,0,3]`? Let me list: `[1,2]` ✓, `[3]` (index 2) ✓, `[3]`
+(prefix sum at index 2 is 3, then 0 added gives sum 3 again as
+ending at index 3) ✓, then `[0, 3]` summing to 3 ✓, and
+`[3]` at index 4 again summing to 3 (well actually the subarray
+ending at index 4 with sum 3 is `[3,0,3]` or `[0,3]`)…
+4 total. ✓
+
+The recipe — *running prefix sum + count of earlier prefix
+values* — is the canonical *O(n)* solution for "subarray with
+sum K," "subarray with sum 0," "subarray with sum divisible by
+K," "subarray with XOR K" (replace `running += x` with
+`running ^= x`), and many close relatives.
+
+## 17. The first-seen / last-seen pattern
+
+Another classic hash pattern: as we walk an array, the map
+records the **first** (or **last**) index at which each value
+appeared. Variations:
+
+- **First repeating element:** walk; for each `x`, if it's in
+  the map, return the stored index; else record `x` at the
+  current index.
+- **Longest subarray with all distinct values:** sliding window
+  whose left edge jumps to `max(left, last_seen[x] + 1)` when a
+  repeat appears. This is exactly *Longest Substring Without
+  Repeating Characters*, LeetCode 3.
+- **Longest subarray sum divisible by K:** for each prefix sum
+  modulo K, record the **first** index at which that residue
+  appeared. The length of the subarray with the desired
+  divisibility is `i - first_seen[residue]`.
+
+Whenever you want to relate a *current* index to a *previous
+matching* index, the first/last-seen hash map is your tool.
+
+## 18. The canonical-form / grouping pattern
+
+A different shape of hash use: **group items that share some
+invariant**. The dict key is a *canonical form* of each item, and
+the value is the list of items sharing that form.
+
+**Anagram grouping.** Two words are anagrams iff their sorted
+character lists match. Sort each word; use the sorted tuple as a
+dict key:
+
+```python
+from collections import defaultdict
+def group_anagrams(words):
+    groups = defaultdict(list)
+    for w in words:
+        key = tuple(sorted(w))
+        groups[key].append(w)
+    return list(groups.values())
+```
+
+The canonical form needs three properties: (1) it must be
+**hashable**, (2) it must be **identical** for items that should
+group, and (3) it must be **different** for items that shouldn't.
+Sorted tuples satisfy all three for anagrams. Other canonical
+forms appear in other problems:
+
+- **Shifted strings group** (LeetCode 249): canonical form is
+  the tuple of pairwise differences.
+- **Same number of points on the line through origin** (LeetCode
+  149): canonical form is the slope as a normalized fraction.
+- **Same shape of island** (Distinct Islands): canonical form is
+  the sorted tuple of relative offsets.
+
+Canonical-form grouping turns "find all collections that share
+some property" into a single linear pass with a dict.
+
+## 19. Frequency-array vs hash-map
+
+When the keys of your "count" come from a small, known universe
+— like lowercase English letters (26 possibilities), ASCII
+characters (128), or digits 0-9 (10) — you can replace the dict
+with a **fixed-size array**. Pros: faster (no hashing), simpler
+code, and easier to compare two counts (just compare the arrays).
+Cons: only works when the universe is small.
+
+```python
+# Counting lowercase letters in s.
+freq = [0] * 26
+for c in s:
+    freq[ord(c) - ord('a')] += 1
+```
+
+Anagram check between two strings of equal length:
+
+```python
+def is_anagram(s, t):
+    if len(s) != len(t): return False
+    cnt = [0] * 26
+    for c in s: cnt[ord(c) - ord('a')] += 1
+    for c in t: cnt[ord(c) - ord('a')] -= 1
+    return all(x == 0 for x in cnt)
+```
+
+Two passes, *O(n)*, *O(1)* extra memory (26 is constant). For
+problems with a small alphabet, a frequency array is preferred
+over a Counter — same algorithm, lower constants.
+
+## 20. Hashable vs unhashable — the full story
+
+Python's rule: a value is hashable iff it has a `__hash__` method
+that doesn't raise. The built-in types follow this principle:
+
+- **Hashable** (immutable): `int`, `float`, `str`, `tuple` (of
+  hashables), `frozenset`, `bytes`, `None`, `bool`.
+- **Unhashable** (mutable): `list`, `dict`, `set`, most custom
+  objects (unless you implement `__hash__`).
+
+Why? Because the hash of an object is used to locate it in the
+table. If the object mutates after being inserted, its hash
+changes, and the dict can no longer find it. Disallowing mutable
+keys avoids this category of bugs entirely.
+
+To use a list as a dict key, convert it to a tuple:
+
+```python
+visited = {}
+key = tuple(my_list)            # tuple of the same values
+visited[key] = True
+```
+
+To use a set as a key, use `frozenset(my_set)`. To use a dict as
+a key, there's no clean way — usually a sign you should
+restructure your data.
+
+## 21. Hash sets vs hash dicts — same engine, different shape
+
+A `set` is essentially a `dict` whose values are all `None`. The
+only operations a set supports are membership, addition, and
+removal. When you only need "is this value present?", use a set.
+When you need to associate something with the value (a count,
+index, list of related items), use a dict.
+
+Performance is identical. Choose the one that signals intent
+most clearly. `seen = set()` reads as "I just want to know
+who's appeared." `last_index = {}` reads as "I'm tracking which
+index each value last appeared at." Both are correct, but the
+right name conveys what you're doing.
+
+## 22. Common pitfalls — extended catalog
+
+I gave you confusion notes earlier. Here is the longer catalog.
+
+**Forgetting `defaultdict` defaults to *something*.** A
+`defaultdict(int)` defaults to 0 on missing keys; a
+`defaultdict(list)` defaults to `[]`. Pick the right type.
+
+**KeyError on access.** `d[k]` raises `KeyError` if `k` is
+missing. Prefer `d.get(k)` (returns None) or `d.get(k, default)`
+when you can't be sure the key exists. Or use `defaultdict`.
+
+**Iterating while mutating.** Just like with lists, don't add or
+remove keys while iterating over a dict. Build a new dict, or
+collect keys first: `for k in list(d.keys()):`.
+
+**Counting with `+=` instead of `.update()`.** `Counter.update`
+adds counts from another iterable; `cnt[x] += 1` adds to one key.
+Both are valid, but `+=` is more idiomatic for the single-key
+increment.
+
+**Forgetting that `dict.update(other)` is destructive.** It
+*overwrites* keys in `dict` that also appear in `other`. If you
+want a non-destructive merge, use `{**dict, **other}` (Python
+3.5+) or `dict | other` (Python 3.9+).
+
+**Float keys.** Comparing floats for equality is fraught (see
+the Arrays chapter). Hashing floats works, but `d[0.1 + 0.2]`
+is not the same key as `d[0.3]`. Stick to int / str / tuple keys
+unless you really know what you're doing.
+
+**Set iteration order.** Sets are *unordered*. Don't rely on
+the order in which elements come out of a set. If you need
+ordered output, sort the set first or use a list with manual
+dedup.
+
+**Dict iteration order.** Since Python 3.7, dicts are
+**insertion-ordered**. You can rely on this. Older Python versions
+shuffled the order; if you support ancient versions, use
+`collections.OrderedDict` explicitly.
+
+**The "default mutable" gotcha.** `defaultdict(list)` is fine.
+But `def f(x=[]):` is a famous bug — the default list is **shared
+across calls**. Use `def f(x=None): x = x or []` instead.
+
+**Using mutable objects as keys.** Lists, sets, dicts, and any
+class without `__hash__` will raise `TypeError`. Convert to a
+hashable form.
+
+## 23. Mental practice exercises
+
+Before you close this chapter, do these in your head.
+
+1. *On `nums = [3, 5, 2, 7, 4]` with target 9, walk Two Sum
+   step by step. What does the `seen` map look like at each
+   iteration? When does the function return?*
+
+2. *Why does the `count = {0: 1}` initialization in the prefix-
+   sum-and-hash problem matter? What happens if you initialize
+   `count = {}` instead?*
+
+3. *Give a concrete example where a `defaultdict(int)` makes the
+   code shorter and clearer than a plain dict with `get(k, 0)`.*
+
+4. *Suppose the alphabet were `{'a', 'b', 'c', ..., 'z', 'A',
+   'B', ..., 'Z'}` (52 letters). How would you adapt the
+   frequency-array anagram check?*
+
+5. *Two integers `a` and `b` collide if `hash(a) == hash(b)`.
+   What happens when many values collide on the same bucket?
+   Why does Python's dict still average O(1) lookup even with
+   collisions?*
+
+If all five feel comfortable, you have absorbed the chapter.
+Otherwise, scroll back to the matching section.
 ''',
 }

@@ -440,5 +440,313 @@ recursion feels natural, the smoother the rest of the journey.
 Take a breath. If anything in this chapter felt fast, reread the
 relevant section. Then go solve the five exercises above. The
 investment pays for itself for years.
+
+## 14. The call stack — what it really is
+
+Almost every confusion beginners have about recursion comes from
+not picturing the **call stack**. Let me draw it for you.
+
+When a function calls another function, the computer needs to
+remember *where it was* in the caller so it can return there
+later. To do this, it pushes a small bookkeeping record (called
+a **stack frame**) onto a special region of memory called the
+**call stack**. Each frame holds:
+- The local variables of that invocation.
+- The arguments passed in.
+- The instruction pointer (where to return to).
+
+When the called function returns, its frame is popped off the
+stack. The caller's frame is exposed, and the caller picks up
+where it left off.
+
+For recursion, each recursive call adds a new frame. So
+`fib(5) → fib(4) → fib(3) → fib(2) → fib(1)` produces a stack
+five frames deep. Each frame has its own copy of `n`, its own
+local variables, its own "where to go next." They cannot see
+each other's locals — each frame is isolated.
+
+```
+fib(5)  ← arguments n=5; awaiting two recursive results
+fib(4)  ← arguments n=4; awaiting two recursive results
+fib(3)  ← arguments n=3; awaiting two recursive results
+fib(2)  ← arguments n=2; awaiting two recursive results
+fib(1)  ← arguments n=1; returns 1 immediately
+```
+
+The stack lives in a memory region with **bounded** size. Each
+language has a default limit. CPython's default recursion limit
+is 1000. If you exceed it, Python raises
+`RecursionError: maximum recursion depth exceeded`. That's stack
+overflow — not because memory is full but because the soft limit
+was reached.
+
+**When does this bite?** When you write a recursion that recurses
+n times on input of size n, and n is huge. A 100,000-element
+linked list reverse via recursion will blow the stack. A
+balanced tree of a million nodes won't (the depth is ~20). A
+degenerate tree (linked-list-shaped) of a million nodes will.
+
+Two cures: convert to iteration with an explicit stack, or call
+`sys.setrecursionlimit(100_000)` to raise the soft limit. The
+former is safer; the latter is a quick fix that can crash the
+process if you go too high.
+
+## 15. Tail recursion — and why Python ignores it
+
+A **tail call** is a recursive call that is the very last action
+of the function. Languages like Scheme and Haskell optimize tail
+calls into iteration: they don't push a new stack frame, they
+reuse the current one. So in those languages, tail recursion
+runs in constant stack space.
+
+**Python does not do this.** Even tail-recursive Python eats one
+stack frame per call. There are philosophical reasons (Guido
+prefers loops for performance; tracebacks become harder to read
+without each frame). The practical upshot: if you write deeply
+tail-recursive code in Python, convert it to a `while` loop.
+
+```python
+# tail recursive (Python: O(n) stack)
+def fact_tail(n, acc=1):
+    if n <= 1: return acc
+    return fact_tail(n - 1, n * acc)
+
+# iterative (Python: O(1) stack — preferred)
+def fact_iter(n):
+    acc = 1
+    for i in range(2, n + 1):
+        acc *= i
+    return acc
+```
+
+For interview / DSA work, this rarely matters because depths are
+small. But for production code that handles arbitrary input
+sizes, prefer iteration.
+
+## 16. Memoization — the bridge to DP
+
+I gave you a brief glimpse earlier. Let me make it concrete.
+
+The naive recursive Fibonacci is exponential because subproblems
+are computed many times. `fib(5)` calls `fib(4)` and `fib(3)`.
+`fib(4)` calls `fib(3)` again and `fib(2)`. `fib(3)` was computed
+twice. Drawing the full tree for `fib(6)` reveals dozens of
+duplicate subtrees.
+
+**Memoization** is the act of storing the result of every
+subproblem the first time it is computed, and returning the
+stored result on every subsequent call. The transformation is
+mechanical: add a dictionary, check it first, store before
+returning.
+
+```python
+def fib(n, memo={}):
+    if n < 2: return n
+    if n in memo: return memo[n]
+    memo[n] = fib(n - 1, memo) + fib(n - 2, memo)
+    return memo[n]
+```
+
+Or, cleaner, use `functools.lru_cache`:
+
+```python
+from functools import lru_cache
+@lru_cache(maxsize=None)
+def fib(n):
+    if n < 2: return n
+    return fib(n - 1) + fib(n - 2)
+```
+
+The decorator wraps the function in a cache that maps argument
+tuples to return values. Same algorithm, no manual dict
+management.
+
+**What just happened?** We turned an exponential algorithm into
+a linear one without changing its shape. The recursion tree had
+2^n nodes; the *distinct subproblems* are only n in number. Each
+node in the original tree corresponds to one of n distinct
+subproblems. Memoization computes each distinct subproblem
+*once*, even though the recursion would naively visit some
+subproblems many times.
+
+This is the essence of **dynamic programming**: the recursive
+structure of a problem plus a memo of subproblem answers. Every
+DP problem can be written this way (top-down). Many DP problems
+can also be written bottom-up (tabulation), where you compute
+the smallest subproblems first and build up. Both are equivalent
+in complexity.
+
+## 17. The "passing state down" vs "returning state up" idioms
+
+Two ways to thread information through a recursion:
+
+**Passing state down**: an extra parameter carries information
+*to* the recursive call.
+
+```python
+def path(node, current_path):       # current_path passed in
+    if not node: return
+    current_path.append(node.val)
+    if not node.left and not node.right:
+        print(current_path)
+    path(node.left, current_path)
+    path(node.right, current_path)
+    current_path.pop()              # backtrack
+```
+
+**Returning state up**: the recursive call returns information
+*from* its subtree.
+
+```python
+def height(node):
+    if not node: return 0
+    return 1 + max(height(node.left), height(node.right))
+```
+
+**Both at once**: very common in tree problems.
+
+```python
+def diameter(node):
+    best = [0]
+    def h(n):
+        if not n: return 0
+        lh = h(n.left)
+        rh = h(n.right)
+        best[0] = max(best[0], lh + rh)   # passing UP (height)
+        return 1 + max(lh, rh)
+    h(node)
+    return best[0]
+```
+
+Recognize which idiom you need by asking: *does the parent need
+to know what the children found, or do the children need to know
+what the parents decided?* Or both?
+
+## 18. Backtracking — recursion with undo
+
+Backtracking is recursion plus the discipline of **undoing** your
+choice when you return from a recursive call. The template:
+
+```python
+def backtrack(state):
+    if is_solution(state):
+        record(state)
+        return
+    for choice in choices(state):
+        apply(choice, state)         # make the choice
+        backtrack(state)             # recurse
+        undo(choice, state)          # take the choice back
+```
+
+The "undo" step lets us reuse the same `state` structure across
+many recursive branches, instead of copying it. This is the
+canonical pattern for: all subsets, all permutations, N-queens,
+sudoku solver, word search, palindromic partitioning, and most
+"try every option" problems in Step 7.
+
+A classic example — generate all subsets:
+
+```python
+def subsets(nums):
+    out = []
+    cur = []
+    def back(i):
+        if i == len(nums):
+            out.append(cur.copy())   # snapshot the current subset
+            return
+        # choice 1: exclude nums[i]
+        back(i + 1)
+        # choice 2: include nums[i]
+        cur.append(nums[i])
+        back(i + 1)
+        cur.pop()                    # undo
+    back(0)
+    return out
+```
+
+Walk the tree. At each level i, we make a binary choice (include
+or exclude `nums[i]`). The leaves correspond to all 2^n subsets.
+The `cur.pop()` is the **undo** — when we return from the
+recursive call, `cur` looks exactly like it did when we entered.
+
+The undo is the single most-forgotten step in backtracking
+problems. If your subsets / permutations / paths are coming out
+weird, check that every `apply` has a matching `undo`.
+
+## 19. The recursion-tree analysis cheat sheet
+
+Time complexity of a recursive algorithm = number of nodes in the
+recursion tree × work per node. The classic recurrences:
+
+- `T(n) = T(n-1) + O(1)` → *O(n)*. Linear recursion: factorial,
+  sum of a list.
+- `T(n) = 2·T(n/2) + O(n)` → *O(n log n)*. Divide-and-conquer
+  with combination: merge sort, quicksort (average).
+- `T(n) = 2·T(n-1) + O(1)` → *O(2^n)*. Subsets / Hanoi.
+- `T(n) = T(n-1) + T(n-2) + O(1)` → *O(φ^n)* ≈ exponential.
+  Naive Fibonacci.
+- `T(n) = T(n/2) + O(1)` → *O(log n)*. Binary search recursion.
+- `T(n) = T(n/2) + O(n)` → *O(n)*. Quickselect, master theorem.
+
+You don't need to memorize the master theorem; just learn to
+sketch a recursion tree and count nodes. Most interview-level
+recursion fits one of the shapes above.
+
+## 20. Common bugs
+
+**No base case.** The recursion never stops. Stack overflow
+immediately.
+
+**Wrong base case.** Either too narrow (function infinite-loops
+on edge cases like empty input) or too broad (function returns
+before doing the work it should). Always trace base cases by hand
+on tiny inputs.
+
+**Mutating shared state without undo.** If you forget the `undo`
+in backtracking, your branches contaminate each other.
+
+**Returning the wrong thing.** A recursive function should always
+have one clear meaning: "given this subproblem, return X." If
+the meaning drifts mid-function ("sometimes I return the height,
+sometimes the diameter"), the algorithm is wrong. Pick one
+contract and stick to it.
+
+**Forgetting to combine results.** If your recursion has two
+children, the combine step is where the magic happens. Don't
+just recurse and throw the results away.
+
+**Off-by-one in the recurrence parameters.** The classic: you
+think `recurse(n)` means "first n" but actually it means "index
+n," or vice versa. Decide what your parameter means and write
+it as a comment at the top of the function.
+
+**Forgetting to memoize.** If subproblems repeat (DP), and you
+don't memoize, you have an exponential blowup. Always ask: *does
+this recursion compute the same subproblem more than once?* If
+yes, add a memo.
+
+## 21. Mental practice exercises
+
+Do these without writing code.
+
+1. *Trace `fib(5)` step by step. Without memoization, how many
+   total function calls are made?*
+
+2. *In the subsets backtracking algorithm above, at the moment
+   we record the subset `[1, 3]`, what does the call stack look
+   like?*
+
+3. *Why does the height-of-tree recursion work even on an empty
+   tree? What does `height(None)` return, and why is that the
+   right value to combine with the rest?*
+
+4. *Could you write quicksort without using recursion? What
+   would replace the recursive calls?*
+
+5. *In the "passing state down" pattern, what would happen if
+   you passed a copy of `current_path` to each recursive call
+   instead of mutating? Same algorithm; different cost.*
+
+If all five feel comfortable, you have absorbed the chapter.
 ''',
 }

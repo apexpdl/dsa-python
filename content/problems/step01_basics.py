@@ -122,6 +122,59 @@ honest "brute force" is to repeatedly chop and count.
         count += 1
     return count
 ''',
+            "walkthrough": r'''
+Let's read this code as a story, line by line, the way a senior
+engineer might explain it to you sitting beside them.
+
+**`def count_digits_brute(n: int) -> int:`** — We're defining a
+function. It takes an integer (we said so with the `: int` type
+hint, which Python doesn't enforce but it documents the intent),
+and it returns an integer (the `-> int`). The name `brute` is
+our hint to ourselves that this is the straightforward version,
+not the clever one.
+
+**`count = 0`** — We make a counter and set it to zero. This
+will be our tally. Every time we successfully remove a digit
+from `n`, we'll add one to `count`.
+
+**`if n == 0: return 1`** — A small but important edge case.
+The number zero, written down on paper, has one digit: the
+digit `0`. But the loop we're about to write needs `n > 0` to
+do any work. If we let `n = 0` fall through to the loop, the
+loop would run zero times and we'd return `0` — wrong! So we
+catch this special case first and return `1`. This is the kind
+of edge case that bites beginners constantly; train yourself to
+ask "what about zero?" and "what about negatives?" before every
+loop.
+
+**`while n > 0:`** — The main loop. We're going to keep chipping
+away at `n` until there's nothing left. As long as `n` has at
+least one digit (which in math-speak means `n` is positive), we
+have work to do.
+
+**`n = n // 10`** — This is the surgery. The double slash `//`
+is Python's *integer division*. Dividing by 10 and throwing
+away the remainder is exactly the operation "remove the
+rightmost digit." For instance, `7894 // 10` gives `789`, not
+`789.4` and not `790`. We assign the result back to `n`, so
+`n` shrinks by one digit each iteration.
+
+**`count += 1`** — We just removed a digit, so the original
+number had at least one more digit than we'd previously
+counted. Bump the counter by one. This is the actual "counting
+work" — everything else is just bookkeeping.
+
+**`return count`** — After the loop exits (when `n` finally
+reaches `0`), `count` holds the total number of times we were
+able to do the surgery. That's the digit count. Return it.
+
+That's the whole function — five real lines of logic and a
+single edge case. The mental dance is "while there's still a
+digit, take one off and bump the counter." Memorize that
+phrase; the same dance shows up in reversing a number, summing
+digits, checking Armstrong numbers, and many more digit
+manipulation problems coming up.
+''',
             "complexity": (
                 "**Time**: *O(log₁₀ n)*. We chop off one digit per "
                 "iteration, and a number `n` has about `log₁₀ n` "
@@ -209,6 +262,62 @@ def count_digits_log(n: int) -> int:
     # Add 1 because, for example, 7894 has log10 ~= 3.9, floor = 3,
     # but we want 4.
     return int(math.log10(n)) + 1
+''',
+            "walkthrough": r'''
+This version is a one-liner, but it deserves an explanation
+because the math behind it is the kind of thing that delights
+people the first time they see it.
+
+**`import math`** — We need `math.log10`, which Python doesn't
+include by default. The `math` module provides scientific
+functions like logarithms, trigonometry, and constants. We
+import it at the top so we can use `math.log10` later.
+
+**`def count_digits_log(n: int) -> int:`** — Same signature as
+before. Just a different way to compute the same thing.
+
+**`if n == 0: return 1`** — Same edge case as the brute force.
+The math version actually *requires* this guard because
+`math.log10(0)` is undefined (logarithm of zero is negative
+infinity, mathematically). Without this guard, the function
+would raise a `ValueError`. Always handle zero first when
+working with logs.
+
+**`return int(math.log10(n)) + 1`** — Here is the magic. Let me
+unpack it slowly.
+
+`math.log10(n)` computes the logarithm base 10 of `n`. For
+example, `math.log10(7894)` is approximately `3.897`. That
+fractional part `0.897` is the "how close to the next power of
+10" measurement, and we don't need it. The integer part `3`
+tells us the *exponent* of the largest power of 10 that fits
+inside `n` — that is, `n` is at least `10³ = 1000` but less
+than `10⁴ = 10000`.
+
+`int(...)` chops off the fractional part. Note that `int()`
+truncates toward zero for positive floats, which for positive
+results is the same as the "floor" function. So
+`int(math.log10(7894))` is `3`.
+
+`+ 1` because the *number of digits* in a 4-digit number is one
+more than the exponent. Think of it this way: numbers from `1`
+to `9` have 1 digit and their log10 floor is `0`; from `10` to
+`99` have 2 digits and floor log10 is `1`; from `100` to `999`
+have 3 digits and floor log10 is `2`. Pattern: digits = floor
+log10 + 1.
+
+So `int(math.log10(7894)) + 1` = `3 + 1` = `4`. Four digits.
+Correct!
+
+The whole expression runs in constant time — `log10` is one
+fast hardware operation. No loop, no iteration. But there's a
+catch I want you to remember: floating-point arithmetic is not
+exact. For very large numbers near a power of 10 (like
+`10**16` or `10**17`), the floating-point `log10` can be very
+slightly off, and the `int()` truncation can give a wrong
+answer by one. This is rare but real. The brute-force loop is
+boring but always correct; the log version is elegant but has
+a numerical pothole at extreme scale.
 ''',
             "complexity": (
                 "**Time**: *O(1)* — constant time arithmetic.\n\n"

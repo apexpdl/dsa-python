@@ -67,6 +67,44 @@ search.
             return i
     return -1
 ''',
+            "walkthrough": r'''
+The most direct possible search. Walk every element, compare,
+return on match.
+
+**`def linear_search(arr: list[int], x: int) -> int:`** —
+Takes the array and the target value `x`. Returns the index
+where `x` was found, or `-1` if not present.
+
+**`for i, v in enumerate(arr):`** — Walk every element. The
+`enumerate` builtin gives us both the index `i` and the value
+`v` at that index on each iteration. We need the index because
+the problem asks for the position, not just whether `x` is
+present.
+
+**`if v == x:`** — Comparison. Is the current value the one
+we're searching for?
+
+**`return i`** — Found it. Return the index immediately. This
+is **early exit** — once we find the target, there's no need
+to keep scanning. (Some variants might want the *last*
+occurrence instead of the first; in that case you would *not*
+early-exit and would instead record and continue.)
+
+**`return -1`** — If the loop completes without finding `x`,
+we return `-1` to signal "not present." The convention of
+returning `-1` for "not found" is common in DSA but check the
+problem statement; some require returning `None` or raising
+an exception.
+
+Total work: in the worst case, we examine every element —
+*O(n)* time. In the best case, the target is at index 0 and
+we return immediately — *O(1)*. The average for random
+inputs is *O(n/2)*, which is still *O(n)*.
+
+This is the unavoidable baseline for unsorted arrays. The
+optimized version (binary search) only works because of an
+extra structural assumption — the array is sorted.
+''',
             "complexity": "**Time**: *O(n)*. **Space**: *O(1)*.",
         },
         "thought_process": r'''
@@ -120,6 +158,84 @@ each iteration.
             # Target lies to the left of mid.
             hi = mid - 1
     return -1
+''',
+            "walkthrough": r'''
+The legendary binary search. One of the most important
+algorithms in all of computer science. Let me walk you
+through every line.
+
+**`def binary_search(arr: list[int], x: int) -> int:`** —
+Takes a **sorted** array and a target value. Returns the
+index of `x`, or `-1` if not found.
+
+The sortedness assumption is everything. Without it, this
+algorithm would give garbage answers. Make sure to verify
+this before calling.
+
+**`lo, hi = 0, len(arr) - 1`** — Initialize the search range
+to "the whole array." `lo` is the leftmost valid index (0);
+`hi` is the rightmost valid index (`len(arr) - 1`). Both
+inclusive.
+
+This is the **closed-interval style** of binary search. The
+search range is `[lo, hi]` — both endpoints valid. There's
+also a half-open style (`[lo, hi)` with `hi = len(arr)`) which
+is what Python's `bisect` module uses. Both work; just be
+consistent within one function.
+
+**`while lo <= hi:`** — Continue searching as long as the
+range is non-empty. The condition `lo <= hi` allows the range
+to shrink to a single element (where `lo == hi`) and check it.
+Switching to `lo < hi` would skip that single element and
+miss matches.
+
+**`mid = (lo + hi) // 2`** — Compute the midpoint. The `//` is
+integer division — we want an integer index, not a float.
+
+In Python, `(lo + hi) // 2` is safe because integers are
+unbounded. In C++ or Java with 32-bit integers, `lo + hi`
+could overflow when both are huge. The defensive form is
+`lo + (hi - lo) // 2`, which gives the same result but avoids
+the intermediate overflow. It's worth the muscle memory.
+
+**`if arr[mid] == x: return mid`** — Found it! The target
+value is exactly at index `mid`. Return immediately.
+
+**`elif arr[mid] < x: lo = mid + 1`** — The middle element is
+smaller than the target. Because the array is sorted,
+everything from `lo` to `mid` is also smaller — those
+positions cannot contain `x`. Move `lo` to `mid + 1` to
+exclude that whole left half (including `mid` itself) from
+future search.
+
+The `+ 1` is critical. Setting `lo = mid` would risk an
+infinite loop on certain inputs (when `mid == lo`, the range
+would never shrink).
+
+**`else: hi = mid - 1`** — Symmetric: the middle is bigger
+than the target, so everything from `mid` to `hi` is too big.
+Move `hi` to `mid - 1`.
+
+**`return -1`** — If the loop exits without finding the
+target, the search range collapsed to empty (`lo > hi`),
+meaning `x` is not in the array. Return -1.
+
+The mental movie: at each iteration, we look at the middle of
+the current range. We either find the target, or we discard
+exactly half of the search range. So the range shrinks by half
+each iteration. Starting with `n` elements, after `k`
+iterations we have `n / 2^k` elements. The loop ends when
+`n / 2^k < 1`, i.e., when `k > log₂ n`. So the loop runs at
+most `⌈log₂ n⌉` times.
+
+For `n = 1,000,000`, linear search takes a million operations;
+binary search takes about 20. For `n = 10⁹`, linear is a
+billion; binary is about 30. The speedup is exponential.
+
+This is the canonical *O(log n)* algorithm. Master the
+boundary conventions (closed vs half-open, when to use `+ 1`
+vs equality), and dozens of "binary search on the answer"
+problems become approachable.
 ''',
             "complexity": (
                 "**Time**: *O(log n)*. Each iteration halves the "

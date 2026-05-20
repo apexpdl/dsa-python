@@ -881,6 +881,120 @@ def max_path_sum(root):
     gain(root)
     return best[0]
 ''',
+            "walkthrough": r'''
+**Binary Tree Maximum Path Sum** — Hard. The diameter pattern
+generalized to **value-weighted** paths with **negative
+values** to deal with. *O(n)*.
+
+The problem: find the maximum sum of any **non-empty path**
+between any two nodes. A path can go up and over a node (like
+a V-shape).
+
+**The twist over diameter**: values can be negative. So we
+can't just add all heights — sometimes a negative subtree
+should be **ignored**, not included.
+
+**`def max_path_sum(root):`** — Takes the root, returns the
+max path sum.
+
+**`best = [float('-inf')]`** — Global best tracker. Initialize
+to **negative infinity** because all values might be
+negative — `0` would be wrong (we'd return 0 for an all-
+negative tree).
+
+**`def gain(n):`** — Recursive helper. Returns the **best
+path sum ending at `n` going only downward**. Side effect:
+updates `best`.
+
+The distinction is crucial: the return value is **one-sided**
+(only goes one direction from `n`). The `best` includes
+**two-sided** paths (V-shaped through `n`).
+
+**`if not n: return 0`** — Empty subtree contributes 0.
+
+**`left = max(gain(n.left), 0)`** — **The clamping trick.**
+Get the best downward path from `n.left`. If it's negative,
+**ignore it** (treat as 0). Why? Because we're free to not
+include the left subtree at all — pathing through a negative
+subtree only hurts.
+
+**`right = max(gain(n.right), 0)`** — Same for the right.
+
+**`best[0] = max(best[0], n.val + left + right)`** — The
+**path-through-n** computation. It uses BOTH left and right
+clamped contributions, plus `n.val` itself. This is the
+"V-shape" path going up through n.
+
+**`return n.val + max(left, right)`** — The **return value**
+for use by the parent. We must return a **one-sided** path
+because a parent attaches this as a continuation, and a
+single path can't fork into two children.
+
+So we take the **better** of left or right (not both).
+
+**Trace on tree:**
+```
+       1
+      / \
+     2   3
+```
+
+```
+gain(2): leaf. left=0, right=0. best=max(-inf, 2+0+0)=2. Return 2.
+gain(3): leaf. best=max(2, 3)=3. Return 3.
+gain(1): left=max(2,0)=2. right=max(3,0)=3.
+         best=max(3, 1+2+3)=6. Return 1+max(2,3)=4.
+
+Return best=6. (Path: 2 → 1 → 3 sums to 6.)
+```
+
+**With negative values:**
+```
+      -10
+      /  \
+     9   20
+        /  \
+       15   7
+```
+
+```
+gain(9): leaf. best=max(-inf, 9)=9. Return 9.
+gain(15): leaf. best=max(9, 15)=15. Return 15.
+gain(7): leaf. best=max(15, 7)=15. Return 7.
+gain(20): left=15, right=7. best=max(15, 20+15+7)=42. Return 20+15=35.
+gain(-10): left=max(9, 0)=9. right=max(35, 0)=35.
+           best=max(42, -10+9+35)=42. Return -10+35=25.
+
+Return best=42. (Path: 15 → 20 → 7 sums to 42.)
+```
+
+The root's value `-10` is negative, so including the left
+subtree (9) and the right subtree (35) plus -10 gives 34 —
+worse than just the right subtree's V-shape of 42.
+
+**Properties:**
+- **Time**: *O(n)*.
+- **Space**: *O(h)*.
+
+**The clamping trick (max with 0)** is the key insight. Once
+you have it, the algorithm becomes diameter-with-values.
+
+**Variations:**
+- **Path from leaf to leaf**: don't clamp, paths must reach
+  leaves.
+- **Path from any to any** (this problem): clamp.
+- **Path of fixed length**: needs more state.
+
+**Why "single-pass" matters:**
+
+We could compute all subtree statistics first, then iterate.
+That would be two passes. The single-pass version combines
+"compute downward gain" with "update global best" in one DFS
+— more efficient and cleaner.
+
+This problem is the gateway to "**tree DP**" — using
+recursion to combine subtree information into global answers.
+''',
             "complexity": "Time O(n), space O(h).",
         },
         "deep_concept": r'''
